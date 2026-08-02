@@ -13,5 +13,11 @@ export default defineConfig({
   },
   test: {
     include: ['tests/**/*.test.ts'],
+    // Dual reporters: 'default' is what a human sees, 'json' feeds CR-7's
+    // automated baseline check (scripts/check-test-baseline.mjs) without
+    // running the suite a second time just to get a count. The json output
+    // is a generated artifact (gitignored), not committed.
+    reporters: ['default', 'json'],
+    outputFile: { json: '.vitest-results.json' },
   },
 })

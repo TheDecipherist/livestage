@@ -5,6 +5,7 @@ node_modules/
 .env.local
 dist/
 .livestage/
+.vitest-results.json
 
 # nested git repos used as hook test fixtures
 .claude/hooks/tests/fixtures/branch-guard/data-repo/
