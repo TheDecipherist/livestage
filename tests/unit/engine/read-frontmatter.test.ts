@@ -123,6 +123,48 @@ Status: "{{ doc_status }}".
     )
     expect(result.warnings.join('\n')).toMatch(/does not exist/i)
   })
+
+  // Post-initiative sweep, feature 48 (Auto README Generation): every other
+  // source-shaped directive (@list/@read/@tree/@code) honors visible=/
+  // silent= to suppress inline output while still capturing via label=;
+  // @read-frontmatter was the one missed. Found while building README.stage,
+  // which needs to capture a doc's title invisibly, only surfacing it via
+  // {{ }} interpolation in a heading.
+  it('visible="false" suppresses inline output; label= still captures the value', () => {
+    writeFileSync(join(projectDir, 'doc.md'),
+      '---\nstatus: complete\ntitle: Widget\n---\n\nBody.\n', 'utf8')
+    const result = render(
+      `BEFORE
+@read-frontmatter path="doc.md" field="title" label="t" visible="false" /
+AFTER {{ t }}
+`,
+    )
+    expect(result.output).toContain('BEFORE')
+    expect(result.output).toContain('AFTER Widget')
+    expect(result.output).not.toMatch(/BEFORE\s+Widget\s+AFTER/)
+  })
+
+  it('silent="true" has the same suppression effect as visible="false"', () => {
+    writeFileSync(join(projectDir, 'doc.md'),
+      '---\nstatus: complete\n---\n\nBody.\n', 'utf8')
+    const result = render(
+      `BEFORE
+@read-frontmatter path="doc.md" field="status" label="s" silent="true" /
+AFTER {{ s }}
+`,
+    )
+    expect(result.output.trim()).toBe('BEFORE\nAFTER complete')
+  })
+
+  it('without visible=/silent=, output is unchanged (default stays inline, backward compatible)', () => {
+    writeFileSync(join(projectDir, 'doc.md'),
+      '---\nstatus: ready\n---\n\nBody.\n', 'utf8')
+    const result = render(
+      `@read-frontmatter path="doc.md" field="status" /
+`,
+    )
+    expect(result.output).toContain('ready')
+  })
 })
 
 // Read-side schema check (feature 32, F-SCHEMA): only @update-frontmatter's

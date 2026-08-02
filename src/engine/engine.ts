@@ -312,7 +312,18 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
       return lines.join('\n')
     }
     case 'update-frontmatter': return executeUpdateFrontmatter(node, ctx)
-    case 'read-frontmatter': return executeReadFrontmatter(node, ctx)
+    case 'read-frontmatter': {
+      const value = executeReadFrontmatter(node, ctx)
+      // visible="false" or silent="true", same convention as @list/@read/
+      // @tree/@code: label= already captured the value, so inline output
+      // would just repeat it. Missed when the other source-shaped
+      // directives got this (feature 48, Auto README Generation, found it
+      // while building a doc that needs to capture a title invisibly).
+      const visible = node.args['visible']
+      const silent = node.args['silent']
+      if (visible === 'false' || silent === 'true') return ''
+      return value
+    }
     case 'test': return executeTest(node, ctx)
     case 'check': return executeCheck(node, ctx)
     case 'hash': return executeHash(node, ctx)
