@@ -38,7 +38,7 @@ describe('@include and @import expand ${VAR} placeholders', () => {
       ctx: {
         cwd: projectDir,
         docDir: projectDir,
-        skillContext: { args: '', argsList: [], namedArgs: {}, sessionId: '', effort: '', skillDir },
+        skillContext: { args: '', argsList: [], namedArgs: {}, vars: {}, sessionId: '', effort: '', skillDir },
         security: {
           allowShell: false, allowHttp: false, allowDb: false,
           jailRoot: null,

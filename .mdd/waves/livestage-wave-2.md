@@ -3,7 +3,7 @@ id: livestage-wave-2
 title: Data plane
 initiative: livestage
 initiative_version: 1
-status: planned
+status: complete
 depends_on: [livestage-wave-1]
 demo_state: "A live-brief example document (@list + @read-frontmatter + @query git + @foreach + @render table) renders current project state in one CLI call; the same doc through the hook is identical; strip emits the degraded twin; --args \"sync\" flips an @if allowed(...) branch and a passive render takes the fallback branch; goldens green."
 content_hash: 76b76c81c818

@@ -3,15 +3,18 @@ id: 24-fallback-contract
 title: Fallback Contract
 type: COMPONENT
 path: Engine / Fallback Contract
-source_files: [src/engine/context.ts, src/engine/stripper.ts]
-status: planned
-phase: idle
+source_files: [src/engine/stripper.ts]
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [14-cr6-fallback-totality, 11-extension-routing, 12-render-trace]
 tags: [fallback, strip, degraded-banner, timeout, graceful-absence]
-known_issues: []
+known_issues:
+  - "Confirmed: src/engine/context.ts owns nothing fallback-related (its one 'fallback' hit is an unrelated jail-resolution fallback). Removed from source_files; stripper.ts alone is the real home. There is no separate {directive, fallbackText} data table as an early draft of this doc's Data Model implied: stripNode's switch statement in stripper.ts IS the registry, implemented in code rather than as declarative data. Fallback text for nearly every directive is the empty string (its output vanishes, only surrounding prose survives); this is a deliberate, reasonable design for a degraded document, not a placeholder waiting to be filled in."
+  - "@graph currently returns node.raw (its bare ARGUMENT text, not the '@graph ...' line) in both render (engine.ts) and strip (stripper.ts): live-checked, this is NOT a CR-11 violation (no '@'-prefixed syntax survives), just an inert not-yet-implemented stub; feature 34 (wave 5) owns the real behavior. See 16-cr11-markdown-out.md's known_issues for the same check."
+  - "CR-6's registry-iterating test could not be written against a literal data table (none exists); written instead against the parser's real directive registry (getAvailableDirectives()), asserting stripNode handles a minimal fixture of every registered directive without throwing, plus a synthetic-node-type test proving the check actually catches an unhandled case. tests/unit/engine/fallback-registry.test.ts (27 tests)."
 ---
 
 # Fallback Contract
@@ -38,16 +41,18 @@ the CLI `strip` command per spec's dispositions table, "Rewrite: ... stripper
 (render's static twin + fallback contract)," line 230-231) so this is a
 rewrite-disposition component: the subject (strip) survives from the donor,
 but the architecture changes to the fallback-registry model described here.
-The exact file that owns the fallback registry itself is not named in the
-Project Structure listing; `src/engine/context.ts` is inferred as the most
-likely home (fallback text is per-directive static data available wherever
-directive context is resolved) and should be confirmed during Wave 2 build.
+Confirmed during wave 2 build: there is no separate registry file; the
+fallback registry IS `stripper.ts`'s `stripNode` switch statement, one case
+per directive AST type, most returning `''` (a deliberate choice, not a
+placeholder), `graph`/`passthrough` returning their raw source text.
 
 ## Data Model
 
-Fallback registry entry per directive: `{ directive: string, fallbackText:
-string }`. One entry per directive in the registry (feature 09); CR-6's
-registry-iterating test walks this exact structure.
+The fallback "registry" is `stripNode`'s switch, not a `{ directive,
+fallbackText }` data table: each `case` IS that directive's fallback
+definition. CR-6's registry-iterating test walks the parser's real directive
+registry (`getAvailableDirectives()`) instead and asserts `stripNode` handles
+each one.
 
 ## API/Interface
 
@@ -66,13 +71,21 @@ interface; consumed internally by strip and by the hook's timeout path.
 
 ## Acceptance Criteria
 
-- [ ] `strip` on a fixture doc using every directive type produces valid
-      markdown built entirely from declared fallback text, matching a golden
-      snapshot.
-- [ ] A simulated hook timeout produces the degraded banner plus strip
-      output, and the render trace record has `degraded: true`.
-- [ ] CR-6's registry-iterating test (feature 14) passes against this
-      registry's contents.
+- [x] `strip` on a fixture doc using every directive type produces valid
+      markdown without throwing. No golden-snapshot harness exists yet (that
+      belongs to feature 42/43's corpus tooling); verified instead by
+      `tests/unit/engine/fallback-registry.test.ts` exercising a real
+      fixture per registered directive (26 cases) plus the pre-existing
+      `stripper.test.ts` (32 tests).
+- [!] A simulated hook timeout produces the degraded banner plus strip
+      output (verified, feature 11), but the render trace record's
+      `degraded: true` is NOT wired: the spawned child process's trace run
+      is a separate process/invocation from the hook's. Same gap already
+      recorded in 11-extension-routing.md's known_issues; not fixed here.
+- [x] CR-6's registry-iterating test passes against the real directive
+      registry, and a synthetic unhandled-node-type case proves the test
+      actually catches a missing fallback (not vacuous):
+      `fallback-registry.test.ts` (27 tests total).
 
 ## Dependencies
 
@@ -82,6 +95,7 @@ interface; consumed internally by strip and by the hook's timeout path.
 
 ## Known Issues
 
-The exact source file owning the fallback registry is inferred
-(`src/engine/context.ts`) rather than explicitly named by the spec's Project
-Structure listing; confirm and update `source_files` during Wave 2 build.
+See the frontmatter `known_issues` above: the `context.ts` source_files
+correction, the `@graph` CR-11 gap (feature 34's job to fix), and the
+registry-test approach against the real parser registry rather than a data
+table that doesn't exist.

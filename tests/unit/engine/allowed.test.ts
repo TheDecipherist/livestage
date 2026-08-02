@@ -10,6 +10,7 @@ function makeCtx(argsList: string[] = []): EngineContext {
     args: argsList.join(' '),
     argsList,
     namedArgs: {},
+    vars: {},
     sessionId: '',
     effort: 'medium',
     skillDir: '/tmp',

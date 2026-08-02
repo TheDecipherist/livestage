@@ -186,7 +186,7 @@ const SAFE_ENV_KEY = /^[A-Z_][A-Z0-9_]*$/i
 
 const RESERVED_SANDBOX_KEYS = new Set([
   'env', 'file', 'consumer', 'ARGUMENTS', 'args', 'argsList',
-  'arg0', 'arg1', 'arg2', 'arg3',
+  'arg0', 'arg1', 'arg2', 'arg3', 'vars',
   'CLAUDE_SESSION_ID', 'CLAUDE_EFFORT', 'CLAUDE_SKILL_DIR',
   'allowed',
 ])
@@ -229,6 +229,7 @@ function buildSandbox(ctx: EngineContext): Record<string, unknown> {
     settings,
     ARGUMENTS, args: ARGUMENTS, argsList,
     arg0: argsList[0] ?? '', arg1: argsList[1] ?? '', arg2: argsList[2] ?? '', arg3: argsList[3] ?? '',
+    vars: skill?.vars ?? {},
     ...safeNamedArgs,
     CLAUDE_SESSION_ID: skill?.sessionId ?? '', CLAUDE_EFFORT: skill?.effort ?? '', CLAUDE_SKILL_DIR: skill?.skillDir ?? '',
     allowed,

@@ -4,12 +4,14 @@ import type { CacheEntry } from 'livestage/engine'
 export interface CacheShowOptions {
   mode?: 'session' | 'persist'
   expired?: boolean
+  cwd?: string
 }
 
 export interface CacheClearOptions {
   session?: boolean
   persist?: boolean
   directive?: string
+  cwd?: string
 }
 
 export interface CacheShowResult {
@@ -22,7 +24,7 @@ export interface CacheClearResult {
 }
 
 export function runCacheShow(options: CacheShowOptions = {}): CacheShowResult {
-  let entries = showCacheEntries(options.mode)
+  let entries = showCacheEntries(options.mode, options.cwd)
   if (options.expired !== undefined) {
     entries = entries.filter(e => e.expired === options.expired)
   }
@@ -35,7 +37,7 @@ export function runCacheClear(options: CacheClearOptions = {}): CacheClearResult
   const clearPers = !options.session || Boolean(options.persist)
 
   if (clearSess) clearSessionCache()
-  if (clearPers) clearPersistCache(options.directive)
+  if (clearPers) clearPersistCache(options.directive, options.cwd)
 
   return {
     cleared: { session: clearSess, persist: clearPers },

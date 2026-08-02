@@ -34,15 +34,15 @@ overlap_count: 3
 **Contracts / Doc Corpus Integrity**
   └── `38-cr9-doc-corpus-integrity` - CR-9: Doc Corpus Integrity (planned)
 **Contracts / Fallback Totality**
-  └── `14-cr6-fallback-totality` - CR-6: Fallback Totality (planned)
+  └── `14-cr6-fallback-totality` - CR-6: Fallback Totality (complete)
 **Contracts / Markdown Out**
-  └── `16-cr11-markdown-out` - CR-11: Markdown Out (planned)
+  └── `16-cr11-markdown-out` - CR-11: Markdown Out (complete)
 **Contracts / No Daemon No Memory**
   └── `05-cr4-no-daemon-no-memory` - CR-4: No Daemon, No Memory (complete)
 **Contracts / One Package**
   └── `03-cr2-one-package` - CR-2: One Package (complete)
 **Contracts / Render Purity**
-  └── `15-cr10-render-purity` - CR-10: Render Purity (planned)
+  └── `15-cr10-render-purity` - CR-10: Render Purity (complete)
 **Contracts / Reuse Fidelity**
   └── `39-cr-d7-reuse-fidelity` - CR-D7: Reuse Fidelity (planned)
 **Contracts / Stage Only**
@@ -56,17 +56,17 @@ overlap_count: 3
 **Directives / Assert Operators**
   └── `26-assert-operators` - Assert Operators (planned)
 **Directives / Composition**
-  └── `19-composition-directives` - Composition Directives (planned)
+  └── `19-composition-directives` - Composition Directives (complete)
 **Directives / Compute**
-  └── `18-compute-directives` - Compute Directives (planned)
+  └── `18-compute-directives` - Compute Directives (complete)
 **Directives / Frontmatter Query**
   └── `36-frontmatter-query` - Frontmatter Query (planned)
 **Directives / Graph**
   └── `34-graph` - Graph (planned)
 **Directives / Pipe**
-  └── `22-pipe` - Pipe (planned)
+  └── `22-pipe` - Pipe (complete)
 **Directives / Sources**
-  └── `17-source-directives` - Source Directives (planned)
+  └── `17-source-directives` - Source Directives (complete)
 **Directives / Update Frontmatter**
   └── `33-update-frontmatter` - Update Frontmatter (planned)
 **Docs / User Guide**
@@ -74,15 +74,15 @@ overlap_count: 3
 **Docs / Verification Closeout**
   └── `43-doc-verification-closeout` - Doc Verification Closeout (planned)
 **Engine / Args**
-  └── `23-arguments` - Arguments (F-ARGS) (planned)
+  └── `23-arguments` - Arguments (F-ARGS) (complete)
 **Engine / Cache**
-  └── `21-cache` - Cache (planned)
+  └── `21-cache` - Cache (complete)
 **Engine / Code Runners**
   └── `29-code-runners` - Code Runners (planned)
 **Engine / Determinism**
   └── `35-determinism` - Determinism (planned)
 **Engine / Fallback Contract**
-  └── `24-fallback-contract` - Fallback Contract (planned)
+  └── `24-fallback-contract` - Fallback Contract (complete)
 **Engine / Render Trace**
   └── `12-render-trace` - Render Trace (complete)
 **Engine / Schema Engine**
@@ -100,7 +100,7 @@ overlap_count: 3
 **Parser / Grammar**
   └── `09-grammar-parser` - Grammar Parser (complete)
 **Renderer / Formats**
-  └── `20-render-formats` - Render Formats (planned)
+  └── `20-render-formats` - Render Formats (complete)
 **Security / Policy Core**
   └── `10-security-policy-core` - Security Policy Core (complete)
 
@@ -125,17 +125,17 @@ graph TD
   11_extension_routing["11-extension-routing"]:::done
   12_render_trace["12-render-trace"]:::done
   13_cli_router["13-cli-router"]:::done
-  14_cr6_fallback_totality["14-cr6-fallback-totality"]:::planned
-  15_cr10_render_purity["15-cr10-render-purity"]:::planned
-  16_cr11_markdown_out["16-cr11-markdown-out"]:::planned
-  17_source_directives["17-source-directives"]:::planned
-  18_compute_directives["18-compute-directives"]:::planned
-  19_composition_directives["19-composition-directives"]:::planned
-  20_render_formats["20-render-formats"]:::planned
-  21_cache["21-cache"]:::planned
-  22_pipe["22-pipe"]:::planned
-  23_arguments["23-arguments"]:::planned
-  24_fallback_contract["24-fallback-contract"]:::planned
+  14_cr6_fallback_totality["14-cr6-fallback-totality"]:::done
+  15_cr10_render_purity["15-cr10-render-purity"]:::done
+  16_cr11_markdown_out["16-cr11-markdown-out"]:::done
+  17_source_directives["17-source-directives"]:::done
+  18_compute_directives["18-compute-directives"]:::done
+  19_composition_directives["19-composition-directives"]:::done
+  20_render_formats["20-render-formats"]:::done
+  21_cache["21-cache"]:::done
+  22_pipe["22-pipe"]:::done
+  23_arguments["23-arguments"]:::done
+  24_fallback_contract["24-fallback-contract"]:::done
   25_cr7_suite_baseline["25-cr7-suite-baseline"]:::planned
   26_assert_operators["26-assert-operators"]:::planned
   27_assert_liveness["27-assert-liveness"]:::planned

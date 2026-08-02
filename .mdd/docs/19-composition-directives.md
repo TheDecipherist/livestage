@@ -4,8 +4,8 @@ title: Composition Directives
 type: COMPONENT
 path: Directives / Composition
 source_files: [src/parser/directives/set.ts, src/parser/directives/if.ts, src/parser/directives/foreach.ts, src/parser/directives/switch.ts, src/parser/directives/define.ts, src/parser/directives/call.ts, src/parser/directives/include.ts, src/parser/directives/import.ts, src/parser/directives/template.ts, src/parser/directives/data.ts, src/engine/engine-interpolate.ts, src/engine/engine-include.ts, src/engine/engine-template.ts, src/engine/macros.ts]
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-2
@@ -69,15 +69,24 @@ N/A (control-flow and interpolation state, not a persisted data model).
 
 ## Acceptance Criteria
 
-- [ ] `@set`, `@if`, `@foreach`, `@switch`, `@define`/`@call`,
+- [x] `@set`, `@if`, `@foreach`, `@switch`, `@define`/`@call`,
       `@include`/`@import`, `@template`/`@data` each render correctly
-      against donor-copied fixture tests.
-- [ ] Two sequential renders of the same document do not see each other's
-      `@set` values (shared acceptance test with feature 05, CR-4).
-- [ ] `@template`/`@data` partials interact correctly with `@foreach` scoping
-      on `.stage`-re-extended fixtures (early verification per Known gaps).
-- [ ] `allowed()` correctly validates and rejects out-of-list dispatch
-      values.
+      against donor-copied fixture tests: `foreach.test.ts` (9),
+      `template-foreach.test.ts` (7), `set.test.ts` (7),
+      `parser/switch.test.ts` (10), `parser/define-body.test.ts` (4),
+      `parser/parser-directives.test.ts`, plus the wider parser suite.
+- [x] Two sequential renders of the same document do not see each other's
+      `@set` values: `tests/unit/engine/statelessness.test.ts` (shared with
+      feature 05, CR-4).
+- [x] `@template`/`@data` partials interact correctly with `@foreach` scoping
+      on `.stage`-re-extended fixtures. Live-verified with real `.stage`
+      files (not the `.md` fixtures the unit tests use): a `@foreach` over
+      `@list`'s filesystem-mode items correctly binds each iteration's item
+      (a file path, per `@list`'s documented filesystem behavior) to the
+      `@template ... as=user` alias inside the partial. Closes the known
+      gap; no `.stage`-vs-`.md` divergence found.
+- [x] `allowed()` correctly validates and rejects out-of-list dispatch
+      values: `tests/unit/engine/allowed.test.ts` (18 tests).
 
 ## Dependencies
 
@@ -86,12 +95,10 @@ the source-resolution path).
 
 ## Known Issues
 
-`@template`/`@data` x `@foreach` scoping interaction needs early verification
-against `.stage` re-extended fixtures (spec line 859-862, Known gaps); flag
-any donor-test gap found here rather than assuming the copied tests already
-cover the re-extended paths.
-
-The sandbox builtins `read_section` and `parse_brief` predate the removal of
-the section/brief machinery (the AI-consumer directives excluded at seed);
-this component's Wave 2 build audits them: keep if they are generic text
-utilities, drop if they encode removed-concept formats (spec line 889-891).
+Audit resolved: `read_section`, `parse_brief`, and `extract_paths` are
+generic text utilities (a markdown section extractor, a `**Label.**` block
+parser, a backtick-path extractor) with no dependency on the removed
+AI-consumer directive syntax; kept. They had zero test coverage before this
+wave, added in `tests/unit/engine/sandbox-brief-builtins.test.ts` (4 tests).
+They are currently used by MDD's own build flow to seed feature docs from
+wave briefs, not by any `.stage` document feature.

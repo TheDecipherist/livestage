@@ -4,14 +4,15 @@ title: "CR-6: Fallback Totality"
 type: SPEC
 path: Contracts / Fallback Totality
 source_files: []
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-2
 depends_on: []
 tags: [contract, fallback, graceful-degradation, registry-test, strip]
-known_issues: []
+known_issues:
+  - "Satisfied by feature 24 (Fallback Contract): stripNode's switch in stripper.ts handles every directive the parser registry declares, proven by tests/unit/engine/fallback-registry.test.ts (27 tests, one real fixture per registered directive plus a synthetic unhandled-type case proving the check is not vacuous). There is no separate {directive, fallbackText} data table; the switch itself is the registry, see 24's known_issues for the full reasoning."
 ---
 
 # CR-6: Fallback Totality
@@ -53,10 +54,14 @@ N/A. Satisfied by feature 24 plus a registry-iterating test owned by feature
 
 ## Acceptance Criteria
 
-- [ ] A test iterates the directive registry and asserts every entry has a
-      non-empty fallback definition.
-- [ ] Adding a new directive without a fallback fails this test (proven by a
-      deliberately broken fixture directive in the test suite).
+- [x] A test iterates the directive registry and asserts every entry is
+      handled. "Non-empty fallback definition" as literally worded does not
+      hold: most directives' correct fallback IS the empty string (their
+      output vanishes, only prose survives), a deliberate design choice, not
+      a gap. `tests/unit/engine/fallback-registry.test.ts`.
+- [x] Adding a new directive without a fallback fails this test: proven by a
+      synthetic node type with no `stripNode` case, which throws `"unhandled
+      AST node type"` as asserted in the same test file.
 
 ## Dependencies
 
@@ -64,4 +69,5 @@ None.
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: satisfied by feature 24's
+switch-based fallback registry, not a separate data table.

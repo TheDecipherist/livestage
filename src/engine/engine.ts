@@ -414,7 +414,21 @@ function executePipe(node: PipeNode, ctx: EngineContext): string {
         break
       }
       case 'builtin': lines = runBuiltin(stage.command, lines); break
-      case 'shell': lines = runShell(stage.command, lines, ctx); break
+      case 'shell': {
+        // grep/sort/head/tail/uniq/wc are cross-platform Node built-ins
+        // (the 'builtin' case above) and never reach here. Any other
+        // utility named in a pipe stage falls through to the shell
+        // allowlist, which does not translate to Windows (different shell,
+        // different command set); stripped with a WARN there instead of
+        // spawning a command that would behave unpredictably.
+        if (process.platform === 'win32') {
+          ctx.warnings.push(`WARN: pipe stage "${stage.command}" stripped: non-built-in shell utilities are not supported on Windows`)
+          lines = []
+          break
+        }
+        lines = runShell(stage.command, lines, ctx)
+        break
+      }
       case 'sink': {
         // visible=false / silent=true on the SOURCE suppresses the sink's
         // rendered output — caller wants the data captured into a label,

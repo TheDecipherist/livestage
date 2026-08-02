@@ -19,7 +19,7 @@ import { createHash } from 'node:crypto'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'livestage/parser'
-import { strip } from 'livestage/engine'
+import { strip, applyMasking } from 'livestage/engine'
 
 export const RENDER_TIMEOUT_MS = 5000
 
@@ -80,7 +80,12 @@ function writeRenderCache(filePath: string, rendered: string): void {
   try {
     const dir = cacheDirFor(filePath)
     mkdirSync(dir, { recursive: true })
-    writeFileSync(cachePathFor(filePath), rendered, 'utf8')
+    // Masked before write, same rule as the engine's own cache (CR-5
+    // business rule 7): the cache file persists on disk indefinitely and is
+    // outside cache.ts's readCache/showCacheEntries visibility entirely, so
+    // it gets its own masking pass rather than inheriting one.
+    const { masked } = applyMasking(rendered)
+    writeFileSync(cachePathFor(filePath), masked, 'utf8')
   } catch {
     // Cache write is best-effort; a failure here must never affect the
     // substitution the caller already has in hand.

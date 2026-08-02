@@ -66,7 +66,7 @@ describe('source vs data root split (v2.0)', () => {
       ctx: {
         cwd: projectDir,
         docDir: projectDir,
-        skillContext: { args: '', argsList: [], namedArgs: {}, sessionId: '', effort: '', skillDir },
+        skillContext: { args: '', argsList: [], namedArgs: {}, vars: {}, sessionId: '', effort: '', skillDir },
         security: {
           allowShell: false, allowHttp: false, allowDb: false,
           jailRoot: projectDir,
@@ -340,7 +340,7 @@ describe('absolute paths in @import / @include via allowed_source_paths (Wave 2)
       ctx: {
         cwd: projectDir,
         skillContext: {
-          args: '', argsList: [], namedArgs: {}, sessionId: '', effort: '',
+          args: '', argsList: [], namedArgs: {}, vars: {}, sessionId: '', effort: '',
           skillDir: libDir,
         },
         security: {

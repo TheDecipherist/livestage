@@ -61,9 +61,10 @@ export interface MCPContext {
 }
 
 export interface SkillContext {
-  args: string                        // $ARGUMENTS — full raw argument string
-  argsList: string[]                  // $ARGUMENTS[N] / $N — parsed positional args
+  args: string                        // $ARGUMENTS, full raw argument string
+  argsList: string[]                  // $ARGUMENTS[N] / $N, parsed positional args
   namedArgs: Record<string, string>   // named args declared in skill frontmatter arguments:
+  vars: Record<string, string>        // --var k=v / LIVESTAGE_VAR_*, {{ vars.k }} (F-ARGS, feature 23)
   sessionId: string                   // ${CLAUDE_SESSION_ID}
   effort: string                      // ${CLAUDE_EFFORT}
   skillDir: string                    // ${CLAUDE_SKILL_DIR}

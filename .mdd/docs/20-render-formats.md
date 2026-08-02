@@ -4,8 +4,8 @@ title: Render Formats
 type: COMPONENT
 path: Renderer / Formats
 source_files: [src/renderer/formats/table.ts, src/renderer/formats/tree.ts, src/renderer/formats/list.ts, src/renderer/formats/numbered.ts, src/renderer/formats/bar.ts, src/renderer/formats/code.ts, src/renderer/formats/json.ts, src/renderer/formats/inline.ts, src/renderer/formats/links.ts]
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-2
@@ -61,14 +61,21 @@ N/A (formats are pure functions from piped data to a markdown string).
 
 ## Acceptance Criteria
 
-- [ ] Each of the nine formats renders correctly against donor-copied
-      fixture tests, producing valid GFM/markdown output.
-- [ ] `as="table"` (etc.) on a source directive produces output identical to
-      the equivalent explicit `| @render table` pipeline.
-- [ ] A scan/test confirms `flow`, `timeline`, and `row` formats do not exist
-      in `src/renderer/formats/`.
-- [ ] Registry-iterating markdown-purity test (CR-11, feature 16) passes for
-      all nine formats.
+- [x] Each of the nine formats renders correctly against donor-copied
+      fixture tests: `tests/unit/renderer/renderer.test.ts` (18 tests,
+      covers list, numbered, links, table, code, inline, bar, tree, json,
+      plus unknown-type error handling).
+- [x] `as="table"` (etc.) on a source directive produces output identical to
+      the equivalent explicit `| @render type="table"` pipeline. Live-
+      verified byte-for-byte identical.
+- [x] `flow`, `timeline`, and `row` formats do not exist in
+      `src/renderer/formats/`: confirmed by directory listing, exactly the
+      nine documented formats and nothing else.
+- [!] Registry-iterating markdown-purity test (CR-11, feature 16) is not
+      built yet; owned by feature 42 (Contract Scans, wave 6). Spot-checked
+      here instead (all nine formats, no `@`-prefixed directive syntax in
+      output); the real registry-iterating version is feature 16/42's job,
+      see 16's doc.
 
 ## Dependencies
 
@@ -78,4 +85,7 @@ surface).
 
 ## Known Issues
 
-None.
+The real registry-iterating CR-11 test (every format, asserting zero `@`-
+prefixed syntax survives) is deferred to feature 42; a manual spot-check of
+all nine formats against a live render found nothing, but it is not
+permanent test coverage.

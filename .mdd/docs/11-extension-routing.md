@@ -16,6 +16,7 @@ known_issues:
   - "The donor hook.ts (content-sniffing @markdownai + .md, routing to a nonexistent 'mcp' target) is deleted, not patched. pretooluse.ts replaces it entirely."
   - "Real timeout required spawning the built CLI as a child process (spawnSync with a timeout kills via SIGTERM); an in-process call to execute() cannot be interrupted once a synchronous engine operation (e.g. a slow @query) is underway. This also gives 'calls the same code path as cli render' literally, at the cost of the boundary-lint test checking for a subprocess invocation of the built cli.js rather than a static import (eslint's no-restricted-imports can only forbid, not require, so this was always going to be a test either way, see feature 08)."
   - "Found and fixed two real bugs while building this: (1) the spawned CLI process never passed --cwd, so it resolved .livestage/policy.json against the hook's own launch directory instead of the target project, silently applying the wrong security grants. (2) src/cli/cli.ts's package.json version lookup used one level of relative-path traversal (../package.json) but needed two (../../package.json) from src/cli/ or dist/cli/ to reach the repo root; this crashed the CLI binary outright on every invocation (never caught before because prior verification only ever called library functions like runRender directly, never the actual cli.js entry point). Also renamed program.name('mai') -> program.name('livestage') while fixing this line (CR-1)."
+  - "Found and fixed a real gap during wave 2 verification (feature 21, Cache): writeRenderCache wrote the fully rendered document straight to .livestage/cache/<hash>.md with no masking at all, bypassing cache.ts's applyMasking entirely (a separate, unmanaged cache location invisible to cache show/clear). A resolved secret-shaped value (e.g. from @env) sat on disk in plaintext indefinitely. Fixed by masking content before this write; the returned substitution (what the caller actually sees) is deliberately left unmasked, matching CR-5's rule that masking applies before cache/trace persistence, never to the primary render output. Test: tests/unit/hook/pretooluse.test.ts::the render cache artifact is masked even though the returned substitution is not."
 ---
 
 # Extension Routing (Hook)
@@ -110,11 +111,23 @@ Claude Code hook runtime.
 
 ## Known Issues
 
-The hook substitution mechanism (rendered-cache path rewrite vs. deny-and-
-replace) needs to be settled against the current Claude Code hook API and
-documented here during Wave 1 build (spec line 862-864); this doc will be
-updated once that decision is made.
+SETTLED: the hook substitution mechanism is PostToolUse (`updatedToolOutput.
+content`), not PreToolUse; see the frontmatter `known_issues` above for the
+full reasoning. The file is still named `pretooluse.ts` to match the spec's
+layout, but registers as a PostToolUse hook.
+
+The trace record's `degraded: true` flag is not wired for a hook-side
+timeout: the spawned child process's own trace run is a separate
+process/invocation from the hook's, and the hook does not currently emit its
+own trace span for the degraded fallback. Gap, not fixed here.
+
+The render cache write (`.livestage/cache/<hash>.md`, keyed under the
+document's own directory) is now masked before write; see the frontmatter
+`known_issues` above for the bug this closes. It remains a separate
+mechanism from `cache.ts`'s session/persist cache (feature 21): different
+location, different key scheme, invisible to `cache show`/`cache clear`.
+Unifying the two is out of scope here.
 
 Linguist/TextMate grammar for `.stage` on code hosts is parked with the
-editor work and is not a v1.0 dependency for this component or the hook API
-decision above (spec line 891-894).
+editor work and is not a v1.0 dependency for this component (spec line
+891-894).

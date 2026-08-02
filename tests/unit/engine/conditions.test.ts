@@ -124,6 +124,7 @@ describe('skill context variables', () => {
       args,
       argsList,
       namedArgs: opts.namedArgs ?? {},
+      vars: {},
       sessionId: opts.sessionId ?? '',
       effort: opts.effort ?? '',
       skillDir: opts.skillDir ?? '',
