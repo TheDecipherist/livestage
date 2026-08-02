@@ -3,7 +3,7 @@ id: 17-source-directives
 title: Source Directives
 type: COMPONENT
 path: Directives / Sources
-source_files: [src/parser/directives/list.ts, src/parser/directives/read.ts, src/parser/directives/read-frontmatter.ts, src/parser/directives/tree.ts, src/parser/directives/count.ts, src/parser/directives/date.ts, src/parser/directives/env.ts, src/engine/sources.ts, src/engine/read-ops.ts]
+source_files: [src/parser/directives/list.ts, src/parser/directives/read.ts, src/parser/directives/read-frontmatter.ts, src/parser/directives/tree.ts, src/parser/directives/count.ts, src/parser/directives/date.ts, src/parser/directives/env.ts, src/engine/sources.ts, src/engine/read-ops.ts, src/engine/engine.ts]
 status: complete
 phase: all
 last_synced: 2026-08-02
@@ -13,6 +13,7 @@ depends_on: [09-grammar-parser, 11-extension-routing, 10-security-policy-core]
 tags: [list, read, read-frontmatter, tree, count, date, env, filesystem-policy]
 known_issues:
   - "source_files sources.ts and read-ops.ts are shared with feature 18 (Compute Directives): @query's engine implementation (executeQuery) lives in sources.ts, and @hash's (executeHash) lives in read-ops.ts, not in 18's own exec-ops.ts. The donor organized these engine modules by cohesion, not by strict per-directive file boundaries; corrected here and cross-referenced in 18's known_issues rather than moved."
+  - "RESOLVED (2026-08-02, found while building feature 48, Auto README Generation): @read-frontmatter did not honor visible=/silent=, the only source-shaped directive that was missed when @list/@read/@tree/@code all got this suppression convention. Fixed in src/engine/engine.ts's case 'read-frontmatter' to match the existing case 'list'/'read'/'tree' pattern: visible=\"false\" or silent=\"true\" suppresses inline output while label= still captures the value. Purely additive, every existing call site in the repo (grepped: 11 files across examples/tests/docs) omits both attrs and is unaffected. tests/unit/engine/read-frontmatter.test.ts covers both attributes plus a default-unchanged regression check."
 satisfies_contracts:
   - from: 10-security-policy-core
     function: checkDataPath
@@ -93,6 +94,9 @@ schema validation of frontmatter reads is owned by feature 32).
    by the CLI's `--env <file>` loader (feature 13), not a direct file read.
 5. All filesystem access resolves through the security policy (feature 10),
    including path traversal checks.
+6. `@read-frontmatter` honors `visible="false"`/`silent="true"` the same way
+   `@list`/`@read`/`@tree`/`@code` do: suppresses inline output, `label=`
+   still captures the value (RESOLVED 2026-08-02, see known_issues).
 
 ## Acceptance Criteria
 
@@ -117,6 +121,9 @@ schema validation of frontmatter reads is owned by feature 32).
       acceptance criterion as worded does not apply: `@env` has no `key=`
       attribute (that belongs to `@read`), and `@read`'s `.env` path is
       unreachable, see Known Issues.
+- [x] `@read-frontmatter visible="false"`/`silent="true"` suppresses inline
+      output while `label=` still captures the value; the default (neither
+      attribute given) is unchanged. tests/unit/engine/read-frontmatter.test.ts.
 
 ## Dependencies
 
@@ -128,6 +135,9 @@ schema validation of frontmatter reads is owned by feature 32).
 - RESOLVED (2026-08-02): `@read`'s access options are now cross-validated
   against the file's actual format (`warnUnusedOption` in `sources.ts`);
   a mismatched option warns by name instead of silently falling through.
+- RESOLVED (2026-08-02): `@read-frontmatter` now honors `visible=`/`silent=`,
+  matching every other source-shaped directive; see the frontmatter
+  `known_issues` above for the mechanism.
 - `@read file.env key=...` (documented as reading `.env` files, masked) is
   implemented (`readEnvFile` in `sources.ts`) but unreachable: `.env*`/
   `*.env` sits in the immutable `FILESYSTEM_ALWAYS_BLOCK_PATTERNS` list, so

@@ -1,0 +1,8 @@
+{
+  "class": "pipeline-state",
+  "fields": {
+    "run_id": { "type": "string", "required": true },
+    "step": { "type": "string", "enum": ["0", "1", "2", "3"], "required": true },
+    "updated_at": { "type": "string", "required": true }
+  }
+}

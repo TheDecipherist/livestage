@@ -1,0 +1,6 @@
+{
+  "filesystem": {
+    "write_enabled": true,
+    "write_root": "cwd"
+  }
+}

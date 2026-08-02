@@ -47,7 +47,7 @@ describe('parser check (13-cli-router)', () => {
   }
 
   it('a grammatically valid document passes with exit 0', () => {
-    const file = write('valid.stage', '@markdownai v1.0\nhello {{ 1 + 1 }}\n')
+    const file = write('valid.stage', 'hello {{ 1 + 1 }}\n')
     const result = runParseCheck(file, { cwd: dir })
     expect(result.valid).toBe(true)
     expect(result.errors).toHaveLength(0)
@@ -55,7 +55,7 @@ describe('parser check (13-cli-router)', () => {
   })
 
   it('a grammar error (unclosed block) fails with exit 1, not the macro/policy checks validate does', () => {
-    const file = write('broken.stage', '@markdownai v1.0\n@code language="javascript"\nconsole.log(1)\n')
+    const file = write('broken.stage', '@code language="javascript"\nconsole.log(1)\n')
     const result = runParseCheck(file, { cwd: dir })
     expect(result.valid).toBe(false)
     expect(result.exitCode).toBe(1)
@@ -124,7 +124,7 @@ describe('render --timeout (13-cli-router)', () => {
   }
 
   it('a generous timeout does not interfere with a normal render', () => {
-    const file = write('ok.stage', '@markdownai v1.0\nhello world\n')
+    const file = write('ok.stage', 'hello world\n')
     const result = runRender(file, { timeout: 5000 })
     expect(result.exitCode).toBe(0)
     expect(result.output.trim()).toBe('hello world')
@@ -135,7 +135,7 @@ describe('render --timeout (13-cli-router)', () => {
     // takes ~50ms regardless of machine speed, so a 10ms deadline reliably
     // expires before node 2's walkNode call, not by chance timing on a
     // near-instant doc.
-    const file = write('slow.stage', '@markdownai v1.0\n@query "sleep 0.05" /\nafter the sleep\nshould never appear\n')
+    const file = write('slow.stage', '@query "sleep 0.05" /\nafter the sleep\nshould never appear\n')
     const result = runRender(file, {
       timeout: 10,
       securityConfig: {
@@ -150,7 +150,7 @@ describe('render --timeout (13-cli-router)', () => {
   })
 
   it('without --timeout, no deadline is enforced (default behavior unchanged)', () => {
-    const file = write('untimed.stage', '@markdownai v1.0\nhello\n')
+    const file = write('untimed.stage', 'hello\n')
     const result = runRender(file, {})
     expect(result.exitCode).toBe(0)
   })

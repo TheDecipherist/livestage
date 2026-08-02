@@ -1,0 +1,28 @@
+# Change Review Brief
+
+The old way: `git diff --stat`, `git log -5 --oneline`, `git status
+--short`, three commands and three separate scrollbacks to reconstruct
+"what changed here, and what's still uncommitted."
+
+The new way: one render.
+
+## Policy grant this example needs
+
+Shares `examples/agent-briefs/.livestage/policy.json` with
+`codebase-health.stage`: `shell.enabled` plus the exact `git ...` command
+strings this file uses below in `allow_patterns`, no wildcard.
+
+## Result
+
+@query "git diff --stat" label="diff_stat" visible="false" /
+@query "git log -5 --oneline" label="recent_commits" visible="false" /
+@query "git status --short" label="status" visible="false" /
+
+### Diff stat
+{{ diff_stat }}
+
+### Recent commits
+{{ recent_commits }}
+
+### Working tree status
+{{ status }}

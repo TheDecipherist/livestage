@@ -26,7 +26,9 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:baseline": "node scripts/check-test-baseline.mjs",
-    "test:baseline:update": "node scripts/check-test-baseline.mjs --update"
+    "test:baseline:update": "node scripts/check-test-baseline.mjs --update",
+    "readme": "node dist/cli/cli.js build README.stage -o README.md",
+    "readme:check": "node scripts/check-readme.mjs"
   },
   "keywords": [
     "livestage",
