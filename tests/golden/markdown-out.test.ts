@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse, getAvailableDirectives } from 'livestage/parser'
 import { execute } from '../../src/engine/engine.js'
 import type { EngineContext } from '../../src/engine/context.js'
+import { FIXTURES, writeFixtureFiles, buildSecurity } from './fixtures.js'
 
 // CR-11 (Markdown Out, feature 16): a REAL render (not strip, feature 24's
 // job) of every registered directive must leave zero `@`-prefixed directive
@@ -19,60 +20,13 @@ let dir: string
 
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), 'ls-markdown-out-'))
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'demo' }))
-  writeFileSync(join(dir, 'x.md'), '---\nstatus: draft\n---\nShared body.')
-  writeFileSync(join(dir, 'doc.md'), '---\nstatus: draft\n---\nBody.')
-  writeFileSync(join(dir, 'a.md'), '---\nid: a\n---\nA')
-  writeFileSync(join(dir, 'defs.md'), '@define foo\ndefined body\n@define-end\n')
-  mkdirSync(join(dir, '.livestage'))
-  writeFileSync(join(dir, '.livestage', 'policy.json'), JSON.stringify({
-    filesystem: { write_enabled: true, write_root: 'cwd' },
-    code: { languages: ['javascript'], timeout: 30_000, runners: {} },
-  }))
+  writeFixtureFiles(dir)
 })
 
 afterAll(() => { rmSync(dir, { recursive: true, force: true }) })
 
-const FIXTURES: Record<string, string> = {
-  assert: '@assert operator="file-exists" target="package.json" /',
-  call: '@import ./defs.md /\n@call foo /',
-  code: '@code language="javascript"\nconsole.log(1)\n@code-end',
-  check: '@check command="true" /',
-  count: '@count ./ match="*.md" /',
-  data: '@data r\n  a = 1\n@data-end',
-  date: '@date /',
-  define: '@define foo\nbody\n@define-end',
-  env: '@env HOME fallback="none" /',
-  foreach: '@foreach x in @list ./ match="*.md"\nbody\n@foreach-end',
-  graph: '@graph target="a.md" /',
-  hash: '@hash path="package.json" /',
-  if: '@if true\nbody\n@if-end',
-  import: '@import ./x.md /',
-  include: '@include ./x.md /',
-  list: '@list ./ match="*.md" /',
-  pipe: '@list ./ match="*.md" | @render type="list" /',
-  query: '@query "echo hi" /',
-  read: '@read ./package.json path="name" /',
-  'read-frontmatter': '@read-frontmatter path="doc.md" field="status" /',
-  render: '@render type="list" /',
-  set: '@set x = "1" /',
-  switch: '@switch "a"\n  @case "a"\n    yes\n@switch-end',
-  template: '@template ./x.md /',
-  test: '@test command="true" /',
-  tree: '@tree ./ /',
-  'update-frontmatter': '@update-frontmatter path="doc.md" field="status" value="active" /',
-}
-
 function makeCtx(): Partial<EngineContext> {
-  return {
-    cwd: dir,
-    docDir: dir,
-    security: {
-      allowShell: true, allowHttp: false, allowDb: false, jailRoot: dir,
-      shellConfig: { enabled: true, allow_patterns: ['echo *'], deny_patterns: [], allow_network: false, require_confirmation: false, audit_log: false },
-      codeConfig: { languages: ['javascript'], timeout: 30_000, runners: {} },
-    },
-  }
+  return { cwd: dir, docDir: dir, security: buildSecurity(dir) }
 }
 
 describe('CR-11: a real render of every registered directive leaves zero directive syntax', () => {
