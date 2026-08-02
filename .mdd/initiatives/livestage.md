@@ -1,10 +1,10 @@
 ---
 id: livestage
 title: LiveStage
-status: active
+status: complete
 version: 1
 content_hash: 37f4ffe30a22
-last_synced: 2026-08-01
+last_synced: 2026-08-02
 ---
 
 # LiveStage
