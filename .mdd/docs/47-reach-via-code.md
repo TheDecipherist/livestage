@@ -3,15 +3,56 @@ id: 47-reach-via-code
 title: Reach Via Code
 type: COMPONENT
 path: Examples / Reach Via Code
-source_files: [examples/database/, examples/http-health/]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+source_files: [examples/database/customers.stage, examples/database/query-enterprise.js,
+  examples/database/customers.json, examples/database/.livestage/policy.json,
+  examples/http-health/check.stage, examples/http-health/check-health.js,
+  examples/http-health/.livestage/policy.json]
+test_files: [tests/e2e/reach-via-code.test.ts]
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [29-code-runners]
 tags: [reach-via-code, database-example, http-example, policy-grants, user-guide-link]
-known_issues: []
+known_issues:
+  - "The database example uses a JSON file (customers.json) read via
+    node:fs as the driver, not a real database connection: no database
+    server is available in this build/CI environment, and adding a real
+    driver dependency (pg, mysql2, better-sqlite3) just for a worked
+    example would add a runtime dependency to a project whose bundle
+    (feature 41) explicitly carries none. The doc's own prose says exactly
+    this: swap the JSON read for a real driver and nothing else changes,
+    same @code block, same @render type=table on the other end."
+  - "The HTTP example's fetch target is a local server the script starts
+    and tears down within its own execution (http.createServer on an
+    ephemeral port), not an external service: this sandbox has no outbound
+    network access (verified live, a real fetch to an external host fails
+    immediately), and a worked example that only runs when the internet
+    happens to be reachable is a worse teaching tool than one that always
+    runs. The script comments make clear this is example scaffolding, not
+    the pattern itself; a real version points fetch at an external URL."
+  - "The Data Model section's original phrasing (\"driver script emits JSON
+    { [label]: <rows> }, rendered via {{ label }} + @render table\")
+    describes a rendering path that does not exist: @render's table format
+    only ever reads tab-separated lines from a PIPE (RendererInput.data),
+    there is no mechanism that turns a {{ label }}-captured struct into
+    table rows directly. The database example instead pipes @code (self-
+    closed, src=) into @render type=\"table\", the same tab-separated-stdout
+    convention @query/@list already use; the HTTP example (a single
+    struct, not tabular rows) does use {{ label.field }} dot-access for its
+    plain bullet-list summary, which IS a supported path."
+  - "@code has no visible=/silent= suppression the way source directives
+    (@list/@read/@query/...) do, so its own raw stdout renders inline
+    before any {{ label.field }} summary that follows it, a minor cosmetic
+    duplication visible in the HTTP example's output (the raw JSON line,
+    then the bullet-list restating the same fields). Not fixed: adding
+    visible=/silent= to @code is a small, real feature gap but out of
+    scope for a worked-examples feature to introduce silently; flagged
+    here as a candidate follow-up, not implemented."
+  - "Directory names (examples/database/, examples/http-health/) match the
+    spec's own inferred defaults exactly, confirmed during this wave's
+    build; no rename was needed."
 ---
 
 # Reach Via Code
@@ -44,10 +85,14 @@ grant together rather than guessing at the policy shape.
 
 ## Data Model
 
-- Database example: driver script emits JSON `{ [label]: <rows> }`, rendered
-  via `{{ label }}` + `@render table`.
-- HTTP example: `fetch` script emits structured status JSON (e.g.
-  `{ status: number, ok: boolean, latency_ms: number }`).
+- Database example: driver script emits tab-separated rows (header +
+  data), piped `@code src=... | @render type="table"`, the same convention
+  `@query`/`@list` already use for tabular output. See known_issues for why
+  this replaced the originally-planned `{{ label }}` + `@render table` path
+  (that path doesn't exist).
+- HTTP example: `fetch` script emits structured status JSON
+  (`{ status: number, ok: boolean, latency_ms: number }`), captured via
+  `label=` and read with `{{ label.field }}` dot-access.
 
 ## API/Interface
 
@@ -67,13 +112,23 @@ existing render formats (feature 20).
 
 ## Acceptance Criteria
 
-- [ ] The database example renders a table from driver output, using only a
-      granted `@code` language, no direct database directive.
-- [ ] The HTTP example renders structured health-check status, using only a
-      granted `@code` language, no direct HTTP directive.
-- [ ] Each example's required `.livestage/policy.json` grant is documented
+- [x] The database example renders a table from driver output, using only a
+      granted `@code` language, no direct database directive. Live-verified;
+      tests/e2e/reach-via-code.test.ts::"renders a table of enterprise-plan
+      customers...".
+- [x] The HTTP example renders structured health-check status, using only a
+      granted `@code` language, no direct HTTP directive. Live-verified;
+      tests/e2e/reach-via-code.test.ts::"renders a successful health
+      check...".
+- [x] Each example's required `.livestage/policy.json` grant is documented
       alongside it and is sufficient (and minimal) to make the example run.
-- [ ] Both examples are referenced from the user guide (feature 45).
+      Both grant only `code.languages: ["javascript"]`, no shell/filesystem
+      write; tests/e2e/reach-via-code.test.ts::"both examples ship the
+      exact policy grant they need".
+- [x] Both examples are referenced from the user guide (feature 45).
+      docs/user-guide.md's "Reference examples" section links both;
+      tests/e2e/user-guide.test.ts::"covers every retired directive
+      class..." asserts both paths are present.
 
 ## Dependencies
 

@@ -32,7 +32,19 @@ export interface RenderOptions {
   deterministic?: boolean
 }
 
-function buildSkillContext(options: RenderOptions): {
+export interface SkillContextOptions {
+  skillArgs?: string
+  skillDir?: string
+  skillSessionId?: string
+  skillEffort?: string
+  args?: string
+  varFlags?: string[]
+}
+
+// Exported so other CLI commands (assert.ts) can accept the same
+// --skill-args/--args/--var flags render does, rather than only render
+// ever being able to exercise {{ vars.k }}-gated @assert/@if logic.
+export function buildSkillContext(options: SkillContextOptions): {
   args: string; argsList: string[]; namedArgs: Record<string, string>; vars: Record<string, string>
   sessionId: string; effort: string; skillDir: string
 } | null {

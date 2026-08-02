@@ -105,6 +105,13 @@ export function executeUpdateFrontmatter(node: UpdateFrontmatterNode, ctx: Engin
   const fmBody = fm.body
   const fmFull = fm.fullBlock
 
+  // {{ expr }} interpolation on the write value, same mechanism @query's
+  // command and every path= attribute already gets. Without this, a value
+  // like value="{{ vars.run_id }}" wrote the literal template text into
+  // frontmatter instead of the resolved value (found live-verifying the
+  // multi-step pattern example, feature 40).
+  const value = interpolatePathSoft(node.value, ctx)
+
   // Schema pre-write gate (F-SCHEMA, feature 32): if the target document
   // declares a class, and that class has a schema, and the schema
   // constrains this field, the proposed value must satisfy it or the write
@@ -119,7 +126,7 @@ export function executeUpdateFrontmatter(node: UpdateFrontmatterNode, ctx: Engin
     if (loadError) {
       ctx.warnings.push(`@update-frontmatter: schema error for class "${docClass}": ${loadError}`)
     } else if (schema && !node.field.includes('[')) {
-      const result = validateFieldValue(schema, node.field, node.value)
+      const result = validateFieldValue(schema, node.field, value)
       if (!result.valid) {
         ctx.warnings.push(`@update-frontmatter: blocked, ${result.error}`)
         return ''
@@ -136,7 +143,7 @@ export function executeUpdateFrontmatter(node: UpdateFrontmatterNode, ctx: Engin
     const listField = listMatch[1] ?? ''
     const indexToken = listMatch[2] ?? ''
     const subField = listMatch[3]
-    const result = updateListField(fmBody, listField, indexToken, subField, node.value, node.path, ctx)
+    const result = updateListField(fmBody, listField, indexToken, subField, value, node.path, ctx)
     if (result === null) return ''  // warning already logged
     if (result === fmBody) return ''  // idempotent no-op
     newFmBody = result
@@ -145,12 +152,12 @@ export function executeUpdateFrontmatter(node: UpdateFrontmatterNode, ctx: Engin
     if (fieldRe.test(fmBody)) {
       const existingMatch = fmBody.match(fieldRe)
       const existingValue = (existingMatch?.[2] ?? '').trim()
-      if (existingValue === node.value) {
+      if (existingValue === value) {
         return '' // idempotent no-op
       }
-      newFmBody = fmBody.replace(fieldRe, `$1: ${node.value}`)
+      newFmBody = fmBody.replace(fieldRe, `$1: ${value}`)
     } else {
-      newFmBody = fmBody + `\n${node.field}: ${node.value}`
+      newFmBody = fmBody + `\n${node.field}: ${value}`
     }
   }
 

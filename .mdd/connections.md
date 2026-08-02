@@ -2,7 +2,7 @@
 generated: 2026-08-02
 doc_count: 47
 connection_count: 79
-overlap_count: 3
+overlap_count: 7
 ---
 
 # MDD Connections
@@ -12,7 +12,7 @@ overlap_count: 3
 **Build / Boundary Lint**
   └── `08-boundary-lint` - Boundary Lint (complete)
 **Build / Bundle**
-  └── `41-bundle` - Bundle (planned)
+  └── `41-bundle` - Bundle (complete)
 **Build / Package Skeleton**
   └── `07-package-skeleton` - Package Skeleton (complete)
 **Build / Seed Script**
@@ -26,13 +26,13 @@ overlap_count: 3
 **CLI / Router**
   └── `13-cli-router` - CLI Router (complete)
 **Contracts / Bare Checkout**
-  └── `37-cr8-bare-checkout` - CR-8: Bare Checkout (planned)
+  └── `37-cr8-bare-checkout` - CR-8: Bare Checkout (complete)
 **Contracts / Contract Scans**
-  └── `42-contract-scans` - Contract Scans (planned)
+  └── `42-contract-scans` - Contract Scans (complete)
 **Contracts / Deny By Default**
   └── `06-cr5-deny-by-default` - CR-5: Deny By Default (complete)
 **Contracts / Doc Corpus Integrity**
-  └── `38-cr9-doc-corpus-integrity` - CR-9: Doc Corpus Integrity (planned)
+  └── `38-cr9-doc-corpus-integrity` - CR-9: Doc Corpus Integrity (complete)
 **Contracts / Fallback Totality**
   └── `14-cr6-fallback-totality` - CR-6: Fallback Totality (complete)
 **Contracts / Markdown Out**
@@ -44,7 +44,7 @@ overlap_count: 3
 **Contracts / Render Purity**
   └── `15-cr10-render-purity` - CR-10: Render Purity (complete)
 **Contracts / Reuse Fidelity**
-  └── `39-cr-d7-reuse-fidelity` - CR-D7: Reuse Fidelity (planned)
+  └── `39-cr-d7-reuse-fidelity` - CR-D7: Reuse Fidelity (complete)
 **Contracts / Stage Only**
   └── `04-cr3-stage-only` - CR-3: Stage Only (complete)
 **Contracts / Standalone Identity**
@@ -70,9 +70,9 @@ overlap_count: 3
 **Directives / Update Frontmatter**
   └── `33-update-frontmatter` - Update Frontmatter (complete)
 **Docs / User Guide**
-  └── `45-user-guide` - User Guide (planned)
+  └── `45-user-guide` - User Guide (complete)
 **Docs / Verification Closeout**
-  └── `43-doc-verification-closeout` - Doc Verification Closeout (planned)
+  └── `43-doc-verification-closeout` - Doc Verification Closeout (complete)
 **Engine / Args**
   └── `23-arguments` - Arguments (F-ARGS) (complete)
 **Engine / Cache**
@@ -88,13 +88,13 @@ overlap_count: 3
 **Engine / Schema Engine**
   └── `32-schema-engine` - Schema Engine (complete)
 **Examples / Connections**
-  └── `46-connections-example` - Connections Example (planned)
+  └── `46-connections-example` - Connections Example (complete)
 **Examples / Pattern Example**
-  └── `40-pattern-example` - Pattern Example (planned)
+  └── `40-pattern-example` - Pattern Example (complete)
 **Examples / Reach Via Code**
-  └── `47-reach-via-code` - Reach Via Code (planned)
+  └── `47-reach-via-code` - Reach Via Code (complete)
 **Examples / Showcase**
-  └── `44-examples-showcase` - Examples Showcase (planned)
+  └── `44-examples-showcase` - Examples Showcase (complete)
 **Hook / Extension Routing**
   └── `11-extension-routing` - Extension Routing (Hook) (complete)
 **Parser / Grammar**
@@ -148,17 +148,17 @@ graph TD
   34_graph["34-graph"]:::done
   35_determinism["35-determinism"]:::done
   36_frontmatter_query["36-frontmatter-query"]:::done
-  37_cr8_bare_checkout["37-cr8-bare-checkout"]:::planned
-  38_cr9_doc_corpus_integrity["38-cr9-doc-corpus-integrity"]:::planned
-  39_cr_d7_reuse_fidelity["39-cr-d7-reuse-fidelity"]:::planned
-  40_pattern_example["40-pattern-example"]:::planned
-  41_bundle["41-bundle"]:::planned
-  42_contract_scans["42-contract-scans"]:::planned
-  43_doc_verification_closeout["43-doc-verification-closeout"]:::planned
-  44_examples_showcase["44-examples-showcase"]:::planned
-  45_user_guide["45-user-guide"]:::planned
-  46_connections_example["46-connections-example"]:::planned
-  47_reach_via_code["47-reach-via-code"]:::planned
+  37_cr8_bare_checkout["37-cr8-bare-checkout"]:::done
+  38_cr9_doc_corpus_integrity["38-cr9-doc-corpus-integrity"]:::done
+  39_cr_d7_reuse_fidelity["39-cr-d7-reuse-fidelity"]:::done
+  40_pattern_example["40-pattern-example"]:::done
+  41_bundle["41-bundle"]:::done
+  42_contract_scans["42-contract-scans"]:::done
+  43_doc_verification_closeout["43-doc-verification-closeout"]:::done
+  44_examples_showcase["44-examples-showcase"]:::done
+  45_user_guide["45-user-guide"]:::done
+  46_connections_example["46-connections-example"]:::done
+  47_reach_via_code["47-reach-via-code"]:::done
   07_package_skeleton --> 01_seed_script
   07_package_skeleton --> 03_cr2_one_package
   08_boundary_lint --> 07_package_skeleton
@@ -245,8 +245,12 @@ graph TD
 Files referenced by 2+ docs:
 
 - `eslint.config.js` - 07-package-skeleton, 08-boundary-lint
+- `package.json` - 07-package-skeleton, 41-bundle
+- `src/cli/cli.ts` - 13-cli-router, 41-bundle
+- `src/engine/engine-include.ts` - 19-composition-directives, 41-bundle
 - `src/engine/frontmatter-utils.ts` - 33-update-frontmatter, 36-frontmatter-query
 - `src/engine/sources.ts` - 17-source-directives, 36-frontmatter-query
+- `src/hook/pretooluse.ts` - 11-extension-routing, 41-bundle
 
 ## Warnings
 

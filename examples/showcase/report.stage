@@ -1,0 +1,15 @@
+# Project Report
+
+Generated {{ now_iso() }}, not maintained: every number below is computed
+from the checkout this render happened against, not typed in by hand.
+
+## Showcase directory contents
+
+@tree ./ /
+
+## CLI verb count
+
+@list cli-reference.json | wc -l /
+
+verbs documented in `cli-reference.json` (see `api-reference.stage` for the
+full table).

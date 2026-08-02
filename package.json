@@ -20,7 +20,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node -e \"require('fs').copyFileSync('src/engine/stdlib.md', 'dist/engine/stdlib.md')\"",
-    "bundle": "esbuild src/cli/cli.ts --bundle --platform=node --format=esm --outfile=dist/livestage.js",
+    "bundle": "esbuild src/cli/cli.ts --bundle --platform=node --format=esm --outfile=dist/livestage.js --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" && node -e \"require('fs').copyFileSync('src/engine/stdlib.md', 'dist/stdlib.md')\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",

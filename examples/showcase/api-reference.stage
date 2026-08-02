@@ -1,0 +1,11 @@
+# CLI Reference
+
+LiveStage has no HTTP API; the CLI verb table is its interface, and this
+table is itself generated from `cli-reference.json` rather than
+hand-maintained, the same principle every other document in this showcase
+demonstrates.
+
+@read cli-reference.json columns="verb,purpose,writes" | @render type="table" columns="verb,purpose,writes" /
+
+`writes: yes` means the verb touches disk (`.livestage/cache/`,
+`.livestage/policy.json`, hook registration); every other verb is read-only.

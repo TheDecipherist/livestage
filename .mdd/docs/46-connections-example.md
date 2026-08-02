@@ -3,15 +3,57 @@ id: 46-connections-example
 title: Connections Example
 type: COMPONENT
 path: Examples / Connections
-source_files: [examples/connections/connections.stage, examples/connections/overlap.js]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+source_files: [examples/connections/connections.stage, examples/connections/overlap.js,
+  examples/connections/.livestage/policy.json, src/engine/graph.ts,
+  src/renderer/formats/tree.ts]
+test_files: [tests/e2e/connections-example.test.ts]
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [36-frontmatter-query, 34-graph, 20-render-formats]
 tags: [connections, live-index, overlap, mermaid-graph, generated-file-replacement]
-known_issues: []
+known_issues:
+  - "Ships its own fixture doc corpus (examples/connections/corpus/, 5 small
+    docs) rather than pointing at this project's own .mdd/docs/: the
+    acceptance criteria specifically require planting a broken depends_on
+    and an overlapping source_files entry to prove the graph/overlap
+    sections react, which means deliberately corrupting a corpus, not
+    something to do to this project's real doc corpus. The fixture
+    directory is named corpus/, not docs/, since frontmatter-validate.sh
+    enforces this project's own MDD doc schema on any */docs/*.md path
+    (found live: the hook fired on the fixture docs on first write,
+    correctly, since they don't carry LiveStage's own MDD frontmatter
+    schema and aren't meant to)."
+  - "Building this example found a real, previously-undiscovered bug in
+    graph.ts: readFrontmatterField documents (and correctly implements)
+    returning an inline YAML list's brackets intact (\"field: [a, b]\" comes
+    back as the literal string \"[a, b]\", not \"a, b\", so {{ field }}
+    interpolation shows the raw list). graph.ts's own splitListField never
+    stripped those brackets before comparing edge targets against known
+    node ids, so depends_on: [x] (inline-list syntax, one dependency) made
+    every such edge look broken, the target being compared was literally
+    the string \"[x]\", never \"x\". Undetected until now because feature
+    34's own wave-5 live verification only tested a bare scalar depends_on:
+    c, never the inline-list form. Fixed in splitListField (strip one layer
+    of brackets before splitting), not in readFrontmatterField (other
+    callers rely on its documented raw-brackets behavior)."
+  - "Also fixed src/renderer/formats/tree.ts: a breadcrumb sourced from a
+    path: field written the way this project's OWN docs are (\"Core /
+    Parser\", spaced for readability) split into segments like \"Core \" and
+    \" Parser\" (untrimmed), two different-looking tree nodes for one
+    level. Found live rendering this example's own path tree against its
+    fixture corpus, whose path: fields intentionally match this project's
+    real convention. Fixed by trimming each segment in tree.ts's insert()."
+  - "@count cannot be embedded mid-sentence (\"Corpus: @count ... /
+    documents\"): directives are line-level constructs (must start their
+    own line), the same rule that governs every other directive. The first
+    draft of connections.stage got this wrong and rendered the literal
+    directive text inline; fixed by using label=/visible=\"false\" plus a
+    {{ docCount }} interpolation in the following prose line, the same
+    pattern @date and other source directives already use for inline
+    prose references."
 ---
 
 # Connections Example
@@ -63,12 +105,19 @@ N/A. Rendered via `livestage render examples/connections/connections.stage`.
 
 ## Acceptance Criteria
 
-- [ ] Golden snapshot over a fixture doc corpus renders correctly (accept
-      criterion, line 688-690).
-- [ ] Planting a broken `depends_on` (pointing at a nonexistent doc id) flips
-      the rendered warnings section (line 689-690).
-- [ ] Planting an overlapping `source_files` entry across two fixture docs
-      flips the overlap section's output (line 690).
+- [x] Golden snapshot over a fixture doc corpus renders correctly (accept
+      criterion, line 688-690). Live-verified against
+      examples/connections/corpus/ (5 docs); tests/e2e/connections-example.test.ts::"renders
+      the header, path tree, graph, and overlap sections correctly".
+- [x] Planting a broken `depends_on` (pointing at a nonexistent doc id) flips
+      the rendered warnings section (line 689-690). Live-verified;
+      tests/e2e/connections-example.test.ts::"the planted broken depends_on
+      is reported...", plus a reverse check that fixing the plant removes
+      the warning.
+- [x] Planting an overlapping `source_files` entry across two fixture docs
+      flips the overlap section's output (line 690). Live-verified;
+      tests/e2e/connections-example.test.ts::"the planted source_files
+      overlap is reported", plus the same reverse check.
 
 ## Dependencies
 

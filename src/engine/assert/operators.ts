@@ -4,6 +4,7 @@ import type { EngineContext } from '../context.js'
 import { resolveDataPath } from '../sources.js'
 import { resolveGlobTargets } from '../sources-file-utils.js'
 import { extractFrontmatter } from '../frontmatter-utils.js'
+import { interpolatePathSoft } from '../engine-include.js'
 
 export interface AssertResult {
   operator: string
@@ -109,11 +110,16 @@ export function evaluateAssert(node: AssertNode, ctx: EngineContext): AssertResu
     case 'json-key': {
       if (matches === 0) return { operator: node.operator, target: node.target, matches, passed: false, vacuous: false }
       const key = node.key ?? ''
+      // {{ expr }} interpolation, same as @update-frontmatter's value=
+      // (feature 40 found the same gap here): equals="{{ vars.run_id }}"
+      // otherwise compared against the literal template text, never a real
+      // value.
+      const equals = node.equals === null ? null : interpolatePathSoft(node.equals, ctx)
       const passed = key !== '' && targets.every(t => {
         const { found, value } = readKeyedValue(t, key)
         if (!found) return false
-        if (node.equals === null) return true
-        return String(value) === node.equals
+        if (equals === null) return true
+        return String(value) === equals
       })
       return { operator: node.operator, target: node.target, matches, passed, vacuous: false }
     }

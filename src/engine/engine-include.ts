@@ -65,16 +65,28 @@ export function versionIsNewer(required: string, installed: string): boolean {
 }
 
 export function loadStdlib(ctx: EngineContext): void {
-  try {
-    const stdlibPath = join(dirname(fileURLToPath(import.meta.url)), 'stdlib.md')
-    const source = readFileSync(stdlibPath, 'utf8')
-    const ast = parse(source, { filePath: stdlibPath, inImport: true })
-    for (const n of ast.nodes) {
-      if (n.type === 'define') ctx.macros[n.name] = { body: n.body, params: n.params }
+  // This module's own directory sits at a different depth depending on
+  // build target: dist/engine/ under the tsc build (stdlib.md copied
+  // alongside it), but dist/ directly under the esbuild single-file bundle
+  // (feature 41), which inlines this file's code with no engine/
+  // subdirectory at all. Try both; a bare checkout (CR-8, feature 37) with
+  // only dist/livestage.js present needs the bundle-relative one.
+  const here = dirname(fileURLToPath(import.meta.url))
+  const candidates = [join(here, 'stdlib.md'), join(here, 'engine', 'stdlib.md')]
+  let lastErr: unknown = null
+  for (const stdlibPath of candidates) {
+    try {
+      const source = readFileSync(stdlibPath, 'utf8')
+      const ast = parse(source, { filePath: stdlibPath, inImport: true })
+      for (const n of ast.nodes) {
+        if (n.type === 'define') ctx.macros[n.name] = { body: n.body, params: n.params }
+      }
+      return
+    } catch (err) {
+      lastErr = err
     }
-  } catch (err) {
-    ctx.warnings.push(`stdlib load failed — macro definitions from stdlib will not be available: ${String(err)}`)
   }
+  ctx.warnings.push(`stdlib load failed, macro definitions from stdlib will not be available: ${String(lastErr)}`)
 }
 
 export function executeImport(node: ImportNode, ctx: EngineContext): void {

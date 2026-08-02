@@ -1,0 +1,38 @@
+# Project Connections
+
+The doc that proves "generated file" is a category LiveStage deletes. A
+project connections index like this one is usually a script someone runs
+by hand and forgets to re-run; here it is just a `.stage` file, correct on
+every render because nothing in it is stored, only computed.
+
+## Overview
+
+@count corpus/ match="*.md" label="docCount" visible="false" /
+Rendered {{ now_iso() }}. Corpus: {{ docCount }} documents.
+
+## Path tree
+
+@list corpus/*.md fields="path,status" | @render tree /
+
+## Dependency graph
+
+@graph target="corpus/*.md" format="mermaid" label="deps" /
+
+{{ deps._nodes }} docs, {{ deps._edges }} dependency edges,
+{{ deps._broken }} broken.
+
+@if deps._broken > 0
+**Broken dependency edges** (`depends_on` pointing at a doc id that does
+not exist in this corpus):
+@foreach b in {{ deps._broken_list }}
+- {{ b }}
+@foreach-end
+@if-end
+
+## Source-file overlap
+
+Which files more than one doc claims to own, the canonical nested-array
+`@code` pattern (F-FM-QUERY's `where=` does not support this, feature 36
+business rule 6):
+
+@code language="javascript" src="overlap.js" | @render type="table" /

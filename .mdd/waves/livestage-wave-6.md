@@ -3,7 +3,7 @@ id: livestage-wave-6
 title: Pattern, bundle, enforcement floor
 initiative: livestage
 initiative_version: 1
-status: planned
+status: complete
 depends_on: [livestage-wave-5]
 demo_state: "The multi-step example renders green in sequence and red out of sequence, state round-trips through schema-validated frontmatter; dist/livestage.js alone passes the bare-checkout e2e; hook cold render of a trivial doc under 200 ms; every CR scan and suite green; all migrated docs verified (CR-9 clean)."
 content_hash: 643fb396415c

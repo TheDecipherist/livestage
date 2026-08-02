@@ -1,0 +1,25 @@
+# Step 3: Report
+
+@read-frontmatter path="state.stage" label="state" /
+
+@assert operator="json-key" target="state.stage" key="step" equals="2" /
+@assert operator="json-key" target="state.stage" key="run_id" equals="{{ vars.run_id }}" /
+
+@if state.step !== "2"
+**BLOCKED (skipped-step).** Step 3 requires step 2 to have completed first.
+Current state: step={{ state.step }}, run_id={{ state.run_id }}. Run
+02-analyze.stage --var run_id={{ vars.run_id }} before this step.
+@else
+@if state.run_id !== vars.run_id
+**BLOCKED (stale-state).** state.stage belongs to a different run
+({{ state.run_id }}), not the run in progress ({{ vars.run_id }}).
+Refusing to trust it rather than silently reporting on the wrong run's data.
+@else
+Reporting results for run {{ vars.run_id }}...
+
+@update-frontmatter path="state.stage" field="step" value="3" /
+@update-frontmatter path="state.stage" field="updated_at" value="{{ now_iso() }}" /
+
+Step 3 complete. Run {{ vars.run_id }} finished successfully.
+@if-end
+@if-end

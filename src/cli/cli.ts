@@ -106,9 +106,14 @@ universalOptions(
   program
     .command('assert <file|glob>')
     .description('run @assert directives in one or more documents as a CI gate')
-).action((pattern: string, opts: Record<string, string | boolean | undefined>) => {
+    .option('--args <string>', 'raw argument string, exposed as {{ args }} / {{ arg0 }}..{{ arg3 }}')
+    .option('--var <k=v>', 'a named value, exposed as {{ vars.k }} (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
+).action((pattern: string, opts: Record<string, string | string[] | boolean | undefined>) => {
   const cwd = typeof opts['cwd'] === 'string' ? opts['cwd'] : process.cwd()
-  const run = runAssert(pattern, { cwd, silent: Boolean(opts['silent']) })
+  const assertOpts: Parameters<typeof runAssert>[1] = { cwd, silent: Boolean(opts['silent']) }
+  if (typeof opts['args'] === 'string') assertOpts.args = opts['args']
+  if (Array.isArray(opts['var']) && opts['var'].length > 0) assertOpts.varFlags = opts['var']
+  const run = runAssert(pattern, assertOpts)
   for (const file of run.files) {
     for (const err of file.errors) process.stderr.write(`ERROR: ${file.file}: ${err}\n`)
     for (const result of file.results) {
@@ -377,10 +382,22 @@ universalOptions(
   })
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-// cli.ts lives one level under the package root's build output (src/cli/ or
-// dist/cli/ depending on context), package.json is at the root: two levels
-// up, not one. (The one-level version silently pointed at a nonexistent
-// dist/package.json / src/package.json and crashed the CLI binary outright,
-// found while verifying the hook's timeout path spawns this exact entry.)
-const { version } = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8')) as { version: string }
-program.name('livestage').version(version).parse()
+// cli.ts's own directory depth varies by build target: two levels up from
+// src/cli/ or dist/cli/ (tsc output, package.json at the root), but one
+// level up from the esbuild single-file bundle (dist/livestage.js, feature
+// 41), which has no cli/ subdirectory at all. A bare checkout (CR-8,
+// feature 37) may not even ship a package.json alongside the bundle, so
+// this must never throw: try both candidate depths, fall back to a
+// placeholder rather than crashing every command (not just --version) on a
+// path that was hardcoded for one build target and silently wrong for the
+// other (found live-verifying CR-8 against the actual bundle).
+function readVersion(): string {
+  for (const candidate of [join(__dirname, '../../package.json'), join(__dirname, '../package.json')]) {
+    try {
+      const pkg = JSON.parse(readFileSync(candidate, 'utf-8')) as { version?: string }
+      if (pkg.version) return pkg.version
+    } catch { /* try the next candidate */ }
+  }
+  return '0.0.0'
+}
+program.name('livestage').version(readVersion()).parse()
