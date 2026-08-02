@@ -122,4 +122,65 @@ describe('renderViaCli timeout', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  // The engine's own render-level trace record (emitted inside execute())
+  // hardcodes degraded: false, because the engine never knows it is being
+  // spawned under a hook that might kill it; when the timeout fires, the
+  // child never even reaches that emitRecord call, so no record for this
+  // attempt would exist anywhere without the hook emitting its own.
+  it('a timed-out render still gets a degraded: true trace record, even though the child process never finished', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hook-trace-degraded-'))
+    try {
+      mkdirSync(join(dir, '.livestage'), { recursive: true })
+      writeFileSync(join(dir, '.livestage', 'policy.json'), JSON.stringify({
+        shell: { enabled: true, allow_patterns: ['sleep *'], deny_patterns: [], allow_network: false, require_confirmation: false, audit_log: false },
+      }))
+      const file = join(dir, 'slow.stage')
+      writeFileSync(file, '@query "sleep 2" /\n')
+      const result = renderViaCli(file, 300)
+      expect(result.degraded).toBe(true)
+
+      // Trace emission is fire-and-forget async (appendFile, queued), no
+      // promise exposed to await; poll briefly rather than a blind sleep.
+      const traceDir = join(dir, '.livestage', 'trace')
+      let records: Array<{ degraded?: boolean; doc?: string; exit?: number }> = []
+      for (let attempt = 0; attempt < 20 && records.length === 0; attempt++) {
+        if (existsSync(traceDir)) {
+          const traceFiles = readdirSync(traceDir)
+          if (traceFiles.length > 0) {
+            const content = readFileSync(join(traceDir, traceFiles[0]!), 'utf8')
+            records = content.trim().split('\n').filter(Boolean).map(l => JSON.parse(l))
+          }
+        }
+        if (records.length === 0) await new Promise(r => setTimeout(r, 25))
+      }
+      const degradedRecord = records.find(r => r.degraded === true)
+      expect(degradedRecord).toBeDefined()
+      expect(degradedRecord?.doc).toBe(file)
+      expect(degradedRecord?.exit).not.toBe(0)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('a successful (non-degraded) render does not emit an extra hook-level trace record', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hook-trace-clean-'))
+    try {
+      const file = join(dir, 'fast.stage')
+      writeFileSync(file, '# Hello\n')
+      const result = renderViaCli(file)
+      expect(result.degraded).toBe(false)
+
+      const traceDir = join(dir, '.livestage', 'trace')
+      if (existsSync(traceDir)) {
+        const traceFiles = readdirSync(traceDir)
+        for (const f of traceFiles) {
+          const records = readFileSync(join(traceDir, f), 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l))
+          expect(records.every((r: { degraded?: boolean }) => r.degraded !== true)).toBe(true)
+        }
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })

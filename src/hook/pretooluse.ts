@@ -15,11 +15,11 @@
 // synchronous engine execution, e.g. a slow @query, is underway).
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'livestage/parser'
-import { strip, applyMasking } from 'livestage/engine'
+import { strip, applyMasking, parseTraceConfig, emitRecord } from 'livestage/engine'
 
 export const RENDER_TIMEOUT_MS = 5000
 
@@ -113,6 +113,26 @@ function degradedFallback(filePath: string, rawContent: string, reason: string):
   return `> [!NOTE] degraded render (${reason})\n\n${stripOutput}`
 }
 
+// The render-level trace record engine.ts emits at the end of execute()
+// always hardcodes degraded: false, because the ENGINE never knows it is
+// being called from a hook that might kill it mid-render: that knowledge
+// lives one process up, here. When the child is killed by the timeout, it
+// never reaches its own emitRecord call at all, so no trace record for
+// that attempt exists anywhere; a non-timeout spawn failure similarly never
+// ran the engine. Either way, this is the only place that can honestly
+// record "this render was degraded", so it emits its own record using the
+// same trace sink/config the engine itself would have used.
+function emitDegradedTrace(filePath: string, ms: number, exit: number): void {
+  try {
+    const config = parseTraceConfig(process.env['LIVESTAGE_TRACE'], dirname(filePath))
+    if (!config) return
+    emitRecord({ t: 'render', render_id: randomUUID(), doc: filePath, ms, directives: 0, degraded: true, exit }, config)
+  } catch {
+    // Trace emission is best-effort; it must never be the reason a
+    // degraded render fails to produce its fallback content.
+  }
+}
+
 /**
  * Render `filePath` via the same code path as `cli render`, spawned as a
  * child process so a slow render (e.g. a document full of @test/@query
@@ -124,6 +144,7 @@ export function renderViaCli(filePath: string, timeoutMs: number = RENDER_TIMEOU
   // itself launched from (the installed package, not the caller's project),
   // so without this the child would resolve .livestage/policy.json against
   // the wrong directory and silently apply the wrong grants.
+  const startedAt = Date.now()
   const result = spawnSync(process.execPath, [cliEntryPath(), 'render', filePath, '--cwd', dirname(filePath), '--silent'], {
     encoding: 'utf8',
     timeout: timeoutMs,
@@ -131,6 +152,7 @@ export function renderViaCli(filePath: string, timeoutMs: number = RENDER_TIMEOU
   if (result.error || result.status !== 0 || result.signal) {
     const raw = existsSync(filePath) ? readFileSync(filePath, 'utf8') : ''
     const reason = result.signal === 'SIGTERM' ? 'render exceeded timeout' : 'render failed'
+    emitDegradedTrace(filePath, Date.now() - startedAt, result.status ?? 1)
     return { output: degradedFallback(filePath, raw, reason), degraded: true }
   }
   return { output: result.stdout, degraded: false }
