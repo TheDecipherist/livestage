@@ -76,11 +76,11 @@ describe('strip — node removal rules', () => {
     expect(result.output).toContain('After')
   })
 
-  it('passes through @graph nodes unchanged', () => {
-    const ast = parse('```mai-graph\nA --> B\n```')
+  it('strips @graph directives to empty (CR-6 fallback)', () => {
+    const ast = parse('@graph target="*.md" /\nAfter')
     const result = strip(ast)
-    // graph raw content is preserved
-    expect(result.output.length).toBeGreaterThan(0)
+    expect(result.output).not.toContain('@graph')
+    expect(result.output).toContain('After')
   })
 
   it('resolves interpolations against env', () => {

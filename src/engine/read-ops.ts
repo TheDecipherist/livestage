@@ -12,7 +12,7 @@ import type { EngineContext } from './context.js'
 import { checkDataPath } from './security/filesystem.js'
 import { expandPattern } from './security/path-expand.js'
 import { interpolatePathSoft } from './engine-include.js'
-import { readFrontmatterField } from './frontmatter-utils.js'
+import { readFrontmatterField, parseFrontmatterRow } from './frontmatter-utils.js'
 import { resolveDataJail } from './file-access.js'
 
 function buildExpandContext(ctx: EngineContext) {
@@ -49,8 +49,9 @@ function resolveReadPath(rawPath: string, ctx: EngineContext, directive: string)
 }
 
 export function executeReadFrontmatter(node: ReadFrontmatterNode, ctx: EngineContext): string {
-  if (!node.path || !node.field) {
-    ctx.warnings.push('@read-frontmatter: path= and field= are required')
+  const label = node.args['label']
+  if (!node.path || (!node.field && !label)) {
+    ctx.warnings.push('@read-frontmatter: path= and (field= or label=) are required')
     return ''
   }
   const target = resolveReadPath(node.path, ctx, '@read-frontmatter')
@@ -64,12 +65,23 @@ export function executeReadFrontmatter(node: ReadFrontmatterNode, ctx: EngineCon
     ctx.warnings.push(`@read-frontmatter: cannot read ${node.path}: ${String(err)}`)
     return ''
   }
+  // Struct mode (feature 36, F-FM-QUERY): no field= given, capture every
+  // top-level frontmatter field under label= so {{ label.field }} dot-access
+  // works, including inside a @foreach body re-executed each iteration.
+  if (!node.field) {
+    const row = parseFrontmatterRow(content)
+    if (row === null) {
+      ctx.warnings.push(`@read-frontmatter: ${node.path} has no YAML frontmatter block`)
+      return ''
+    }
+    ctx.data[label!] = row
+    return ''
+  }
   const value = readFrontmatterField(content, node.field)
   if (value === null) {
     ctx.warnings.push(`@read-frontmatter: ${node.path} has no YAML frontmatter block`)
     return ''
   }
-  const label = node.args['label']
   if (label) ctx.envFiles[label] = value
   return value
 }

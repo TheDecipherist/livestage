@@ -30,7 +30,36 @@ export interface CodeResult {
   _duration: number
 }
 
+function runMockCode(node: CodeNode, ctx: EngineContext): string | null {
+  if (node.cache?.mode !== 'mock' || !node.cache.mockPath) return null
+  const full = resolveDataPath(node.cache.mockPath, ctx, '@code mock')
+  if (!full) return ''
+  let stdout: string
+  try { stdout = readFileSync(full, 'utf8') } catch { return '' }
+
+  const base: CodeResult = { _exit: 0, _stdout: stdout, _stderr: '', _duration: 0 }
+  let structured: Record<string, unknown> = { ...base }
+  try {
+    const parsed: unknown = JSON.parse(stdout)
+    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      structured = { ...base, ...(parsed as Record<string, unknown>) }
+    }
+  } catch { /* stdout is not JSON; base result stands alone */ }
+
+  if (node.label) {
+    ctx.data[node.label] = structured
+    ctx.envFiles[node.label] = stdout
+    ctx.envFiles[`${node.label}_exit`] = '0'
+  }
+  return stdout
+}
+
 export function executeCode(node: CodeNode, ctx: EngineContext): string {
+  // Mock cache (feature 35, determinism): serve a recorded fixture instead
+  // of spawning the runner, same convention as @query's mock branch.
+  const mocked = runMockCode(node, ctx)
+  if (mocked !== null) return mocked
+
   const codeConfig = ctx.security.codeConfig
   const granted = codeConfig?.languages ?? []
   if (!granted.includes(node.language)) {

@@ -235,13 +235,14 @@ function buildSandbox(ctx: EngineContext): Record<string, unknown> {
     allowed,
     // Time + identity builtins. Mirrored in engine-interpolate.ts so {{ }}
     // in markdown body and @if conditions see the same surface.
-    now_iso: () => new Date().toISOString(),
-    now_ms: () => Date.now(),
+    now_iso: () => (ctx.determinism?.now ?? new Date()).toISOString(),
+    now_ms: () => (ctx.determinism?.now ?? new Date()).getTime(),
     parse_iso_ms: (s: unknown) => {
       const t = new Date(String(s ?? '')).getTime()
       return Number.isNaN(t) ? 0 : t
     },
     uuid_v4: () => {
+      if (ctx.determinism) return ctx.determinism.nextUuid()
       // Prefer crypto.randomUUID when available (Node ≥ 14.17 / ≥ 16).
       // Falls back to a Math.random-based RFC4122-shaped value otherwise.
       const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto

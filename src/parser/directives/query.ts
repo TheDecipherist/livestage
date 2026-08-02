@@ -16,12 +16,13 @@ const query: ParseModule = {
     } else {
       command = input.positional
     }
+    const mockPath = input.attrs['mock']
     const node: QueryNode = {
       type: 'query',
       line: ctx.line,
       command,
       args: { ...input.attrs },
-      cache: null,
+      cache: mockPath ? { mode: 'mock', mockPath } : null,
     }
     return node
   },

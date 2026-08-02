@@ -4,14 +4,16 @@ title: Update Frontmatter
 type: COMPONENT
 path: Directives / Update Frontmatter
 source_files: [src/parser/directives/update-frontmatter.ts, src/engine/write-ops.ts, src/engine/frontmatter-utils.ts]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-5
 depends_on: [32-schema-engine]
 tags: [update-frontmatter, sanctioned-write, atomic-write, schema-validated]
-known_issues: []
+known_issues:
+  - "@update-frontmatter itself was already fully built and seeded (write-ops.ts, including the bracket/dot-path list addressing tested in update-frontmatter-list.test.ts from an earlier wave); this feature's real scope was the two things layered on top: the schema pre-write gate (feature 32) and true atomic writes."
+  - "Writes were NOT atomic before this wave: a single writeFileSync(target, content) call, which does not guarantee no-partial-state-on-crash the way business rule 3 requires. Fixed with write-to-temp-then-rename in the same directory (rename() is atomic on the same filesystem); a failure mid-write leaves an orphaned .tmp file, never a truncated target."
 ---
 
 # Update Frontmatter
@@ -54,15 +56,16 @@ class, feature 32).
    a named error (line 631-632, Wave 5 demo-state).
 3. A conforming update lands atomically (line 632).
 
-## Acceptance Criteria
-
-- [ ] A conforming `@update-frontmatter` call updates the target document's
-      frontmatter and the change is durable and atomic (no partial-write
-      state observable on failure).
-- [ ] A call that violates the target's declared schema is blocked pre-write
-      with a named, specific error (not a generic failure).
-- [ ] CR-10 (Render Purity, feature 15) confirms this is the only write
-      surface exercised by the purity harness's allowed-mutation list.
+- [x] A conforming `@update-frontmatter` call updates the target document's
+      frontmatter and the change is durable and atomic. Live-verified and
+      `tests/unit/engine/schema-engine.test.ts` (write-to-temp-then-rename,
+      no orphaned temp file after a successful write).
+- [x] A call that violates the target's declared schema is blocked pre-write
+      with a named, specific error. Live-verified and tested.
+- [!] CR-10 (Render Purity, feature 15) confirms this is the only write
+      surface exercised by the purity harness. Not directly checked: the
+      corpus-wide purity harness itself does not exist yet (feature 42,
+      wave 6, per CR-10's own known_issues).
 
 ## Dependencies
 
@@ -70,4 +73,5 @@ class, feature 32).
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: writes were not atomic before
+this wave, fixed with write-to-temp-then-rename.

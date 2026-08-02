@@ -54,11 +54,29 @@ describe('Parser — missing directive coverage', () => {
   })
 
   describe('@graph directive /', () => {
-    it('parses graph fenced block', () => {
-      const result = parse('```mai-graph\nA --> B\nB --> C\n```')
+    it('parses target/format/label attributes', () => {
+      const result = parse('@graph target="docs/*.md" format="mermaid" label="deps" /')
       const n = node<GraphNode>(result.nodes, 0)
       expect(n.type).toBe('graph')
-      expect(n.raw).toContain('A --> B')
+      expect(n.target).toBe('docs/*.md')
+      expect(n.format).toBe('mermaid')
+      expect(n.label).toBe('deps')
+    })
+
+    it('defaults relation to depends_on, id-field to id, format to tree', () => {
+      const result = parse('@graph target="docs/*.md" /')
+      const n = node<GraphNode>(result.nodes, 0)
+      expect(n.relation).toBe('depends_on')
+      expect(n.idField).toBe('id')
+      expect(n.format).toBe('tree')
+    })
+
+    it('requires target=', () => {
+      expect(() => parse('@graph format="tree" /')).toThrow(/requires target=/)
+    })
+
+    it('rejects an unknown format', () => {
+      expect(() => parse('@graph target="*.md" format="pie-chart" /')).toThrow(/unknown format/)
     })
   })
 

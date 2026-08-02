@@ -201,7 +201,11 @@ export interface PipeNode extends ASTNodeBase {
 
 export interface GraphNode extends ASTNodeBase {
   type: 'graph'
-  raw: string
+  target: string          // glob of documents to include as nodes
+  relation: string        // frontmatter field read as the edge list, e.g. depends_on
+  idField: string         // frontmatter field used as each doc's node id
+  format: 'tree' | 'table' | 'mermaid'
+  label: string | null
 }
 
 export interface MarkdownNode extends ASTNodeBase {
@@ -261,6 +265,7 @@ export interface CodeNode extends ASTNodeBase {
   timeout: number | null    // ms override of policy's code.timeout
   interpolate: boolean      // default false: {{ }} inside the body is opt-in
   args: Record<string, string>
+  cache: CacheConfig | null // mock= populates { mode: 'mock', mockPath }, feature 35
 }
 
 export interface AssertNode extends ASTNodeBase {

@@ -6,6 +6,7 @@ import { loadSecurityConfig } from 'livestage/engine'
 import { checkInertDoc, checkArgsWithoutFallback } from '../../engine/assert/liveness.js'
 import { expandFileGlob } from '../glob-expand.js'
 import { runAssert } from './assert.js'
+import { listSchemaFiles } from '../../engine/schema/loader.js'
 
 export interface DoctorOptions {
   cwd?: string
@@ -153,11 +154,19 @@ function checkAssertionLiveness(cwd: string): DoctorCheck {
 }
 
 function checkSchemas(cwd: string): DoctorCheck {
-  const schemaDir = join(cwd, '.livestage', 'schemas')
-  if (!existsSync(schemaDir)) {
-    return { name: 'schemas', healthy: true, detail: 'no .livestage/schemas/ directory (schema engine is feature 32, wave 5, not built yet)' }
+  const files = listSchemaFiles(cwd)
+  if (files.length === 0) {
+    return { name: 'schemas', healthy: true, detail: 'no schema files declared' }
   }
-  return { name: 'schemas', healthy: true, detail: `${schemaDir} present (validation not implemented yet, feature 32)` }
+  const invalid = files.filter(f => !f.valid)
+  if (invalid.length > 0) {
+    return {
+      name: 'schemas',
+      healthy: false,
+      detail: `${invalid.length}/${files.length} schema file(s) invalid: ${invalid.map(f => `${f.path}: ${f.error}`).join('; ')}`,
+    }
+  }
+  return { name: 'schemas', healthy: true, detail: `${files.length} schema file(s), all valid` }
 }
 
 export function runDoctor(options: DoctorOptions = {}): DoctorHealth {

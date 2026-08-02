@@ -3,15 +3,35 @@ id: 34-graph
 title: Graph
 type: COMPONENT
 path: Directives / Graph
-source_files: [src/parser/directives/graph.ts]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+source_files: [src/parser/directives/graph.ts, src/engine/graph.ts]
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-5
 depends_on: [32-schema-engine, 20-render-formats]
 tags: [graph, dependency-tree, cycle-detection, mermaid, broken-edges]
-known_issues: []
+known_issues:
+  - "Relation fields (depends_on etc.) are read raw via readFrontmatterField,
+    not passed through feature 32's schema validation before edge-building.
+    Business rule 1 as originally drafted assumed schema-validated relation
+    values; that validation happens only at write time via
+    @update-frontmatter's schema gate (feature 33), never at graph-build
+    read time. A relation field with a malformed value on disk (hand-edited,
+    or written before a schema existed) still produces an edge; @graph has
+    no schema of its own to check it against, and feature 32's schemas are
+    per-class field validators, not edge-shape validators. Documented as a
+    read-side gap rather than fixed, since closing it would mean inventing a
+    new schema concept (edge/relation shape) out of scope for this wave."
+  - "The donor's `@graph` mechanism was a fenced ```mai-graph code block with
+    manually-written `A --> B` edge text, unrelated to this feature's native
+    frontmatter-edge model and carrying the excluded donor brand name in its
+    fence language. Removed entirely from src/parser/parser.ts (the
+    special-case that produced a GraphNode from that fence) rather than kept
+    alongside the new directive; the 3 tests that exercised it were rewritten
+    to exercise `@graph target=.../ ` instead
+    (tests/unit/parser/parser-directives.test.ts,
+    tests/unit/engine/stripper.test.ts, tests/unit/cli/cli-sources.test.ts)."
 ---
 
 # Graph
@@ -63,14 +83,23 @@ result pattern (label-capturable for `{{ }}`) (line 644-645).
 
 ## Acceptance Criteria
 
-- [ ] `@graph` renders the dependency tree over a fixture corpus and
-      reports a planted cycle (Wave 5 demo-state, line 632-633).
-- [ ] `format=mermaid` output is a valid fenced markdown code block
-      containing mermaid syntax with status classDefs.
-- [ ] `{{ deps._cycles }}`/`{{ deps._broken }}` resolve correctly when
-      `@graph ... label=deps` is used.
-- [ ] A planted broken edge (a `depends_on` pointing at a nonexistent doc id)
-      is reported in `_broken_list`.
+- [x] `@graph` renders the dependency tree over a fixture corpus and
+      reports a planted cycle (Wave 5 demo-state, line 632-633). Live-verified
+      against a planted a-to-b-to-c-to-a cycle plus an unrelated node d with a
+      broken edge at /tmp/ls-graph-demo/; also covered by
+      tests/unit/cli/cli-sources.test.ts::"@graph renders a tree of native
+      depends_on edges from frontmatter /".
+- [x] `format=mermaid` output is a valid fenced markdown code block
+      containing mermaid syntax with status classDefs. Live-verified;
+      tests/unit/cli/cli-sources.test.ts::'@graph format="mermaid" renders a
+      fenced mermaid block /'.
+- [x] `{{ deps._cycles }}`/`{{ deps._broken }}` resolve correctly when
+      `@graph ... label=deps` is used. Live-verified in the same manual
+      cycle/broken-edge fixture; src/engine/graph.ts::executeGraph sets
+      ctx.data[node.label]._cycles/_broken.
+- [x] A planted broken edge (a `depends_on` pointing at a nonexistent doc id)
+      is reported in `_broken_list`. Live-verified in the same fixture
+      (node d's edge to a nonexistent id appeared in `_broken_list`).
 
 ## Dependencies
 

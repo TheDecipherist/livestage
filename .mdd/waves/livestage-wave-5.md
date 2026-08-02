@@ -3,7 +3,7 @@ id: livestage-wave-5
 title: Frontmatter engine + determinism
 initiative: livestage
 initiative_version: 1
-status: planned
+status: complete
 depends_on: [livestage-wave-4]
 demo_state: "A schema declares the project's doc class; an @update-frontmatter violating it is blocked pre-write with a named error; a conforming update lands atomically; @graph renders the dependency tree and reports a planted cycle; a one-line @list ... where=... fields=... | @render table renders the filtered multi-column status table over a 25-doc fixture corpus; two --deterministic renders of the suite are byte-identical."
 content_hash: fdaa3c1d512d

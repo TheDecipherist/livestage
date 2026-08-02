@@ -11,7 +11,11 @@ import { getModule } from './registry.js'
 import { scanInterpolations, scanShellInlines } from './interpolation.js'
 import { splitUnquotedPipe } from './directives/pipe.js'
 
-const BUILTINS = new Set(['grep', 'sort', 'head', 'tail', 'wc', 'uniq'])
+// Kept in sync by hand with engine/pipe.ts's own BUILTINS set: that file
+// executes a pipe stage, this one only classifies it (builtin vs shell) at
+// parse time, and parser/ must not import engine/ to get the list from
+// there (architecture boundary, feature 08).
+const BUILTINS = new Set(['grep', 'sort', 'head', 'tail', 'wc', 'uniq', 'count-by'])
 
 // Names of legacy v1 close tags that v2 must reject with a clear error.
 const V1_CLOSE_TAGS = new Set(['end', 'endif', 'endswitch'])
@@ -509,36 +513,14 @@ function parseNodes(
       continue
     }
 
-    // Fenced code block
+    // Fenced code block. @graph is a normal line-level directive
+    // (target=/format=/label=, native edges read from frontmatter relation
+    // fields, feature 34); there is no special fenced-block syntax for it.
+    // A prior version special-cased a ```mai-graph fenced block (donor
+    // brand name, manual A --> B edge text) into a GraphNode; removed, CR-1.
+    // Any fenced block, including one someone still labels mai-graph, now
+    // falls through to plain markdown like any other unrecognized fence.
     if (trimmed.startsWith('```')) {
-      const lang = trimmed.slice(3).trim()
-      if (lang === 'mai-graph') {
-        const startLine = lineNum
-        const chunks: string[] = []
-        i++
-        let closed = false
-        while (i < lines.length) {
-          const inner = lines[i]!
-          if (inner.trim() === '```') { closed = true; i++; break }
-          chunks.push(inner)
-          i++
-        }
-        if (!closed) throw new ParseError('Unclosed mai-graph block — expected closing ```', startLine, filePath)
-        const mod = getModule('graph')!
-        const ctx: ParseContext = { line: startLine, filePath, inImport }
-        const input: DirectiveInput = {
-          positional: chunks.join('\n'),
-          attrs: {},
-          flags: [],
-          body: [],
-          isSelfClosed: false,
-          line: startLine,
-          rawArgs: chunks.join('\n'),
-        }
-        nodes.push(mod.parse(input, ctx))
-        if (singleStep) break
-        continue
-      }
       const collected = [raw]
       i++
       while (i < lines.length) {

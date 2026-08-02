@@ -110,12 +110,28 @@ describe('@query shell directive /', () => {
 })
 
 describe('@graph directive', () => {
-  it('@graph block passes through as-is in output /', () => {
-    const src = '\n```mai-graph\nflowchart TD\n  a --> b\n```\n'
-    const file = write('graph-test.md', src)
+  it('@graph renders a tree of native depends_on edges from frontmatter /', () => {
+    const dir = join(TMP, 'graph-test')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'a.md'), '---\nid: a\n---\n# A\n')
+    writeFileSync(join(dir, 'b.md'), '---\nid: b\ndepends_on: a\n---\n# B\n')
+    const file = write('graph.md', `\n@graph target="./graph-test/*.md" /\n`)
     const result = runRender(file)
     expect(result.exitCode).toBe(0)
-    expect(result.output).toContain('flowchart TD')
+    expect(result.output).toContain('- a')
+    expect(result.output).toContain('- b')
+  })
+
+  it('@graph format="mermaid" renders a fenced mermaid block /', () => {
+    const dir = join(TMP, 'graph-mermaid')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'a.md'), '---\nid: a\n---\n# A\n')
+    writeFileSync(join(dir, 'b.md'), '---\nid: b\ndepends_on: a\n---\n# B\n')
+    const file = write('graph-mermaid.md', `\n@graph target="./graph-mermaid/*.md" format="mermaid" /\n`)
+    const result = runRender(file)
+    expect(result.exitCode).toBe(0)
+    expect(result.output).toContain('```mermaid')
+    expect(result.output).toContain('b --> a')
   })
 })
 

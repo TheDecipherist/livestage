@@ -1,9 +1,8 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
 import type { AssertNode } from 'livestage/parser'
 import type { EngineContext } from '../context.js'
 import { resolveDataPath } from '../sources.js'
-import { globToRegex, walkDir } from '../sources-file-utils.js'
+import { resolveGlobTargets } from '../sources-file-utils.js'
 import { extractFrontmatter } from '../frontmatter-utils.js'
 
 export interface AssertResult {
@@ -17,28 +16,14 @@ export interface AssertResult {
 const MAX_PATTERN_LENGTH = 200
 const REDOS_SUSPECT = /(\([^)]*[+*][^)]*\)[+*]|\(\?[^)]*\)[+*][+*]|\.\*.*\.\*)/
 
-function hasGlobChars(s: string): boolean {
-  return /[*?[]/.test(s)
-}
-
 // target is a single glob string (e.g. "src/**/*.ts", "README.md"), not a
 // directory + separate match= the way @list takes them. Resolves through
 // the SAME data-jail check every other source directive uses (resolveDataPath,
 // feature 10), so @assert's file access is subject to the identical policy.
+// Shared with @list's frontmatter query mode (feature 36) via
+// sources-file-utils.ts's resolveGlobTargets.
 export function resolveAssertTargets(target: string, ctx: EngineContext): string[] {
-  if (!hasGlobChars(target)) {
-    const full = resolveDataPath(target, ctx, '@assert')
-    if (!full) return []
-    return existsSync(full) ? [full] : []
-  }
-  const firstGlobIdx = target.search(/[*?[]/)
-  const slashBefore = target.lastIndexOf('/', firstGlobIdx)
-  const baseDir = slashBefore >= 0 ? target.slice(0, slashBefore) : '.'
-  const pattern = slashBefore >= 0 ? target.slice(slashBefore + 1) : target
-  const fullBase = resolveDataPath(baseDir, ctx, '@assert')
-  if (!fullBase) return []
-  const matchRe = globToRegex(pattern)
-  return walkDir(fullBase, '', matchRe, 'files', 0, -1).map(rel => join(fullBase, rel))
+  return resolveGlobTargets(target, path => resolveDataPath(path, ctx, '@assert'))
 }
 
 export function compilePattern(pattern: string): RegExp | null {

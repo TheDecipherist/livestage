@@ -38,6 +38,7 @@ universalOptions(
     .option('--format <mode>', 'output format: standard (default) or ai (token-efficient)')
     .option('--budget <n>', 'token budget — drop low-priority @section blocks to fit', parseInt)
     .option('--passthrough', 'pass plain markdown files through unchanged instead of erroring')
+    .option('--deterministic', 'freeze the clock (LIVESTAGE_NOW) and seed UUIDs (LIVESTAGE_SEED) for byte-identical renders')
     .option('--skill-args <args>', 'skill ARGUMENTS string (for testing Claude Code skill files locally)')
     .option('--skill-dir <path>', 'skill directory ($CLAUDE_SKILL_DIR)')
     .option('--skill-session-id <id>', 'Claude Code session id ($CLAUDE_SESSION_ID)')
@@ -48,6 +49,7 @@ universalOptions(
   const renderOpts: Parameters<typeof runRender>[1] = {
     ...opts,
     passthrough: Boolean(opts['passthrough']),
+    deterministic: Boolean(opts['deterministic']),
   }
   // Commander stores flags with kebab-case names as camelCase, but our options
   // come through as a string-keyed record. Map them explicitly.
