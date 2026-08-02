@@ -1,0 +1,7 @@
+{
+  "name": "primitives with valid kinds and exact headings pass",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": ".claude/hooks/tests/fixtures/frontmatter-validate/docs/primitives-good.md" } },
+  "env": { "MDD_DIR": ".claude/hooks/tests/fixtures/frontmatter-validate", "MDD_DOCS": ".claude/hooks/tests/fixtures/frontmatter-validate/docs" },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": ["primitives"]
+}

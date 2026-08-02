@@ -14,15 +14,9 @@ mdd_require_jq_or_allow
 fp="$(mdd_field '.tool_input.file_path')"
 [ -n "$fp" ] || exit 0
 
-# Only MDD feature docs (MDD_DOCS, default .mdd/docs). The old */docs/*.md
-# pattern matched ANY docs/ directory anywhere in the repo, not just the MDD
-# corpus, false-firing on a project's own shipped docs/ (e.g. this project's
-# docs/user-guide.md, feature 45) and on unrelated fixture directories named
-# docs/ (feature 46's connections example, worked around there by naming its
-# fixture corpus/ instead; this fix means that workaround is no longer
-# required for future docs/-named fixtures, though the file stays as-is).
+# Only MDD feature docs.
 case "$fp" in
-  */"$MDD_DOCS"/*.md|"$MDD_DOCS"/*.md) ;;
+  */docs/*.md) ;;
   *) exit 0 ;;
 esac
 [ -f "$fp" ] || exit 0

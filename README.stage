@@ -104,19 +104,17 @@ first place.
 
 ## Directive reference
 
-Every directive LiveStage ships, grouped exactly as the project's own
-build docs group them, and pulled live from those docs on every render of
-this file. Add a directive to an existing group's documentation and it
-appears here on the next `npm run readme`, no separate README work.
+Every directive LiveStage ships, pulled live from whichever docs declare
+`primitives` in their frontmatter, no path convention to keep in sync by
+hand. Document a new directive with a `primitives` entry and its Interface
+Overview appears here on the next `npm run readme`.
 
-@foreach docid in @list ".mdd/docs/*.md" where="path.startsWith('Directives') || path == 'Renderer / Formats' || path == 'Engine / Code Runners'" fields="id"
+@foreach docid in @list ".mdd/docs/*.md" where="primitives.length > 0" fields="id"
 @if docid != "id"
 @read-frontmatter path=".mdd/docs/{{ docid }}.md" field="title" label="doc_title" visible="false" /
 ### {{ doc_title }}
 
-{{ read_section(".mdd/docs/" + docid + ".md", "API/Interface") }}
-
-{{ read_section(".mdd/docs/" + docid + ".md", "Business Rules") }}
+{{ read_section(".mdd/docs/" + docid + ".md", "Interface Overview").replace(/^##\s+Interface Overview\s*\n+/, "") }}
 
 @if-end
 @foreach-end
@@ -125,9 +123,11 @@ appears here on the next `npm run readme`, no separate README work.
 
 `README.stage` (the source of this file, not `README.md` itself) reads:
 
-- the directive reference above, live, from `.mdd/docs/*.md`'s
-  `## API/Interface` and `## Business Rules` sections, via a frontmatter
-  query (`where=`/`fields=`) plus the `read_section()` builtin,
+- the directive reference above, live, from every `.mdd/docs/*.md` doc
+  that declares `primitives` in its frontmatter, via a frontmatter query
+  (`where="primitives.length > 0"`) plus the `read_section()` builtin
+  pulling each doc's `## Interface Overview`, the one section in the doc
+  corpus written for a reader with zero project context,
 - `package.json`'s name, version, and description, via `@read`,
 - the current test count, via `@read` on `scripts/test-baseline.json`,
 - the three worked examples' actual source, via `@read`, so the shown
@@ -139,10 +139,10 @@ throwaway comparison and fails if the committed `README.md` differs, and
 that check runs in CI on every push, so a stale README fails the build
 instead of quietly persisting.
 
-The one thing that still needs a human: a brand-new directive filed under
-a doc outside the `Directives /` / `Renderer / Formats` / `Engine / Code
-Runners` path convention needs a one-line addition to the query above.
-Everything else, names, syntax, examples, counts, is automatic.
+The one thing that still needs a human: writing `## Interface Overview`
+itself when a new directive lands, the same way `title` or any other
+judgment-call frontmatter field is authored by hand. Everything else,
+discovery, names, syntax, examples, counts, is automatic.
 
 ---
 

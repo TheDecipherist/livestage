@@ -17,7 +17,7 @@ Report MDD state, then rebuild the brief.
   point to /import-spec, /build, or /update as the ways in (mdd-notes3 2.2).
 - Latest `.mdd/audits/report-*.md`: findings, fixed, open.
 - Test counts (from the project's test runner in JSON mode if available).
-- Known issues: grep `known_issues` across docs.
+- Known issues: grep `known_issues` across docs, split `[deferred]` vs `[gap]` (untagged counts as `[gap]`), plus every unchecked `[ ]`/`[!]` box in closed waves. Show the counts as an "open items" line; a nonzero `[gap]` count on a complete initiative gets its own warning line, that is debt nobody decided to keep.
 - Quality gates: files over 300 lines.
 - `.mdd/initiatives/` count by status, `.mdd/waves/` by status, and per active wave the complete/total feature count.
 - Version spread: read the current `mdd_version`, then grep `mdd_version` across all `.mdd/` files and group by version.

@@ -37,3 +37,10 @@ tests/conformance/
 .claude/hooks/tests/fixtures/branch-guard/data-repo/
 .claude/hooks/tests/fixtures/verify-no-secrets/data-clean/
 .claude/hooks/tests/fixtures/verify-no-secrets/data-staged/
+
+# Internal build-planning artifacts: the donor spec dump and the original
+# wave-import plan. Referenced by path in CLAUDE.md/docs as the sole
+# sanctioned place to cite the donor spec, but never shipped (package.json's
+# files field is just "dist") and not meant to be public repo content.
+/MDs/
+/waveplan.md

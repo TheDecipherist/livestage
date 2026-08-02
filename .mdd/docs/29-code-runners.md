@@ -25,6 +25,9 @@ known_issues:
     here, in engine.ts's 'code' case, the same convention the shared
     source-directive dispatch already uses. tests/unit/engine/code-runners.test.ts's
     three visible=/silent= tests."
+primitives:
+  - name: "@code"
+    kind: directive
 satisfies_contracts:
   - from: 10-security-policy-core
     function: checkDataPath
@@ -55,6 +58,40 @@ Results: `_exit`, `_stdout`, `_stderr`, `_duration`; if stdout parses as JSON
 it binds as structured data under `label`. Context in via
 `LIVESTAGE_CONTEXT` (JSON: args, vars, doc path) and stdin; `{{ }}`
 interpolation inside the body is opt-in (`interpolate=true`).
+
+## Interface Overview
+
+`@code` is the escape hatch for anything with no dedicated directive: hit
+an HTTP API, query a database, run a small transformation, whatever a
+five-line script can do. It's off by default; your project's security
+policy has to explicitly grant the language before any script runs.
+
+| Name | What it does |
+|---|---|
+| `@code` | Runs a real script (JavaScript, Python, or another granted language) and captures its output. |
+
+### @code
+
+Runs a script, either inline as a block body or from a file via `src=`,
+and captures its result. If the script's stdout is valid JSON, it's bound
+as structured data under `label` instead of raw text.
+
+```stage
+@code language="javascript" label="health"
+const res = await fetch('http://localhost:3000/health')
+console.log(JSON.stringify({ ok: res.ok, status: res.status }))
+@code-end
+
+Status: {{ health.status }}, OK: {{ health.ok }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `language` | granted language (e.g. `javascript`, `python`, `bash`) | Which runner to use; inferred from `src=`'s extension when omitted |
+| `src` | file path | Run a script file instead of an inline body |
+| `label` | name | Capture the result (raw output, or parsed JSON) into a variable |
+| `timeout` | milliseconds | Override the default execution timeout |
+| `interpolate` | `true` \| `false` (default) | Expand `{{ }}` inside the script body before running it |
 
 ## Architecture
 

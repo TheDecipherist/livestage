@@ -12,6 +12,9 @@ wave: livestage-wave-2
 depends_on: [19-composition-directives, 16-cr11-markdown-out]
 tags: [render-formats, pipe-sink, gfm-table, mermaid, plain-markdown]
 known_issues: []
+primitives:
+  - name: "@render"
+    kind: directive
 ---
 
 # Render Formats
@@ -25,6 +28,36 @@ formats: `table`, `tree`, `list`, `numbered`, `bar`, `code`, `json`, `inline`,
 stage of a pipeline and chooses the markdown shape of the piped data. `flow`,
 `timeline`, and `row` renderer formats from the donor must NOT exist (`row`'s
 only consumer was the retired `@db as=row`).
+
+## Interface Overview
+
+`@render` is how piped data becomes readable markdown instead of raw
+tab-separated lines: point it at a shape (a table, a tree, a bulleted
+list, a bar chart, and five more) and it formats whatever the pipe handed
+it. It's always the last stage of a pipeline, taking the output of a
+source directive like `@list` or `@query` and turning it into something a
+person would actually want to read.
+
+| Name | What it does |
+|---|---|
+| `@render` | Turns piped data into a markdown shape, table, tree, list, and six more. |
+
+### @render
+
+Always the last stage of a pipe: takes whatever a source directive produced
+(optionally filtered through `grep`/`sort`/`head`/`tail`/`uniq`/`wc`) and
+turns it into a specific markdown shape. `as="type"` on the source directive
+itself is shorthand for `| @render type="type"`.
+
+```stage
+@list "src" match="*.ts" | @render type="table" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `type` | `table` \| `tree` \| `list` \| `numbered` \| `bar` \| `code` \| `json` \| `inline` \| `links` | Which markdown shape to produce |
+| `columns` | `col1,col2` | Column headers, for `table` |
+| `lang` | language name | Fence language, for `code` |
 
 ## Architecture
 

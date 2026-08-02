@@ -15,6 +15,9 @@ known_issues:
   - "target is a single glob string (e.g. target=\"src/**/*.ts\"), resolved through the same checkDataPath jail every source directive uses (resolveDataPath, exported from sources.ts for reuse). Found and fixed a real, pre-existing bug in the shared globToRegex utility while building target resolution: ** was treated as a plain inline .* via blind string replacement, requiring a literal / immediately before the match, so **/*.ts matched sub/a.ts but silently excluded the top-level a.ts. This affected every existing caller (@list, @count), not just @assert. Fixed to the standard convention (a ** segment matches zero or more directories, including none); tests/unit/engine/glob-to-regex.test.ts."
   - "json-key's key path supports dot/bracket addressing (a.b[0].c) for JSON targets, but only a top-level field for frontmatter (.md) targets, matching feature 17's read-frontmatter scope limitation (reads ONE top-level field per call). Deeper frontmatter key paths are out of scope."
   - "@assert renders an inline pass/fail line (formatAssertResult) where the directive sat, and pushes its AssertResult onto ctx.assertResults when the caller opts in by passing an array (undefined by default, render() itself never reads it). This is how feature 28's assert CLI command collects a document's results without re-parsing rendered markdown."
+primitives:
+  - name: "@assert"
+    kind: directive
 ---
 
 # Assert Operators
@@ -25,6 +28,41 @@ known_issues:
 `file-exists`, `contains`, `some-contains`, `contains-if-present`, `absent`,
 `json-key`. Every result carries `{ operator, target, matches, passed,
 vacuous }`.
+
+## Interface Overview
+
+`@assert` is a pass/fail check against real files: does this path exist,
+does it contain a pattern, does a JSON key have the value you expect. It's
+the building block `livestage validate` and `livestage assert` use to gate
+a document (or a whole project) in CI, so a broken assumption fails the
+build instead of silently shipping.
+
+| Name | What it does |
+|---|---|
+| `@assert` | Checks a file (or set of files) against a condition and reports pass or fail. |
+
+### @assert
+
+Runs one check against `target` (a file path or glob) using the chosen
+`operator`, and renders an inline pass/fail line.
+
+```stage
+@assert operator="file-exists" target="package.json" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `operator` | `file-exists` \| `contains` \| `some-contains` \| `contains-if-present` \| `absent` \| `json-key` | Which check to run |
+| `target` | glob | The file(s) to check |
+| `pattern` | text | Content to look for, for `contains`/`some-contains`/`contains-if-present`/`absent` |
+| `key` | dot/bracket path | The key to look up, for `json-key` |
+| `equals` | value | Require the key to equal this value, for `json-key` |
+| `label` | name | Capture the structured result (`operator`, `matches`, `passed`, `vacuous`) into a variable |
+
+Only `absent` and `contains-if-present` are allowed to pass when nothing
+matches (a missing target is exactly what they're checking for); every
+other operator fails on zero matches, so a check can never quietly pass
+because its target went missing by accident.
 
 ## Architecture
 

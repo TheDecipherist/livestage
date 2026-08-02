@@ -12,6 +12,27 @@ wave: livestage-wave-2
 depends_on: [09-grammar-parser, 17-source-directives]
 tags: [interpolation, control-flow, macros, include, import, template, scoping]
 known_issues: []
+primitives:
+  - name: "@set"
+    kind: directive
+  - name: "@if"
+    kind: directive
+  - name: "@foreach"
+    kind: directive
+  - name: "@switch"
+    kind: directive
+  - name: "@define"
+    kind: directive
+  - name: "@call"
+    kind: directive
+  - name: "@include"
+    kind: directive
+  - name: "@import"
+    kind: directive
+  - name: "@template"
+    kind: directive
+  - name: "@data"
+    kind: directive
 ---
 
 # Composition Directives
@@ -24,6 +45,174 @@ known_issues: []
 `@foreach`, `@switch` (control flow), `@define`/`@call` (macros),
 `@include`/`@import` (inline/import), `@template`/`@data` (bound-data
 partials).
+
+## Interface Overview
+
+These ten directives are how a `.stage` document controls what renders and
+reuses logic instead of just listing data top to bottom: branching on a
+condition, looping over a list, defining a reusable snippet once and
+calling it from several places, or pulling in another `.stage` file. Reach
+for these once a document needs to do more than read one thing and print
+it.
+
+| Name | What it does |
+|---|---|
+| `@set` | Assigns a variable for later `{{ }}` use. |
+| `@if` | Branches on a condition, rendering its body only when true. |
+| `@foreach` | Loops over a list or a query's result. |
+| `@switch` | Branches on an expression across multiple cases. |
+| `@define` | Defines a reusable, parameterized block (a macro). |
+| `@call` | Invokes a macro defined with `@define`. |
+| `@include` | Renders another `.stage` file's content inline. |
+| `@import` | Pulls in another `.stage` file's macros/env fallbacks without rendering it. |
+| `@template` | Renders a reusable partial file against a bound data value. |
+| `@data` | Defines a small structured data value inline, for `@template` or `{{ }}` use. |
+
+### @set
+
+Assigns a variable, scoped to the current render only; nothing set here
+leaks into a later render of the same document.
+
+```stage
+@set count = @count "src" match="*.ts" /
+{{ count }} TypeScript files.
+```
+
+### @if
+
+Branches on a condition, rendering its body only when the condition is
+true. Closed with `@if-end`.
+
+```stage
+@set count = @count "src" match="*.ts" /
+@if count > 50
+This is a big module.
+@if-end
+```
+
+### @foreach
+
+Loops over a list, or a query's result rows, binding each item to a
+variable for the loop body. Closed with `@foreach-end`.
+
+```stage
+@foreach file in @list "src" match="*.ts" /
+- {{ file }}
+@foreach-end
+```
+
+### @switch
+
+Branches on an expression across multiple `@case` values, with an optional
+`@default` when nothing matches. Closed with `@switch-end`.
+
+```stage
+@switch status
+@case "active"
+Active.
+@case "complete"
+Done.
+@default
+Unknown.
+@switch-end
+```
+
+### @define
+
+Defines a reusable, parameterized block of markdown and directives (a
+macro), invoked later with `@call`. Closed with `@define-end`.
+
+```stage
+@define greet(name)
+Hello, {{ name }}!
+@define-end
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | `name(param1, param2)` | The macro's name and parameter list |
+| `local` | flag | Scope the macro to this file only, not shared with files that `@include` it |
+
+### @call
+
+Invokes a macro previously defined with `@define`, passing arguments
+either positionally or as `key=value` pairs.
+
+```stage
+@call greet("world")
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | `name(arg1, arg2)` or `name key=value` | The macro to invoke and its arguments |
+
+### @include
+
+Renders another `.stage` file's content inline, as if it were pasted at
+this point in the document. Paths are confined to the project, no
+absolute paths and no `..` traversal.
+
+```stage
+@include "partials/header.stage" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The `.stage` file to render inline |
+| `if` | expression | Only include when the expression is true |
+| `local` | flag | Don't share this file's own macros back out |
+
+### @import
+
+Pulls in another `.stage` file's macro and environment-fallback
+definitions without rendering any of its content, useful for sharing
+`@define`d macros across files.
+
+```stage
+@import "partials/macros.stage" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The `.stage` file to import definitions from |
+| `if` | expression | Only import when the expression is true |
+| `local` | flag | Don't re-export this file's own macros |
+
+### @template
+
+Renders a reusable partial file against a bound data value, useful for
+rendering the same layout once per item in a `@foreach`.
+
+```stage
+@foreach user in @list "data/users.json" /
+@template "partials/user-card.stage" data="{{ user }}" as="user" /
+@foreach-end
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The partial `.stage` file to render |
+| `data` | expression | The value to bind into the partial |
+| `as` | identifier (default `data`) | The variable name the partial sees |
+| `if` | expression | Only render when the expression is true |
+
+### @data
+
+Defines a small structured data value inline, one `key = expression` (or
+`...expression` to spread another value's fields) per line, for use with
+`@template` or `{{ }}` interpolation elsewhere in the document.
+
+```stage
+@data user
+  name = "Ada"
+  role = "engineer"
+@data-end
+{{ user.name }}, {{ user.role }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `name` | identifier | The variable name this data is bound to |
 
 ## Architecture
 

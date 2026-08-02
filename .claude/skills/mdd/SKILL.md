@@ -23,9 +23,10 @@ catalog IS the output. After the catalog, run the drift check at the bottom.
 | `/task <description>` | A scoped one-off (chore, config change, small refactor) recorded the MDD way as a frozen task doc that is never flagged as drifted. |
 | `/update <doc id>` | Resync a feature doc with code that changed: diffs doc against source, rewrites only affected sections, preserves known issues, clears the drift flag. |
 | `/audit [scope]` | Shard the code across parallel agents and audit it against the feature docs, plus specialist review passes; merges into one deduplicated, confidence-ranked report and optionally fixes. |
+| `/fix-known-issues [scope]` | Drain the known_issues backlog: verifies stale entries, fixes the fixable through a mini red-green loop, asks once about everything needing a decision, moves each closed entry to the doc's Fixed Issues section with date and evidence. |
 | `/scan` | Detect documentation drift workspace-wide: classifies every doc as in_sync, drifted, broken, untracked, or no-path, and recommends the fix per doc. |
 | `/status` | Full MDD overview (docs, tests, known issues, initiatives, waves, drift counts), then rebuilds the session brief. The "where am I" command. |
-| `/import-spec <path>` | Turn an external spec into a numbered tree of MDD docs in build-dependency order: initiative, waves with demo-states, feature docs, previewed as a mandatory dry run before writing. |
+| `/import-spec <path>` | Turn an external spec into a numbered tree of MDD docs in build-dependency order: initiative, waves with demo-states, feature docs, previewed as a mandatory dry run before writing. The dry-run approval also picks the execution mode: unattended end-to-end (build every wave, walk away), wave 1 then pause, or docs only. |
 | `/mdd-init [focus]` | Install MDD into a project on evidence: scans the codebase, proposes a justified plan (every rule and hook tied to something found), installs only what is approved. |
 | `/reverse-engineer [path]` | Generate a feature doc from existing source code, inferring purpose, models, routes, and rules, disclosing what could not be inferred. |
 | `/deprecate <doc id>` | Retire a feature doc safely: flags dependents, archives, asks separately before touching source or tests. Never auto-deletes code. |
@@ -46,7 +47,7 @@ catalog IS the output. After the catalog, run the drift check at the bottom.
 |---|---|
 | `/plan-initiative [title]` | Create the top-level container for a multi-wave effort, guided or blank, with a content hash so manual edits are detectable. |
 | `/plan-wave <slug>` | Plan one wave inside an initiative, gated on the initiative being unedited and its open questions answered. |
-| `/plan-execute <wave slug>` | Build every feature in a wave through the full MDD flow, tracked in a manifest that survives interruption, automated or interactive. |
+| `/plan-execute <wave slug>` | Build every feature in a wave through the full MDD flow, tracked in a manifest that survives interruption. Interactive, automated, or unattended (best-judgment with a logged judgment trail, stops only on genuine blockers). Independent features build in parallel via builder agents in worktrees; merge and integration verify stay serial. Every wave starts on a fresh branch and ends committed and merged to main. |
 | `/plan-sync` | Reconcile manual edits to initiative and wave files via content hashes, flagging what may now be out of date. |
 | `/plan-remove-feature <wave> <feature>` | Remove a feature from a wave safely, blocking if something in the wave depends on it. |
 | `/plan-cancel-initiative <slug>` | Cancel an initiative: status cancelled, optional archiving, never deletes feature docs. |

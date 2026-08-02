@@ -14,6 +14,21 @@ tags: [list, read, read-frontmatter, tree, count, date, env, filesystem-policy]
 known_issues:
   - "source_files sources.ts and read-ops.ts are shared with feature 18 (Compute Directives): @query's engine implementation (executeQuery) lives in sources.ts, and @hash's (executeHash) lives in read-ops.ts, not in 18's own exec-ops.ts. The donor organized these engine modules by cohesion, not by strict per-directive file boundaries; corrected here and cross-referenced in 18's known_issues rather than moved."
   - "RESOLVED (2026-08-02, found while building feature 48, Auto README Generation): @read-frontmatter did not honor visible=/silent=, the only source-shaped directive that was missed when @list/@read/@tree/@code all got this suppression convention. Fixed in src/engine/engine.ts's case 'read-frontmatter' to match the existing case 'list'/'read'/'tree' pattern: visible=\"false\" or silent=\"true\" suppresses inline output while label= still captures the value. Purely additive, every existing call site in the repo (grepped: 11 files across examples/tests/docs) omits both attrs and is unaffected. tests/unit/engine/read-frontmatter.test.ts covers both attributes plus a default-unchanged regression check."
+primitives:
+  - name: "@list"
+    kind: directive
+  - name: "@read"
+    kind: directive
+  - name: "@read-frontmatter"
+    kind: directive
+  - name: "@tree"
+    kind: directive
+  - name: "@count"
+    kind: directive
+  - name: "@date"
+    kind: directive
+  - name: "@env"
+    kind: directive
 satisfies_contracts:
   - from: 10-security-policy-core
     function: checkDataPath
@@ -41,6 +56,137 @@ satisfies_contracts:
 `packages/engine/src/*`. `@list`, `@read`, `@read-frontmatter`, `@tree`,
 `@count`, `@date`, `@env`: the directives that pull raw data from the
 filesystem, structured files, and the environment.
+
+## Interface Overview
+
+These seven directives are how a `.stage` document reads the real world:
+the filesystem, structured JSON/CSV files, another document's frontmatter,
+and the environment. Reach for one of these any time you'd otherwise write
+a paragraph by hand and hope it stays accurate, a file listing, a value
+pulled out of `package.json`, the current date, a config value from the
+environment. Every read is live: run the same document again later and it
+answers again, from whatever is true then.
+
+| Name | What it does |
+|---|---|
+| `@list` | Lists files in a directory, or rows from a JSON array or CSV file. |
+| `@read` | Reads a file's raw content, or one value/table out of a JSON or CSV file. |
+| `@read-frontmatter` | Reads one field out of a markdown file's YAML frontmatter. |
+| `@tree` | Renders a directory as an indented tree. |
+| `@count` | Counts files in a directory, or lines in a file. |
+| `@date` | The current date/time, or a file's last-modified time, in a format you choose. |
+| `@env` | An environment variable, with an optional fallback. |
+
+### @list
+
+Lists the entries in a directory, or reads rows out of a JSON array or a CSV
+file when the path ends in `.json`/`.csv`.
+
+```stage
+@list "src" match="*.ts" type="files" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `match` | glob pattern | Only include entries whose name matches |
+| `type` | `files` \| `dirs` \| `both` (default `files`) | What kind of entries to include |
+| `depth` | integer | How many directory levels to recurse (unlimited if omitted) |
+| `path` | dot-path (JSON only) | Pull one nested value or array out of a JSON file instead of listing its top level |
+| `columns` | `col1,col2` (JSON/CSV) | Which fields to show, in order, for array/row data |
+| `where` | expression | Keep only rows/items matching the expression |
+| `column` | name (CSV only) | Return a single column instead of full rows |
+| `label` | name | Capture the result into a variable instead of (or as well as) printing it |
+
+### @read
+
+Reads a file's content as-is, or pulls one value or table out of a JSON or
+CSV file when `path=`/`column=` is given.
+
+```stage
+@read "package.json" path="name" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `path` | dot-path (JSON only) | Extract one nested value out of a JSON file |
+| `columns` | `col1,col2` (JSON/CSV) | Which fields to show, in order |
+| `where` | expression | Keep only rows/items matching the expression |
+| `column` | name (CSV only) | Return a single column instead of full rows |
+| `label` | name | Capture the result into a variable |
+| `visible` / `silent` | `false` / `true` | Suppress the inline print, useful when only the captured `label=` value is needed |
+
+### @read-frontmatter
+
+Reads one named field out of a markdown file's YAML frontmatter block,
+useful for pulling a doc's `status`, `title`, or any other frontmatter value
+into a render without opening the file yourself.
+
+```stage
+@read-frontmatter "README.stage" field="title" label="doc_title" visible="false" /
+{{ doc_title }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `field` | frontmatter key | The single top-level field to read (arrays come back comma-joined) |
+| `label` | name | Capture the value into a variable |
+| `visible` / `silent` | `false` / `true` | Suppress the inline print, keep only the captured value |
+
+### @tree
+
+Renders a directory as an indented tree, the same shape as the Unix `tree`
+command.
+
+```stage
+@tree "src" depth="2" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `match` | glob pattern | Only include entries whose name matches |
+| `depth` | integer | How many levels to recurse (unlimited if omitted) |
+
+### @count
+
+Counts the files in a directory (optionally filtered by `match=`), or the
+lines in a file.
+
+```stage
+@count "src" match="*.ts" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `match` | glob pattern | Only count entries whose name matches |
+| `type` | `files` \| `dirs` \| `both` (default `files`) | What kind of entries to count |
+
+### @date
+
+The current date and time, or a file's last-modified time, in a format you
+choose.
+
+```stage
+@date format="YYYY-MM-DD" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `format` | `ISO`, `date`, or a token pattern (`YYYY-MM-DD HH:mm`, etc.) | How to format the result (default `ISO`) |
+| `type` | `current` (default) \| `modified` | Use now, or a file's last-modified time |
+| `file` | path | The file to read the modified time from, when `type="modified"` |
+
+### @env
+
+Reads an environment variable, with an optional fallback when it isn't set.
+
+```stage
+@env "NODE_ENV" fallback="development" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | variable name | The environment variable to read |
+| `fallback` | any string | Value to use when the variable isn't set |
 
 ## Architecture
 

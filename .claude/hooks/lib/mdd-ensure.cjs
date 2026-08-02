@@ -55,15 +55,25 @@ ensureFile(
   ) + '\n'
 );
 
-// Agent scratch space: .ai_temp/ is the hook-free zone (branch guard, test
-// freeze, and the lint gates all skip it), so it must never reach a commit.
-// Ensure the gitignore entry exists; append-only, never rewrites the file.
+// Two directories that must never reach a commit: .ai_temp/ (agent scratch
+// space, exempt from the branch guard only) and .worktrees/ (parallel feature
+// builds during /plan-execute). Ensure the gitignore entries exist;
+// append-only, never rewrites the file.
 try {
   const gi = '.gitignore';
-  const cur = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
+  let cur = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
+  const added = [];
   if (!/^[.!]?\.?ai_temp\/?\s*$/m.test(cur) && !/^\.ai_temp\//m.test(cur)) {
-    fs.writeFileSync(gi, cur + (cur === '' || cur.endsWith('\n') ? '' : '\n') + '.ai_temp/\n');
-    created.push('.gitignore (+.ai_temp/)');
+    cur = cur + (cur === '' || cur.endsWith('\n') ? '' : '\n') + '.ai_temp/\n';
+    added.push('.ai_temp/');
+  }
+  if (!/^\.worktrees\/?\s*$/m.test(cur)) {
+    cur = cur + (cur.endsWith('\n') ? '' : '\n') + '.worktrees/\n';
+    added.push('.worktrees/');
+  }
+  if (added.length) {
+    fs.writeFileSync(gi, cur);
+    created.push('.gitignore (+' + added.join(' +') + ')');
   }
 } catch (_) {}
 

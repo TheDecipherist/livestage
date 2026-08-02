@@ -173,6 +173,91 @@ function validate(targetPath) {
       if (typeof t === 'string' && (/\.(ts|tsx|js|jsx|md|json|sh)$/.test(t) || t.includes('/')))
         warnings.push(`tag "${t}" looks like a file path, tags are domain concepts`);
 
+  // primitives: the queryable record of callable surfaces this doc documents.
+  // Lets any tool find "every doc that documents a directive" with zero
+  // path-convention guessing. kind is FREE-FORM (lowercase kebab-case), not an
+  // enum: MDD generalizes across arbitrary project types (directive, cli-verb,
+  // endpoint, driver, ui-component, ...); the corpus keeps kinds consistent by
+  // convention, not by schema.
+  const prims = asArr(fm.primitives);
+  for (const p of prims) {
+    if (!p || typeof p !== 'object') { errors.push('primitives entries must be objects with name and kind (block style, not inline braces)'); continue; }
+    if (!p.name || typeof p.name !== 'string') errors.push('primitives entry missing name');
+    if (!p.kind || typeof p.kind !== 'string') errors.push(`primitives entry "${p.name || '?'}" missing kind`);
+    else if (!/^[a-z][a-z0-9-]*$/.test(p.kind)) errors.push(`primitives kind "${p.kind}" must be lowercase kebab-case (e.g. directive, cli-verb, endpoint, driver, ui-component)`);
+  }
+  if (prims.length > 0) {
+    const body = text.slice(text.indexOf('---', 4) + 3);
+    // The MDD-internal sections stay; substring tooling matches headings by
+    // exact spelling, and a near-miss silently vanishes instead of erroring.
+    if (!/^##\s+API\/Interface\s*$/m.test(body))
+      errors.push('doc declares primitives but has no "## API/Interface" heading (exact spelling; a near-miss silently drops it from every generated view)');
+    if (!/^##\s+Business Rules\s*$/m.test(body))
+      errors.push('doc declares primitives but has no "## Business Rules" heading (exact spelling)');
+    // Interface Overview: the one section written for a total stranger. Required
+    // whenever the doc documents callable surfaces, with one ### sub-heading per
+    // primitive whose text is the primitive's exact identifier, so a generator
+    // pulls one primitive's blurb+table with a single exact heading match and a
+    // coverage check can verify per primitive, not just per doc.
+    if (!/^##\s+Interface Overview\s*$/m.test(body)) {
+      errors.push('doc declares primitives but has no "## Interface Overview" section (the human-readable section: per-primitive ### heading, one-to-two-sentence blurb, Parameter/Values/Description table)');
+    } else {
+      const ioStart = body.search(/^##\s+Interface Overview\s*$/m);
+      const rest = body.slice(ioStart);
+      const nextH2 = rest.slice(3).search(/^##\s+[^#]/m);
+      const ioSection = nextH2 === -1 ? rest : rest.slice(0, nextH2 + 3);
+      // Three parts, in order: Part 1 prose overview (no heading of its own),
+      // Part 2 quick table, Part 3 per-primitive sub-sections.
+      const firstH3 = ioSection.search(/^###\s+/m);
+      const preamble = firstH3 === -1 ? ioSection : ioSection.slice(0, firstH3);
+      const tblIdx = preamble.search(/^\|\s*Name\s*\|\s*What it does\s*\|/m);
+      if (tblIdx === -1) {
+        errors.push('Interface Overview needs the quick table (header exactly "| Name | What it does |", one row per primitive) after the Part 1 prose overview and before the per-primitive ### sections');
+      } else {
+        // Part 1: a short prose overview BEFORE the quick table, what this set
+        // of primitives is as a whole and why someone reaches for it. Presence
+        // is enforced (a reader must not land on a table with zero framing);
+        // length and quality stay judgment.
+        const beforeTable = preamble.slice(0, tblIdx);
+        const prose = beforeTable
+          .split('\n')
+          .filter((l) => {
+            const t = l.trim();
+            return t && !t.startsWith('#') && !t.startsWith('|') && !/^-{3,}$/.test(t);
+          })
+          .join(' ')
+          .trim();
+        if (!prose)
+          errors.push('Interface Overview must open with a short prose overview (1 to 2 paragraphs, no heading of its own: what this set of primitives is as a whole and why someone reaches for it) BEFORE the quick table; a reader must not land on a table with zero framing');
+        // Part 2: the quick table, one row per primitive.
+        for (const p of prims) {
+          if (!p || typeof p !== 'object' || !p.name) continue;
+          const escQ = String(p.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          if (!new RegExp('^\\|[^|\\n]*' + escQ + '[^|\\n]*\\|', 'm').test(preamble))
+            errors.push(`Interface Overview quick table has no row for "${p.name}"`);
+        }
+      }
+      // Part 3: one ### per primitive, exact identifier as the heading.
+      for (const p of prims) {
+        if (!p || typeof p !== 'object' || !p.name) continue;
+        const esc = String(p.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (!new RegExp('^###\\s+' + esc + '\\s*$', 'm').test(ioSection))
+          errors.push(`Interface Overview has no "### ${p.name}" sub-heading; every primitive gets one, headed by its exact identifier`);
+      }
+      // Jargon early-warning (warn, not block: false positives are possible).
+      // Internal citations read as changelog to a stranger; they belong in
+      // Business Rules / Known Issues, never in Interface Overview.
+      const jargon = [];
+      if (/\(line\s+\d+\)/.test(ioSection)) jargon.push('(line NNN) citation');
+      if (/\bfeature\s+\d+\b/i.test(ioSection)) jargon.push('feature-number reference');
+      if (/\bCR-\d+\b/.test(ioSection)) jargon.push('CR-reference');
+      if (/\bRESOLVED\s*\(/.test(ioSection)) jargon.push('RESOLVED (date) note');
+      if (/\bwave\s+\d+\b/i.test(ioSection)) jargon.push('wave reference');
+      if (jargon.length)
+        warnings.push(`Interface Overview contains internal jargon (${jargon.join(', ')}); this section is for a stranger with zero project context, move history and citations to Business Rules/Known Issues`);
+    }
+  }
+
   return { errors, warnings };
 }
 
