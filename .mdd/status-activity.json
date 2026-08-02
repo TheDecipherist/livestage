@@ -1,1 +1,1 @@
-{"sessionId":"60931bde-df7c-47a7-992c-d0d712445bac","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.gitignore","tally":{"Bash":401,"Read":236,"Edit":194,"Write":80,"Agent":3,"WebFetch":4},"linesAdded":7627,"linesRemoved":1799,"toolSuccess":{"ok":918,"total":918}}
+{"sessionId":"60931bde-df7c-47a7-992c-d0d712445bac","lastTool":"Bash","lastTarget":"git log --oneline -- .mdd/.status-activi…","tally":{"Bash":406,"Read":236,"Edit":194,"Write":80,"Agent":3,"WebFetch":4},"linesAdded":7627,"linesRemoved":1799,"toolSuccess":{"ok":923,"total":923}}

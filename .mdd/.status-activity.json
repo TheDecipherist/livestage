@@ -1,1 +1,1 @@
-{"lastCommand":"cat /home/tim_carter81/projects/livestage/.gitignore 2>/dev/","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.gitignore"}
+{"lastCommand":"git log --oneline -- .mdd/.status-activity.json .mdd/status-","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.gitignore"}
