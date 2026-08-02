@@ -2,7 +2,7 @@
 
 Live-document renderer and verifier for AI agents.
 
-**Version 0.0.1** | **1222 tests** | MIT
+**Version 0.0.1** | **1239 tests** | MIT
 
 This README is generated. Every fact in it (the directive reference below,
 the version and test count above, the three worked examples) is read live
@@ -87,8 +87,12 @@ of "is this repo in good shape right now."
 The new way: one render.
 ## Policy grant this example needs
 `examples/agent-briefs/.livestage/policy.json` in this directory (shared
-with `change-review.stage`): `shell.enabled` plus `git *` in
-`allow_patterns`, nothing else. See that file directly for the exact JSON.
+with `change-review.stage`): `shell.enabled` plus the exact `git ...`
+command strings below in `allow_patterns`, nothing else, and no wildcard
+(a prefix pattern like `"git *"` allows anything after that prefix,
+including `;`/`&&`/pipe chaining; only safe with commands that never
+interpolate `{{ }}`/`${}` values, exact strings are the honest default).
+See that file directly for the exact JSON.
 ## Result
 @query "git rev-parse --abbrev-ref HEAD" label="branch" visible="false" /
 @query "git log -1 --format='%h %s'" label="last_commit" visible="false" /
@@ -96,7 +100,7 @@ with `change-review.stage`): `shell.enabled` plus `git *` in
 - Branch: {{ branch }}
 - Last commit: {{ last_commit }}
 @if dirty == ""
-- Uncommitted files: none (clean)
+- Uncommitted files: none detected
 @if-end
 @if dirty != ""
 - Uncommitted files:
@@ -116,7 +120,8 @@ The old way: `git diff --stat`, `git log -5 --oneline`, `git status
 The new way: one render.
 ## Policy grant this example needs
 Shares `examples/agent-briefs/.livestage/policy.json` with
-`codebase-health.stage`: `shell.enabled` plus `git *` in `allow_patterns`.
+`codebase-health.stage`: `shell.enabled` plus the exact `git ...` command
+strings this file uses below in `allow_patterns`, no wildcard.
 ## Result
 @query "git diff --stat" label="diff_stat" visible="false" /
 @query "git log -5 --oneline" label="recent_commits" visible="false" /

@@ -15,11 +15,16 @@ dist/
 # feature's own files).
 /.livestage/
 
-# Runtime-generated subdirs under an example's own .livestage/ (trace logs,
-# cache entries), never committed; policy.json and schemas/ under the same
-# directory are NOT covered by this and stay tracked.
-examples/*/.livestage/trace/
-examples/*/.livestage/cache/
+# Runtime-generated subdirs under ANY nested .livestage/ (trace logs, cache
+# entries), never committed at any depth: policy.json and schemas/ under
+# the same directory are NOT covered by this and stay tracked. `**/` (not
+# `examples/*/`) on purpose: trace records embed the developer's absolute
+# local paths and resolved directive args, a real local-info leak if ever
+# committed, and a single-level pattern misses anything nested deeper than
+# one example directory (e.g. examples/agent-briefs/sample-project/, or a
+# future examples/foo/bar/.livestage/).
+**/.livestage/trace/
+**/.livestage/cache/
 
 .vitest-results.json
 

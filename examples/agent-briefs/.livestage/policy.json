@@ -1,7 +1,13 @@
 {
   "shell": {
     "enabled": true,
-    "allow_patterns": ["git *"],
+    "allow_patterns": [
+      "git rev-parse --abbrev-ref HEAD",
+      "git log -1 --format='%h %s'",
+      "git status --short",
+      "git diff --stat",
+      "git log -5 --oneline"
+    ],
     "deny_patterns": [],
     "allow_network": false,
     "require_confirmation": false,

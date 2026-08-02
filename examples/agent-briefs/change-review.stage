@@ -9,7 +9,8 @@ The new way: one render.
 ## Policy grant this example needs
 
 Shares `examples/agent-briefs/.livestage/policy.json` with
-`codebase-health.stage`: `shell.enabled` plus `git *` in `allow_patterns`.
+`codebase-health.stage`: `shell.enabled` plus the exact `git ...` command
+strings this file uses below in `allow_patterns`, no wildcard.
 
 ## Result
 

@@ -28,9 +28,34 @@ if (!existsSync(readmePath)) {
   process.exit(2)
 }
 
-const rendered = execFileSync('node', [cliEntry, 'render', 'README.stage'], { cwd: repoRoot, encoding: 'utf8' })
-const committed = readFileSync(readmePath, 'utf8')
+let rendered
+try {
+  rendered = execFileSync('node', [cliEntry, 'render', 'README.stage'], { cwd: repoRoot, encoding: 'utf8' })
+} catch (err) {
+  // Distinct from "content differs" below: a render failure (parse error,
+  // a security-blocked path, an unclosed directive) is a different problem
+  // with a different fix than a stale-but-valid README, and deserves its
+  // own message and exit code rather than an uncaught stack trace or a
+  // misleading "FAIL, run npm run readme" pointing at the wrong fix.
+  console.error('check-readme: RENDER FAILED. README.stage did not render successfully:')
+  console.error(err.stderr || err.message)
+  process.exit(3)
+}
 
+// Cheap sanity floor against a silent under-render (a directive that
+// degrades to empty on a missing/renamed target, e.g. read_section() on a
+// renamed heading, produces exit 0 with quietly-dropped content, not an
+// error): the real README has ~450 lines and 11 directive-doc sections.
+// Both thresholds are set well below the real numbers, this is a coarse
+// alarm for "most of the content silently vanished," not a precise check.
+const lineCount = rendered.split('\n').length
+const sectionCount = (rendered.match(/^### /gm) ?? []).length
+if (lineCount < 200 || sectionCount < 8) {
+  console.error(`check-readme: RENDER SUSPICIOUSLY SHORT (${lineCount} lines, ${sectionCount} "### " sections). This usually means a directive silently degraded to empty (a renamed heading, a moved file) rather than a real, complete render. Investigate before trusting the diff below.`)
+  process.exit(3)
+}
+
+const committed = readFileSync(readmePath, 'utf8')
 const normalize = s => s.trim() + '\n'
 if (normalize(committed) !== normalize(rendered)) {
   console.error('check-readme: FAIL. README.md is stale, it does not match what README.stage currently renders. Run "npm run readme" to regenerate, then commit the result.')

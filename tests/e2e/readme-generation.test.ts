@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { readFileSync, mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { getAvailableDirectives } from 'livestage/parser'
@@ -107,16 +107,56 @@ describe('README.stage renders README.md content live from the project itself', 
   })
 })
 
+const checkReadmeScript = join(repoRoot, 'scripts', 'check-readme.mjs')
+
+function runCheckReadme(): void {
+  execFileSync('node', [checkReadmeScript], { cwd: repoRoot, encoding: 'utf8' })
+}
+
 describe('npm run readme / readme:check regenerate README.md via the existing build verb', () => {
-  it('npm run readme writes README.md matching what render README.stage produces', () => {
-    execFileSync('npm', ['run', 'readme'], { cwd: repoRoot, encoding: 'utf8' })
-    const written = readFileSync(join(repoRoot, 'README.md'), 'utf8')
-    const rendered = renderReadme()
-    expect(written.trim()).toBe(rendered.trim())
+  it('the "build -o" mechanism npm run readme uses writes output matching render README.stage produces', () => {
+    // Writes to a TEMP output path, never the tracked repo-root README.md.
+    // A test must not mutate a git-tracked file as a side effect of
+    // running: the original version of this test called `npm run readme`
+    // directly against repoRoot, which regenerates the REAL README.md.
+    // Since `npm test` runs before `npm run readme:check` in CI
+    // (.github/workflows/ci.yml), that meant the test suite silently
+    // "fixed" any drift in README.md before the drift-check step ever ran,
+    // making the whole CI gate this feature exists to add vacuous, found
+    // live via independent review, confirmed by reading the CI step order.
+    // `@build`'s write jail confines output to inside the project root
+    // (write_root defaults to "cwd"), so the temp output goes under the
+    // repo's own .ai_temp/ (already gitignored) rather than the OS tmpdir,
+    // which `@build` correctly refuses as outside the write jail.
+    const scratchDir = join(repoRoot, '.ai_temp', 'readme-build-test')
+    mkdirSync(scratchDir, { recursive: true })
+    try {
+      const outPath = join(scratchDir, 'OUT.md')
+      execFileSync('node', [cliEntry, 'build', 'README.stage', '-o', join('.ai_temp', 'readme-build-test', 'OUT.md')], { cwd: repoRoot, encoding: 'utf8' })
+      const written = readFileSync(outPath, 'utf8')
+      const rendered = renderReadme()
+      expect(written.trim()).toBe(rendered.trim())
+    } finally {
+      rmSync(scratchDir, { recursive: true, force: true })
+    }
   })
 
-  it('npm run readme:check passes when README.md is current', () => {
-    execFileSync('npm', ['run', 'readme'], { cwd: repoRoot, encoding: 'utf8' })
-    expect(() => execFileSync('npm', ['run', 'readme:check'], { cwd: repoRoot, encoding: 'utf8' })).not.toThrow()
+  it('readme:check passes when the committed README.md is current', () => {
+    // Trusts the actual committed README.md (this feature's own build
+    // regenerated it for real via `npm run readme`, and it is checked into
+    // this branch) rather than regenerating it here, so this test never
+    // writes to the tracked file either.
+    expect(runCheckReadme).not.toThrow()
+  })
+
+  it('readme:check FAILS when README.md is stale (proves the check is not vacuous)', () => {
+    const readmePath = join(repoRoot, 'README.md')
+    const original = readFileSync(readmePath, 'utf8')
+    try {
+      writeFileSync(readmePath, 'deliberately stale content for this test\n')
+      expect(runCheckReadme).toThrow()
+    } finally {
+      writeFileSync(readmePath, original)
+    }
   })
 })

@@ -9,8 +9,12 @@ The new way: one render.
 ## Policy grant this example needs
 
 `examples/agent-briefs/.livestage/policy.json` in this directory (shared
-with `change-review.stage`): `shell.enabled` plus `git *` in
-`allow_patterns`, nothing else. See that file directly for the exact JSON.
+with `change-review.stage`): `shell.enabled` plus the exact `git ...`
+command strings below in `allow_patterns`, nothing else, and no wildcard
+(a prefix pattern like `"git *"` allows anything after that prefix,
+including `;`/`&&`/pipe chaining; only safe with commands that never
+interpolate `{{ }}`/`${}` values, exact strings are the honest default).
+See that file directly for the exact JSON.
 
 ## Result
 
@@ -21,7 +25,7 @@ with `change-review.stage`): `shell.enabled` plus `git *` in
 - Branch: {{ branch }}
 - Last commit: {{ last_commit }}
 @if dirty == ""
-- Uncommitted files: none (clean)
+- Uncommitted files: none detected
 @if-end
 @if dirty != ""
 - Uncommitted files:

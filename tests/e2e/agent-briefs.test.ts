@@ -27,28 +27,29 @@ describe('examples/agent-briefs/ ships exactly the policy grant it needs', () =>
 })
 
 describe('codebase-health.stage: replaces git status + git log + branch check with one render', () => {
-  it('renders the current branch and last commit, using only git under the granted allowlist', () => {
+  it('renders the current branch and last commit, matching real independently-computed git output (not just static template text)', () => {
     const out = render('codebase-health.stage')
-    // No DIRECTIVE_RE check: "Last commit:" embeds the real commit subject
-    // line verbatim, same reasoning as change-review.stage (this project's
-    // history mentions directive names in prose). Confirmed with the user.
-    expect(out).toContain('Branch:')
-    expect(out).toContain('Last commit:')
-    expect(out).toContain('Uncommitted files:')
+    // Checking for the literal static labels ("Branch:", "Last commit:")
+    // alone would pass even if the @query calls returned nothing (a break
+    // test proved this: forcing @query to return "" left every static
+    // label test passing). Assert against real values computed
+    // independently via a direct git call, so a broken @query pipeline
+    // would actually fail this test.
+    const realBranch = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+    expect(out).toContain(`Branch: ${realBranch}`)
+    expect(out).toMatch(/Last commit: [0-9a-f]{7,} \S/)
   })
 })
 
 describe('change-review.stage: replaces git diff + git log + git status with one render', () => {
-  it('renders a diff stat, recent commit list, and working tree status', () => {
+  it('renders a diff stat, recent commit list, and working tree status, matching real independently-computed git output', () => {
     const out = render('change-review.stage')
-    // No DIRECTIVE_RE check here: this example intentionally embeds
-    // arbitrary git log text verbatim, and this project's own commit
-    // history legitimately mentions directive names in prose (e.g. a
-    // commit titled "@read-frontmatter honors visible=/silent="), which is
-    // not a directive-syntax leak, just what git log actually said.
-    // Confirmed with the user before touching this frozen test file.
+    // Same non-tautology fix as codebase-health.stage: assert the actual
+    // current HEAD's short hash (computed independently) appears in the
+    // recent-commits section, not just the static "Recent commits" label.
+    const headShort = execFileSync('git', ['log', '-1', '--format=%h'], { cwd: repoRoot, encoding: 'utf8' }).trim()
     expect(out).toContain('Diff stat')
-    expect(out).toContain('Recent commits')
+    expect(out).toContain(headShort)
     expect(out).toContain('Working tree status')
   })
 })
@@ -57,7 +58,13 @@ describe('onboarding-brief.stage: replaces cat README + ls src + cat package.jso
   it('renders the sample project name, description, and source tree, fully self-contained (no jail escape needed)', () => {
     const out = render('onboarding-brief.stage')
     expect(out).not.toMatch(DIRECTIVE_RE)
-    expect(out).toContain('sample-project')
+    // The interpolated heading and the fixture's distinctive description
+    // text, not the bare string "sample-project" (which also appears in
+    // this file's own static prose regardless of whether the @read calls
+    // actually ran, a tautology a prior version of this test had).
+    expect(out).toContain('## Onboarding Brief: sample-project')
+    const fixturePkg = JSON.parse(readFileSync(join(briefsDir, 'sample-project', 'package.json'), 'utf8')) as { description: string }
+    expect(out).toContain(fixturePkg.description)
     expect(out).toContain('index.ts')
     expect(out).toContain('utils.ts')
   })
