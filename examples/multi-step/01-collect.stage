@@ -1,0 +1,11 @@
+# Step 1: Collect
+
+Starting run {{ vars.run_id }}.
+
+Collecting input data...
+
+@update-frontmatter path="state.stage" field="run_id" value="{{ vars.run_id }}" /
+@update-frontmatter path="state.stage" field="step" value="1" /
+@update-frontmatter path="state.stage" field="updated_at" value="{{ now_iso() }}" /
+
+Step 1 complete. State now reflects run {{ vars.run_id }}, step 1.

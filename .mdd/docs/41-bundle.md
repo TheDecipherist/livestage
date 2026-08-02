@@ -3,15 +3,45 @@ id: 41-bundle
 title: Bundle
 type: COMPONENT
 path: Build / Bundle
-source_files: [dist/livestage.js]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+source_files: [dist/livestage.js, package.json, src/hook/pretooluse.ts, src/cli/cli.ts, src/engine/engine-include.ts]
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [07-package-skeleton, 13-cli-router]
 tags: [esbuild, single-file-bundle, cold-start, bin-target, no-runtime-deps]
-known_issues: []
+known_issues:
+  - "The plain `esbuild src/cli/cli.ts --bundle --platform=node --format=esm`
+    invocation (package.json's original bundle script) crashed on the very
+    first run: commander is CJS and esbuild's ESM output left a dynamic
+    require() with no real require in scope
+    ('Dynamic require of \"node:events\" is not supported'). Fixed with
+    esbuild's documented createRequire(import.meta.url) banner recipe
+    (--banner:js). Found live while building CR-8's e2e test (feature 37),
+    not by any existing unit test, since no test exercised the bundle
+    artifact itself before this feature."
+  - "src/cli/cli.ts's package.json version read
+    (join(__dirname, '../../package.json')) was hardcoded for the tsc
+    dist/cli/ layout (two levels up); the bundle sits one level up with no
+    cli/ subdirectory, and a true bare checkout may have no package.json at
+    all. Every command, not just --version, crashed on this before the fix
+    (the read ran unconditionally at module load). Fixed with a
+    try-both-depths-then-fall-back-to-a-placeholder read
+    (src/cli/cli.ts::readVersion). Same root cause, same fix shape, applied
+    a second time to src/engine/engine-include.ts::loadStdlib for
+    stdlib.md, which needed dist/stdlib.md added as a bundle-script copy
+    step alongside dist/livestage.js (package.json's bundle script)."
+  - "Business rule 3 ('init installs this bundle for the hook') was not
+    actually implemented before this feature: pretooluse.ts's cliEntryPath()
+    hardcoded dist/cli/cli.js (the tsc multi-file build), never
+    dist/livestage.js, so the bundle this doc's own source_files pointed to
+    was disconnected from the real render path entirely. Live-measured the
+    gap directly: dist/cli/cli.js averaged ~110ms cold, dist/livestage.js
+    ~65ms, both under the 200ms budget but the tsc path leaves noticeably
+    less margin. Fixed cliEntryPath() to prefer dist/livestage.js when
+    present, falling back to dist/cli/cli.js otherwise (dev/test checkouts
+    that ran `npm run build` but not `npm run bundle`)."
 ---
 
 # Bundle
@@ -67,13 +97,18 @@ consumed directly by CR-8's bare-checkout e2e with no install step.
 
 ## Acceptance Criteria
 
-- [ ] `dist/livestage.js` alone (no `node_modules`) passes the bare-checkout
-      e2e (CR-8, feature 37).
-- [ ] A cold-start timing test on a trivial `.stage` doc through the hook
-      measures under 200 ms.
-- [ ] If the 200 ms budget is not met with the plain bundle, step (1) of the
+- [x] `dist/livestage.js` alone (no `node_modules`) passes the bare-checkout
+      e2e (CR-8, feature 37). tests/e2e/bare-checkout.test.ts.
+- [x] A cold-start timing test on a trivial `.stage` doc through the hook
+      measures under 200 ms. Live-measured ~65ms via the bundle (vs ~110ms
+      via the previously-wired tsc dist/cli/cli.js); the through-the-hook
+      test uses renderViaCli directly, not just a raw CLI spawn.
+      tests/e2e/bare-checkout.test.ts::"renderViaCli spawns the bundle...".
+- [x] If the 200 ms budget is not met with the plain bundle, step (1) of the
       mitigation ladder (dependency-free fast-path hook entry) is
       implemented and re-measured before escalating further up the ladder.
+      N/A, not triggered: the plain bundle measures well inside budget
+      (~65ms, over 130ms of headroom).
 
 ## Dependencies
 
@@ -82,6 +117,6 @@ entry point being bundled).
 
 ## Known Issues
 
-The exact esbuild config file location/name is inferred rather than named
-explicitly by the spec's Project Structure listing; confirm during Wave 6
-build and update `source_files` if a dedicated config file is added.
+See frontmatter `known_issues`. The esbuild invocation lives as a
+`package.json` script (`bundle`), not a separate config file; confirmed
+during Wave 6 build, no dedicated `esbuild.config.js` was needed.

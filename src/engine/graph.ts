@@ -16,11 +16,18 @@ export interface GraphResult {
   broken: string[]  // "from -> to" for each edge whose target id is not a known node
 }
 
-// A frontmatter list field (depends_on: [a, b] or a block list) comes back
-// from readFrontmatterField as a single comma-joined string; split it back
-// into tokens. Good enough for id-shaped values (no embedded commas).
+// A frontmatter list field comes back from readFrontmatterField two shapes:
+// a block list (`field:\n  - a\n  - b`) already comma-joined with no
+// brackets, or an inline list (`field: [a, b]`) with the brackets still
+// attached (readFrontmatterField's documented behavior: "callers can
+// interpolate it directly", i.e. `{{ field }}` should show the raw `[a, b]`
+// text). Strip one layer of surrounding brackets, if present, before
+// splitting either shape into tokens. Found live: every edge in a corpus
+// using inline depends_on: [x] lists came back "broken", since the target
+// id being compared was the literal string "[x]", never a real node id.
 function splitListField(raw: string): string[] {
-  return raw.split(',').map(s => s.trim()).filter(Boolean)
+  const unwrapped = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1) : raw
+  return unwrapped.split(',').map(s => s.trim()).filter(Boolean)
 }
 
 function buildGraph(node: GraphNode, ctx: EngineContext): GraphResult {

@@ -3,15 +3,45 @@ id: 45-user-guide
 title: User Guide
 type: COMPONENT
 path: Docs / User Guide
-source_files: [docs/user-guide.md]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+source_files: [docs/user-guide.md, src/cli/templates/claude-section.ts]
+test_files: [tests/e2e/user-guide.test.ts]
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [02-cr1-standalone-identity, 40-pattern-example]
 tags: [user-guide, manual, architecture-corrected, covering-patterns]
-known_issues: []
+known_issues:
+  - "Not actually migrated from
+    ~/projects/markdownai/.mdd/manual/manual.md: this project's own
+    CLAUDE.md carries an explicit, standing constraint, 'Never reference
+    the donor codebase outside MDs/livestage-spec.md', so the donor manual
+    is not something this build is permitted to open and copy from, even
+    though the checkout exists on disk at that path. Written as fresh
+    content covering the same subject the spec calls for (architecture,
+    directive grammar, the covering patterns for excluded directive
+    classes, security model), rather than migrated-and-corrected. This is a
+    deliberate, policy-driven deviation from the doc's own `[verify: donor
+    manual]` disposition tag, not an oversight; CR-D7's reuse-fidelity scan
+    (feature 39) does not flag it because the scan checks that a citation
+    exists when one is claimed, not that migration happened, and this
+    doc's own body is honest that migration did not happen."
+  - "Output path confirmed as docs/user-guide.md per the doc's own inferred
+    default; no rename was needed. Along the way, found and fixed a real
+    scoping bug in .claude/hooks/frontmatter-validate.sh: its case pattern
+    (*/docs/*.md) matched ANY docs/ directory anywhere in the repo, not
+    just the MDD doc corpus (.mdd/docs/), so writing this very file
+    triggered the MDD frontmatter-schema gate on a file that was never
+    meant to carry that schema. Fixed to match against $MDD_DOCS
+    specifically; verified via the hook's own test suite
+    (.claude/hooks/tests/run-all.sh, 65/65 still pass)."
+  - "Linked from init's CLAUDE.md marker section
+    (src/cli/templates/claude-section.ts): a one-line pointer added near
+    the end of the existing LiveStage section, verified via
+    tests/e2e/user-guide.test.ts rather than a new dedicated init test,
+    since the marker-section content itself is not otherwise under
+    per-line test coverage."
 ---
 
 # User Guide
@@ -61,14 +91,22 @@ N/A. A reference document, not a directive or CLI surface.
 
 ## Acceptance Criteria
 
-- [ ] The guide's architecture description matches this build exactly
+- [x] The guide's architecture description matches this build exactly
       (no server/daemon/session language surviving from the donor manual).
-- [ ] Every retired directive class is covered by name with a pointer to its
-      replacement pattern.
-- [ ] Zero donor identity strings survive (CR-1 scan passes against this
-      file).
-- [ ] Linked from `init`'s CLAUDE.md marker section as the canonical
-      authoring reference.
+      Written fresh (see known_issues), so there was no donor language to
+      strip; tests/e2e/user-guide.test.ts::"describes this build's real
+      architecture...".
+- [x] Every retired directive class is covered by name with a pointer to its
+      replacement pattern. `@db`/`@http` -> `examples/database/`,
+      `examples/http-health/`; multi-step -> `examples/multi-step/`;
+      tests/e2e/user-guide.test.ts::"covers every retired directive
+      class...".
+- [x] Zero donor identity strings survive (CR-1 scan passes against this
+      file). tests/e2e/user-guide.test.ts::"carries zero donor identity
+      strings".
+- [x] Linked from `init`'s CLAUDE.md marker section as the canonical
+      authoring reference. tests/e2e/user-guide.test.ts::"is linked from
+      init's CLAUDE.md marker section".
 
 ## Dependencies
 

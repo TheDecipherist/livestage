@@ -1,0 +1,13 @@
+---
+class: pipeline-state
+run_id: none
+step: "0"
+updated_at: none
+---
+
+# Pipeline State
+
+This file's frontmatter is the only state store for the multi-step example.
+Never edit it by hand. Each step updates it via `@update-frontmatter` after
+its own work finishes, and only after checking the state it found here
+belongs to the run currently in progress.

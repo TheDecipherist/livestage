@@ -64,6 +64,16 @@ function cliEntryPath(): string {
   // from src/hook/pretooluse.ts, a different depth from dist/cli/cli.js.
   const here = dirname(fileURLToPath(import.meta.url))
   const root = findPackageRoot(here)
+  // Prefer the esbuild single-file bundle (feature 41): one module load
+  // instead of resolving the whole tsc dist/ tree on every render, live-
+  // measured at roughly 40% faster cold start. Business rule 3 requires
+  // init to wire the hook to the bundle; this is the other half of that,
+  // the render spawn itself. Falls back to the tsc multi-file build when
+  // the bundle hasn't been produced (a source checkout that ran `npm run
+  // build` but not `npm run bundle`, e.g. most local dev and this file's
+  // own test suite).
+  const bundlePath = join(root, 'dist', 'livestage.js')
+  if (existsSync(bundlePath)) return bundlePath
   return join(root, 'dist', 'cli', 'cli.js')
 }
 

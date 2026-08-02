@@ -3,7 +3,12 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', '.claude/**'],
+    // examples/**/*.js scripts run as @code bodies: code-runners.ts copies
+    // them into a temp directory with no package.json above it, so Node
+    // resolves plain .js there as CommonJS regardless of this repo's own
+    // "type": "module" (no ancestor package.json to say otherwise). require()
+    // is the architecturally correct form for these files, not a style lapse.
+    ignores: ['dist/**', 'node_modules/**', '.claude/**', 'examples/**/*.js'],
   },
   ...tseslint.configs.recommended,
   {

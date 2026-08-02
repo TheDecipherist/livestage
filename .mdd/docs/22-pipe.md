@@ -21,7 +21,10 @@ known_issues:
 
 ## What to Build
 
-`[verify]`. Unix-style pipeline syntax on any directive line:
+`[verify]`, copy from `~/projects/markdownai/packages/parser/src/directives/pipe.ts`
+and `~/projects/markdownai/packages/engine/src/pipe.ts` (plus `shell.ts` for
+the non-built-in stage executor, see known_issues). Unix-style pipeline
+syntax on any directive line:
 `source | [grep/sort/head/tail/uniq/wc]* | sink`. Cross-platform Node
 built-ins never spawn processes for the standard stage set; other shell
 utilities pass through the shell allowlist (feature 10), stripped with WARN

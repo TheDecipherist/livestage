@@ -3,15 +3,43 @@ id: 44-examples-showcase
 title: Examples Showcase
 type: COMPONENT
 path: Examples / Showcase
-source_files: [examples/showcase/]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+source_files: [examples/showcase/index.stage, examples/showcase/report.stage,
+  examples/showcase/api-reference.stage, examples/showcase/cli-reference.json]
+test_files: [tests/e2e/examples-showcase.test.ts]
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [20-render-formats, 24-fallback-contract, 02-cr1-standalone-identity]
 tags: [showcase, donor-migration, re-extension, docs-hub, project-report]
-known_issues: []
+known_issues:
+  - "Not actually migrated from ~/projects/markdownai/mai/*: this project's
+    own CLAUDE.md carries an explicit, standing constraint, 'Never reference
+    the donor codebase outside MDs/livestage-spec.md', and the donor
+    checkout is not something this build is permitted to open and copy
+    from, even though it exists on disk at that path. Built as fresh
+    content covering the same three-document shape the doc's own What to
+    Build calls for (a docs hub, a project report, an API reference plus
+    its data), with 'removed-directive-free' and 'renders green under the
+    strict profile' both true by construction rather than by migration
+    cleanup. This is the same constraint 45-user-guide.md hit, documented
+    there too."
+  - "'API reference' is reframed as a CLI verb reference (cli-reference.json
+    + api-reference.stage): LiveStage has no HTTP API of its own to
+    document, so a literal API reference would be fictional content. The
+    CLI verb table is the closest real analog and is itself generated from
+    the JSON data file rather than hand-maintained, preserving the point
+    the original acceptance criteria are making (a reference table that
+    can't drift from its data) without inventing an API that doesn't exist."
+  - "'No extra grants needed' (business rule 4) is enforced by construction,
+    not by exception: no .livestage/policy.json exists under
+    examples/showcase/ at all (verified in
+    tests/e2e/examples-showcase.test.ts), and every directive used
+    (@tree/@list/@read/@render, the wc pipe builtin) is available under the
+    default deny-by-default profile with zero grants, unlike the reach-via-
+    code and connections examples, which need @code and therefore ship
+    their own policy.json."
 ---
 
 # Examples Showcase
@@ -57,12 +85,16 @@ other document.
 
 ## Acceptance Criteria
 
-- [ ] Every document in `examples/showcase/` renders successfully under the
-      shipped `strict` policy profile, no extra grants needed.
-- [ ] A scan of `examples/showcase/` finds zero retired-directive syntax and
-      zero donor identity strings.
-- [ ] The docs hub, project report, and API reference (with its data) are
-      all present and each render correctly.
+- [x] Every document in `examples/showcase/` renders successfully under the
+      shipped `strict` policy profile, no extra grants needed. Live-verified
+      (no `.livestage/policy.json` under this directory at all);
+      tests/e2e/examples-showcase.test.ts.
+- [x] A scan of `examples/showcase/` finds zero retired-directive syntax and
+      zero donor identity strings. tests/e2e/examples-showcase.test.ts::"a
+      scan of examples/showcase/ finds zero retired-directive syntax".
+- [x] The docs hub, project report, and API reference (with its data) are
+      all present and each render correctly. `index.stage`, `report.stage`,
+      `api-reference.stage` + `cli-reference.json`; live-verified.
 
 ## Dependencies
 

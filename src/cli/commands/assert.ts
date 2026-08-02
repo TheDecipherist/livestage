@@ -3,11 +3,13 @@ import { resolve } from 'node:path'
 import { parse } from 'livestage/parser'
 import { execute } from 'livestage/engine'
 import type { AssertResult } from 'livestage/engine'
-import { buildSecurityConfig } from './render.js'
+import { buildSecurityConfig, buildSkillContext } from './render.js'
+import type { SkillContextOptions } from './render.js'
 import { runValidate } from './validate.js'
 import { expandFileGlob } from '../glob-expand.js'
+import { argsEnvMirror } from '../../engine/args.js'
 
-export interface AssertOptions {
+export interface AssertOptions extends SkillContextOptions {
   cwd?: string
   silent?: boolean
 }
@@ -39,7 +41,18 @@ function assertOneFile(filePath: string, options: AssertOptions): AssertFileResu
   const ast = parse(source, { filePath: resolved })
   const security = buildSecurityConfig(options.cwd !== undefined ? { cwd: options.cwd } : {}, resolved)
   const results: AssertResult[] = []
-  execute(ast, { filePath: resolved, ctx: { cwd, assertResults: results, security } })
+  const skillContext = buildSkillContext(options)
+  const envFiles: Record<string, string> = {}
+  if (skillContext) {
+    Object.assign(envFiles, argsEnvMirror({ args: skillContext.args, argsList: skillContext.argsList, vars: skillContext.vars }))
+  }
+  execute(ast, {
+    filePath: resolved,
+    ctx: {
+      cwd, assertResults: results, security, envFiles,
+      ...(skillContext ? { skillContext } : {}),
+    },
+  })
   return { file: filePath, results, errors: [] }
 }
 

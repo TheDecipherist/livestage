@@ -1,0 +1,11 @@
+[
+  { "verb": "render", "purpose": "Render a .stage document to markdown", "writes": "no" },
+  { "verb": "validate", "purpose": "Check structure and semantics without running it", "writes": "no" },
+  { "verb": "assert", "purpose": "Run every @assert as a CI gate, exit 1 on any failure", "writes": "no" },
+  { "verb": "strip", "purpose": "Emit the degraded static twin of a document", "writes": "no" },
+  { "verb": "doctor", "purpose": "One-line health check: policy, trace, assertion liveness", "writes": "no" },
+  { "verb": "init", "purpose": "Register the PreToolUse hook and seed .livestage/policy.json", "writes": "yes" },
+  { "verb": "cache", "purpose": "Show or clear the session/persist directive cache", "writes": "yes" },
+  { "verb": "security", "purpose": "Test a shell command or path against the active policy", "writes": "no" },
+  { "verb": "watch", "purpose": "Warm the render cache in the background, never a server", "writes": "yes" }
+]

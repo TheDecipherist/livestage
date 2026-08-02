@@ -1,0 +1,7 @@
+[
+  { "id": 1, "name": "Acme Corp", "plan": "enterprise", "mrr": 4200 },
+  { "id": 2, "name": "Bright Labs", "plan": "team", "mrr": 800 },
+  { "id": 3, "name": "Cardinal Studio", "plan": "team", "mrr": 640 },
+  { "id": 4, "name": "Delta Freight", "plan": "starter", "mrr": 90 },
+  { "id": 5, "name": "Echo Systems", "plan": "enterprise", "mrr": 3100 }
+]

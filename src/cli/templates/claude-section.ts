@@ -62,4 +62,8 @@ deny-by-default). A document should still render sensibly with nothing
 granted, since a passive hook read carries no arguments and the engine
 fails open, never a crash.
 
+See \`docs/user-guide.md\` for the full authoring reference, including the
+patterns that cover multi-step work, database and HTTP access, and
+generated-file replacement, none of which get a directive of their own.
+
 ${SECTION_END_MARKER}`

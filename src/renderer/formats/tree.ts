@@ -14,7 +14,13 @@ function newGroup(): TreeGroup {
 }
 
 function insert(root: TreeGroup, breadcrumb: string, annotation: string): void {
-  const segments = breadcrumb.split('/').filter(Boolean)
+  // Trimmed: a breadcrumb sourced from a `path:` field written the way
+  // this project's own docs are ("Core / Parser", spaced for readability
+  // as prose) would otherwise split into segments like "Core " and
+  // " Parser", two different-looking tree nodes for what is obviously one
+  // level, found live-verifying the connections example (feature 46)
+  // against real path-field conventions.
+  const segments = breadcrumb.split('/').map(s => s.trim()).filter(Boolean)
   let cur = root
   for (const seg of segments) {
     let next = cur.children.get(seg)

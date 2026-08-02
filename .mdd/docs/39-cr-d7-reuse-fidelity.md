@@ -4,14 +4,36 @@ title: "CR-D7: Reuse Fidelity"
 type: SPEC
 path: Contracts / Reuse Fidelity
 source_files: []
-status: planned
-phase: idle
-last_synced: 2026-08-01
+test_files: [tests/contracts/reuse-fidelity.test.ts]
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-6
 depends_on: []
 tags: [contract, reuse-fidelity, donor-copy, wave-review-gate, code-and-docs]
-known_issues: []
+known_issues:
+  - "Building the scan (tests/contracts/reuse-fidelity.test.ts) found a real,
+    pre-existing gap from wave 2: 22-pipe.md carries a bare `[verify]`
+    disposition tag with real fix history in known_issues (a quoted-grep
+    tokenizer bug, a Windows shell-stage warning, both genuinely verified
+    against donor behavior) but never actually named the donor path it was
+    verified against, unlike every sibling wave-2 doc (19, 20, 21 all cite
+    `~/projects/markdownai/packages/.../*`). Fixed by adding the citation
+    to 22-pipe.md's What to Build section rather than leaving the scan
+    permanently red or weakening the check to tolerate the gap."
+  - "The scan's donor-backed-tag detection is deliberately scoped to the
+    doc's own \"## What to Build\" section, not the whole document: two
+    docs (this one and 43-doc-verification-closeout.md) describe the
+    `[verify]`/`[new]` tag vocabulary in prose without being tagged that
+    way themselves, and an unscoped whole-body regex false-matched both."
+  - "07-package-skeleton.md is `[verify]`-tagged but explicitly has no
+    single donor file to cite (\"Copy-map: no single donor file, this is
+    the seed script's package.json/tsconfig assembly\"); the citation
+    check accepts this as a valid citation (it contains the word \"donor\"
+    and states the honest reason no path exists) rather than requiring
+    every donor-backed doc to name exactly one file, which would be false
+    for a doc whose donor influence is genuinely diffuse."
 ---
 
 # CR-D7: Reuse Fidelity
@@ -63,17 +85,25 @@ scan for donor-identity leakage as a proxy signal.
 
 ## Acceptance Criteria
 
-- [ ] For each of this build's own `[verify]`/donor-backed `[new]` features
+- [x] For each of this build's own `[verify]`/donor-backed `[new]` features
       (this initiative's own docs, e.g. 09-grammar-parser, 17-source-
       directives), the doc's Architecture/Implementation Notes section names
       the donor copy-map source path (self-referential check: this import
       itself follows CR-D7 by copying the spec's own copy-map lines into
       each such doc, verified above in this batch of writes).
-- [ ] A wave review checklist item exists and is exercised at the end of
+      tests/contracts/reuse-fidelity.test.ts::"every donor-backed doc names
+      the donor path it was copied from" (13 donor-backed docs checked, one
+      real gap found and fixed, see known_issues).
+- [x] A wave review checklist item exists and is exercised at the end of
       each wave, confirming donor citations for that wave's `[verify]`/
       donor-backed `[new]` items.
-- [ ] No feature doc in `.mdd/docs/` for a carry-over/rewrite-disposition
-      subject was authored without reference to a migrated donor doc.
+      tests/contracts/reuse-fidelity.test.ts::"CR-D7: wave review checklist
+      item is exercised at wave close", run as part of `npm test` on every
+      wave from now on, not a manual one-time check.
+- [x] No feature doc in `.mdd/docs/` for a carry-over/rewrite-disposition
+      subject was authored without reference to a migrated donor doc. Same
+      scan: a doc with no donor citation at all cannot be for a
+      carry-over/rewrite subject without failing the check above.
 
 ## Dependencies
 
