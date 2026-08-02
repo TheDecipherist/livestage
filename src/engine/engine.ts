@@ -43,6 +43,10 @@ export interface EngineOptions {
   // --deterministic CLI flag: same effect as LIVESTAGE_DETERMINISTIC=1 in
   // the environment, without requiring the caller to touch process.env.
   deterministic?: boolean
+  // --timeout <ms>: a wall-clock deadline for the whole render, checked
+  // once per node (see EngineContext.deadline). undefined/0 means no
+  // deadline, the default.
+  timeout?: number
 }
 
 export interface EngineResult {
@@ -162,6 +166,7 @@ export function execute(ast: ParseResult, options?: EngineOptions): EngineResult
   const base = makeContext(options?.ctx)
   if (!base.runId) base.runId = crypto.randomUUID()
   if (!base.gitMeta) base.gitMeta = resolveGitMeta(base.cwd)
+  if (options?.timeout && options.timeout > 0) base.deadline = Date.now() + options.timeout
   // Distinct from `!base.traceConfig`: a caller can explicitly pass
   // `ctx: { traceConfig: null }` to force tracing off, which must not be
   // clobbered by the env-var-derived default (tracing is on by default, so
@@ -207,6 +212,7 @@ export function execute(ast: ParseResult, options?: EngineOptions): EngineResult
       if (out !== '' || (node.type === 'markdown' && node.text.trim() === '')) parts.push(out)
     } catch (err) {
       errors.push(String(err))
+      if (base.timedOut) break
     }
   }
   if (mainFile) {
@@ -335,6 +341,10 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
 }
 
 function walkNode(node: ASTNode, ctx: EngineContext): string {
+  if (ctx.deadline !== null && !ctx.timedOut && Date.now() > ctx.deadline) {
+    ctx.timedOut = true
+    throw new FatalError('render exceeded --timeout')
+  }
   if (!ctx.traceConfig) return walkNodeCore(node, ctx)
 
   const id = crypto.randomUUID()

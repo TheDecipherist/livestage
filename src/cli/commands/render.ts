@@ -30,6 +30,8 @@ export interface RenderOptions {
   varFlags?: string[]
   // Feature 35 (Determinism): same effect as LIVESTAGE_DETERMINISTIC=1.
   deterministic?: boolean
+  // Feature 13 (CLI Router): wall-clock deadline in ms for the whole render.
+  timeout?: number
 }
 
 export interface SkillContextOptions {
@@ -203,6 +205,7 @@ export function runRender(filePath: string, options: RenderOptions = {}): Render
   }
   if (options.passthrough) execOpts.passthrough = true
   if (options.deterministic) execOpts.deterministic = true
+  if (options.timeout && options.timeout > 0) execOpts.timeout = options.timeout
   const result = execute(ast, execOpts)
 
   const output = postProcessOutput(result.output, options)

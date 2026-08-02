@@ -3,7 +3,9 @@ id: 13-cli-router
 title: CLI Router
 type: COMPONENT
 path: CLI / Router
-source_files: [src/cli/cli.ts, src/cli/index.ts]
+source_files: [src/cli/cli.ts, src/cli/index.ts, src/cli/commands/parse.ts,
+  src/cli/commands/renderer-preview.ts, src/cli/commands/render.ts, src/engine/engine.ts,
+  src/engine/context.ts]
 status: complete
 phase: all
 last_synced: 2026-08-02
@@ -14,9 +16,9 @@ tags: [cli, verb-router, exit-codes, flat-verbs, namespaces]
 known_issues:
   - "The doc's source_files listed only index.ts (the library barrel export); cli.ts (the actual bin entry and router, program.command(...) registrations) is the real router and is added above."
   - "Namespace restructuring done for what exists today: parser ast|directives|imports|macros (was flat parse/list-macros/list-imports; parser directives is new, lists the registry). engine trace already existed (feature 12). security and cache namespaces already existed."
-  - "Deferred, not built (all depend on features from later waves that do not exist yet at the time): parser check (no clear existing implementation to route to, would need real design), engine eval (ambiguous whether this is meant to be distinct from the existing flat eval verb, or the same thing namespaced, spec text does not disambiguate), renderer preview --format (no existing renderer-preview implementation). watch's exit-code contract (watch runs until interrupted, not practical to assert against in an automated test without a long-running process harness, spot-checked manually instead: the verb exists and accepts a file argument). STILL OPEN as of the post-initiative known_issues sweep (2026-08-02); see task tracking for a real fix."
+  - "RESOLVED (post-initiative known_issues sweep, task 32, 2026-08-02): parser check is a new command (src/cli/commands/parse.ts's runParseCheck) scoped narrowly to grammar validity, parse() succeeds or it doesn't, distinct from validate's broader macro/include/code-grant/assert-liveness checks layered on top of a successful parse. engine eval resolved the ambiguity by aliasing: both the flat eval and the namespaced engine eval verbs call the exact same runEval, registered via one shared registerEval() helper in cli.ts, so there is exactly one implementation, reachable two ways, consistent with engine's other subcommand (trace) and with security's flat/namespaced overlap. renderer preview --format is new (src/cli/commands/renderer-preview.ts): runs one of the nine @render formats (feature 20) standalone against raw data from a file or stdin, so `--columns`/`--option k=v` can be spot-checked without writing a full document. All three live-verified against both build targets (tsc dist/cli/cli.js and the esbuild dist/livestage.js bundle) and covered by tests/unit/cli/missing-verbs.test.ts. watch's exit-code contract is unaffected by this fix and remains spot-checked manually, not automated (a long-running process is not practical to assert against without a dedicated harness)."
   - "assert (flagged here as deferred to feature 26) was built and registered in wave 3, feature 28 (CI Mode): assert <file|glob>, plus glob support added to validate."
-  - "RESOLVED (2026-08-02): doctor flat verb landed in wave 4 (feature 30), and --deterministic on render landed in wave 5 (feature 35); both were still listed as deferred here, another instance of a doc never being revisited once its cited dependency actually shipped. --timeout on render remains genuinely unbuilt. The acceptance criteria and API table below are corrected to match."
+  - "RESOLVED (2026-08-02): doctor flat verb landed in wave 4 (feature 30), and --deterministic on render landed in wave 5 (feature 35); both were still listed as deferred here, another instance of a doc never being revisited once its cited dependency actually shipped. --timeout on render was resolved in the same post-initiative sweep as the entry above: a wall-clock deadline (EngineContext.deadline) checked once per node in walkNode, the single choke point every top-level node, foreach iteration, and nested @include walk passes through, so a runaway loop is caught without threading a check through each call site. Cooperative, not preemptive, a single long-running node still needs its own timeout (execSync/spawnSync already carry theirs); this only stops the NEXT node from starting once the deadline has passed. The acceptance criteria and API table below are corrected to match."
   - "cache's subcommand is named show, not status as the doc's table has it (cache show|clear, pre-existing from Wave 0, not renamed since it already has test coverage under that name)."
 ---
 
@@ -86,23 +88,24 @@ N/A.
 
 ## Acceptance Criteria
 
-- [!] Every verb in the table above routes to its implementation and returns
+- [x] Every verb in the table above routes to its implementation and returns
       the documented exit code for a success and a failure fixture. Verified
       live (spawning the real built binary, not just library calls) for
       `render`, `validate`, `eval`, `strip`, `watch` (existence + argument
-      only), `init`, `security`, `parser ast|directives|imports|macros`,
-      `engine trace`, `cache`, `assert` (feature 28, wave 3), `doctor`
-      (feature 30, wave 4): `tests/unit/cli/cli-router.test.ts`,
-      `tests/unit/cli/assert.test.ts`, `tests/unit/cli/doctor.test.ts`.
-      `renderer preview` and `parser check` still do not exist (see Known
-      Issues).
+      only), `init`, `security`, `parser ast|check|directives|imports|macros`,
+      `engine eval|trace`, `renderer preview`, `cache`, `assert` (feature 28,
+      wave 3), `doctor` (feature 30, wave 4): `tests/unit/cli/cli-router.test.ts`,
+      `tests/unit/cli/assert.test.ts`, `tests/unit/cli/doctor.test.ts`,
+      `tests/unit/cli/missing-verbs.test.ts` (post-initiative sweep, task 32).
+      `render --timeout` also live-verified for both the pass-through and
+      the mid-render-abort cases; see the frontmatter known_issues.
 - [x] `--env <file>` correctly loads dotenv values that `@env` then reads.
       Pre-existing, covered by `tests/unit/cli/cli-validate.test.ts`'s
       `loadEnvFile` tests.
-- [!] Namespaced verbs (`parser`, `engine`, `renderer`, `security`) each
-      dispatch to their subcommands correctly. `parser`, `engine`,
-      `security` verified; `renderer` has no subcommands yet (`renderer
-      preview` was never implemented).
+- [x] Namespaced verbs (`parser`, `engine`, `renderer`, `security`) each
+      dispatch to their subcommands correctly, including `renderer preview`
+      (new) and `engine eval` (new, aliases the same `runEval` the flat
+      `eval` verb calls, see frontmatter known_issues).
 
 ## Dependencies
 
@@ -110,7 +113,9 @@ N/A.
 
 ## Known Issues
 
-See the frontmatter `known_issues` above: `assert`/`doctor`/`--deterministic`
-are now correctly reflected as shipped; `parser check`, `engine eval`
-(namespaced), `renderer preview --format`, and `render --timeout` remain
-genuinely unbuilt.
+See the frontmatter `known_issues` above: RESOLVED. `assert`/`doctor`/
+`--deterministic`/`parser check`/`engine eval`/`renderer preview --format`/
+`render --timeout` are all now shipped and live-verified. The only remaining
+gap is `watch`'s exit-code contract, which stays manually spot-checked
+rather than automated (a long-running process is not practical to assert
+against without a dedicated harness).
