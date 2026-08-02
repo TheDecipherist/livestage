@@ -1,0 +1,149 @@
+@read "package.json" path="name" label="pkg_name" visible="false" /
+@read "package.json" path="version" label="pkg_version" visible="false" /
+@read "package.json" path="description" label="pkg_description" visible="false" /
+@read "scripts/test-baseline.json" path="baseline" label="test_count" visible="false" /
+
+# {{ pkg_name }}
+
+{{ pkg_description }}
+
+**Version {{ pkg_version }}** | **{{ test_count }} tests** | MIT
+
+This README is generated. Every fact in it (the directive reference below,
+the version and test count above, the three worked examples) is read live
+from the project itself by `README.stage`, never hand-typed. Run
+`npm run readme` to regenerate `README.md`; `npm run readme:check` fails
+if it would produce a different file than what is currently committed, and
+that check runs in CI. See "How this README stays current" at the bottom.
+
+## What LiveStage is
+
+A `.stage` file mixes prose with executable directives instead of storing
+static data: file listings, frontmatter reads, git queries, hashes, test
+results, script output, assertions. When an agent reads the file, the
+engine resolves every directive at that moment and returns pure markdown,
+with zero directive syntax remaining. The directive syntax exists only at
+rest, for authors; the agent consuming a render needs no knowledge of
+LiveStage at all.
+
+The agent decides, LiveStage computes. The engine never judges, gates, or
+chooses; it resolves deterministic data and hands it back as markdown.
+Every directive declares a static fallback, so a `.stage` file read
+without the engine (or after a timeout) is still a usable, honest document
+that says it is degraded.
+
+## Install
+
+```
+npm install --save-dev livestage
+```
+
+Then wire it into an AI coding assistant's hooks (a PreToolUse hook renders
+`.stage` reads inline; a SessionStart hook can inject a designated brief):
+
+```
+npx livestage init
+```
+
+Or use it standalone, no hook required:
+
+```
+npx livestage render some-doc.stage
+```
+
+## A minimal example
+
+```stage
+# Project status
+
+@query "git log -1 --format='%h %s'" label="last_commit" /
+@count "src" match="*.ts" label="file_count" /
+
+Last commit: {{ last_commit }}. {{ file_count }} TypeScript files.
+```
+
+Rendering that produces plain markdown, no directive syntax, no matter
+how many times you run it or how much the repo changes underneath it.
+
+## Real-world scenarios: what this actually saves
+
+The pitch above is abstract. Here is what it looks like in practice,
+three real, runnable examples under `examples/agent-briefs/`, each
+replacing several separate shell commands (that an agent would otherwise
+run one at a time, then hold the combined picture in its own context)
+with a single render that returns a finished status result.
+
+Each is read live from its real, runnable file below, a directive pipeline
+(`@read ... | @render type="code"`), not a hand-retyped snippet that could
+drift from what actually runs. Run any of them yourself with `livestage
+render <file>` from inside `examples/agent-briefs/`, where the shared
+policy grant applies.
+
+### Codebase health, one render instead of three commands
+
+Old way: `git rev-parse --abbrev-ref HEAD`, then `git log -1`, then
+`git status --short`, three round trips, three outputs to mentally merge.
+
+@read "examples/agent-briefs/codebase-health.stage" | @render type="code" lang="stage" /
+
+### Change review, one render instead of three commands
+
+Old way: `git diff --stat`, `git log -5 --oneline`, `git status --short`.
+
+@read "examples/agent-briefs/change-review.stage" | @render type="code" lang="stage" /
+
+### Onboarding brief, one render instead of four commands, zero shell grant
+
+Old way: `cat README.md`, `cat package.json`, `ls src`, `grep scripts
+package.json`. This one needs no `shell` policy grant at all, `@read` and
+`@tree` are filesystem-policy directives, not shell, proof that a whole
+class of "read this project" agent work never needs shell access in the
+first place.
+
+@read "examples/agent-briefs/onboarding-brief.stage" | @render type="code" lang="stage" /
+
+## Directive reference
+
+Every directive LiveStage ships, grouped exactly as the project's own
+build docs group them, and pulled live from those docs on every render of
+this file. Add a directive to an existing group's documentation and it
+appears here on the next `npm run readme`, no separate README work.
+
+@foreach docid in @list ".mdd/docs/*.md" where="path.startsWith('Directives') || path == 'Renderer / Formats' || path == 'Engine / Code Runners'" fields="id"
+@if docid != "id"
+@read-frontmatter path=".mdd/docs/{{ docid }}.md" field="title" label="doc_title" visible="false" /
+### {{ doc_title }}
+
+{{ read_section(".mdd/docs/" + docid + ".md", "API/Interface") }}
+
+{{ read_section(".mdd/docs/" + docid + ".md", "Business Rules") }}
+
+@if-end
+@foreach-end
+
+## How this README stays current
+
+`README.stage` (the source of this file, not `README.md` itself) reads:
+
+- the directive reference above, live, from `.mdd/docs/*.md`'s
+  `## API/Interface` and `## Business Rules` sections, via a frontmatter
+  query (`where=`/`fields=`) plus the `read_section()` builtin,
+- `package.json`'s name, version, and description, via `@read`,
+- the current test count, via `@read` on `scripts/test-baseline.json`,
+- the three worked examples' actual source, via `@read`, so the shown
+  code can never drift from what actually runs.
+
+`npm run readme` regenerates `README.md` by calling the existing
+`livestage build` CLI verb. `npm run readme:check` regenerates into a
+throwaway comparison and fails if the committed `README.md` differs, and
+that check runs in CI on every push, so a stale README fails the build
+instead of quietly persisting.
+
+The one thing that still needs a human: a brand-new directive filed under
+a doc outside the `Directives /` / `Renderer / Formats` / `Engine / Code
+Runners` path convention needs a one-line addition to the query above.
+Everything else, names, syntax, examples, counts, is automatic.
+
+---
+
+MIT License.

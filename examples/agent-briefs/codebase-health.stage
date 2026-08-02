@@ -8,23 +8,9 @@ The new way: one render.
 
 ## Policy grant this example needs
 
-`.livestage/policy.json` in this directory:
-
-```json
-{
-  "shell": {
-    "enabled": true,
-    "allow_patterns": ["git *"],
-    "deny_patterns": [],
-    "allow_network": false,
-    "require_confirmation": false,
-    "audit_log": false
-  }
-}
-```
-
-That is the whole grant: `shell.enabled` plus `git *` in `allow_patterns`,
-nothing else.
+`examples/agent-briefs/.livestage/policy.json` in this directory (shared
+with `change-review.stage`): `shell.enabled` plus `git *` in
+`allow_patterns`, nothing else. See that file directly for the exact JSON.
 
 ## Result
 
