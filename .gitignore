@@ -44,3 +44,4 @@ tests/conformance/
 # files field is just "dist") and not meant to be public repo content.
 /MDs/
 /waveplan.md
+.worktrees/
