@@ -1,0 +1,43 @@
+# Codebase Health Brief
+
+The old way: `git rev-parse --abbrev-ref HEAD`, `git log -1`, `git status
+--short`, three separate commands run and mentally merged into one picture
+of "is this repo in good shape right now."
+
+The new way: one render.
+
+## Policy grant this example needs
+
+`.livestage/policy.json` in this directory:
+
+```json
+{
+  "shell": {
+    "enabled": true,
+    "allow_patterns": ["git *"],
+    "deny_patterns": [],
+    "allow_network": false,
+    "require_confirmation": false,
+    "audit_log": false
+  }
+}
+```
+
+That is the whole grant: `shell.enabled` plus `git *` in `allow_patterns`,
+nothing else.
+
+## Result
+
+@query "git rev-parse --abbrev-ref HEAD" label="branch" visible="false" /
+@query "git log -1 --format='%h %s'" label="last_commit" visible="false" /
+@query "git status --short" label="dirty" visible="false" /
+
+- Branch: {{ branch }}
+- Last commit: {{ last_commit }}
+@if dirty == ""
+- Uncommitted files: none (clean)
+@if-end
+@if dirty != ""
+- Uncommitted files:
+{{ dirty }}
+@if-end
