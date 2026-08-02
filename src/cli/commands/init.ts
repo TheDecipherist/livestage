@@ -12,7 +12,7 @@ export interface InitOptions {
   /**
    * Override the user's home directory. Used by tests to redirect file
    * writes into a tmpdir without touching the real ~/.claude/ or
-   * ~/.markdownai/. Defaults to `os.homedir()`.
+   * ~/.livestage/. Defaults to `os.homedir()`.
    */
   homeDir?: string
 }
@@ -226,7 +226,7 @@ export const HOOK_SCRIPT = `#!/usr/bin/env node
 // LiveStage PreToolUse hook - installed by mai init
 // Blocks direct Read of .md files in SYSTEM/INSTALLED locations that
 // contain directive lines. System locations are paths under:
-//   ~/.claude/mdd2/, ~/.claude/markdownai/, ~/.markdownai/,
+//   ~/.claude/mdd2/, ~/.claude/markdownai/, ~/.livestage/,
 //   ~/.claude/commands/, /usr/share/markdownai/
 // These are the trees that ship rendered to Claude via the MCP — direct
 // Read would expose raw directives that the engine should be running.
@@ -247,7 +247,7 @@ const HOME = homedir()
 const SYSTEM_ROOTS = [
   HOME + '/.claude/mdd2/',
   HOME + '/.claude/markdownai/',
-  HOME + '/.markdownai/',
+  HOME + '/.livestage/',
   HOME + '/.claude/commands/',
   '/usr/share/markdownai/',
 ]
@@ -368,7 +368,7 @@ function ensureHookFile(hookDir: string, hookPath: string): void {
 }
 
 /**
- * The SessionStart hook script. Installed to ~/.markdownai/hooks/sessionStart.mjs
+ * The SessionStart hook script. Installed to ~/.livestage/hooks/sessionStart.mjs
  * by `mai init`. Runs at session start (source: `startup` | `resume` | `clear` |
  * `compact`) and injects the rendered content of `<cwd>/CLAUDE-LiveStage.md`
  * into Claude's session context via the `hookSpecificOutput.additionalContext`
@@ -619,7 +619,7 @@ export function runInit(options: InitOptions = {}): InitResult {
     return { success: false, clientDetected: clientType, configPath, alreadyInstalled: false, message: `Config path blocked: ${configPath}` }
   }
 
-  const hookDir = join(home, '.markdownai', 'hooks')
+  const hookDir = join(home, '.livestage', 'hooks')
   const hookPath = join(hookDir, 'preToolUse.mjs')
   const sessionStartHookPath = join(hookDir, 'sessionStart.mjs')
   ensureHookFile(hookDir, hookPath)

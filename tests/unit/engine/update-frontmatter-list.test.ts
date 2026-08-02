@@ -50,8 +50,7 @@ describe('@update-frontmatter list addressing', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nknown_issues:\n  - issue one\n  - issue two\n---\n\nbody\n', 'utf8')
     render(
-      `@markdownai v1.0
-@update-frontmatter path="doc.md" field="known_issues[append]" value="issue three" /
+      `@update-frontmatter path="doc.md" field="known_issues[append]" value="issue three" /
 `,
     )
     const after = readFileSync(join(projectDir, 'doc.md'), 'utf8')
@@ -65,8 +64,7 @@ describe('@update-frontmatter list addressing', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nid: x\n---\n\nbody\n', 'utf8')
     render(
-      `@markdownai v1.0
-@update-frontmatter path="doc.md" field="tags[append]" value="new-tag" /
+      `@update-frontmatter path="doc.md" field="tags[append]" value="new-tag" /
 `,
     )
     const after = readFileSync(join(projectDir, 'doc.md'), 'utf8')
@@ -77,8 +75,7 @@ describe('@update-frontmatter list addressing', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\ntags:\n  - red\n  - green\n  - blue\n---\n\nbody\n', 'utf8')
     render(
-      `@markdownai v1.0
-@update-frontmatter path="doc.md" field="tags[1]" value="emerald" /
+      `@update-frontmatter path="doc.md" field="tags[1]" value="emerald" /
 `,
     )
     const after = readFileSync(join(projectDir, 'doc.md'), 'utf8')
@@ -92,8 +89,7 @@ describe('@update-frontmatter list addressing', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nsatisfies_contracts:\n  - from: 03-auth\n    function: maskUser\n    status: pending\n    verified_at: ""\n---\n\nbody\n', 'utf8')
     render(
-      `@markdownai v1.0
-@update-frontmatter path="doc.md" field="satisfies_contracts[0].status" value="done" /
+      `@update-frontmatter path="doc.md" field="satisfies_contracts[0].status" value="done" /
 @update-frontmatter path="doc.md" field="satisfies_contracts[0].verified_at" value="src/handlers/auth.ts:42" /
 `,
     )
@@ -107,8 +103,7 @@ describe('@update-frontmatter list addressing', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\ntags:\n  - red\n---\n\nbody\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@update-frontmatter path="doc.md" field="tags[5]" value="oops" /
+      `@update-frontmatter path="doc.md" field="tags[5]" value="oops" /
 `,
     )
     expect(result.warnings.join('\n')).toMatch(/out of bounds/i)
@@ -118,8 +113,7 @@ describe('@update-frontmatter list addressing', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nid: x\n---\n\nbody\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@update-frontmatter path="doc.md" field="tags[0]" value="nope" /
+      `@update-frontmatter path="doc.md" field="tags[0]" value="nope" /
 `,
     )
     expect(result.warnings.join('\n')).toMatch(/no `tags:` field/)
@@ -129,8 +123,7 @@ describe('@update-frontmatter list addressing', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nknown_issues: []\n---\n\nbody\n', 'utf8')
     render(
-      `@markdownai v1.0
-@update-frontmatter path="doc.md" field="known_issues[append]" value="first" /
+      `@update-frontmatter path="doc.md" field="known_issues[append]" value="first" /
 `,
     )
     const after = readFileSync(join(projectDir, 'doc.md'), 'utf8')

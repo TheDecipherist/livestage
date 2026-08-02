@@ -4,14 +4,15 @@ title: "CR-1: Standalone Identity"
 type: SPEC
 path: Contracts / Standalone Identity
 source_files: []
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
 depends_on: []
 tags: [contract, identity, rebrand, ci-scan, donor-isolation]
-known_issues: []
+known_issues:
+  - "src/cli/commands/init.ts and src/cli/templates/claude-section.ts carry donor identity strings; out of wave-1 scope, owned by feature 31 (Init, wave 6)"
 ---
 
 # CR-1: Standalone Identity
@@ -57,10 +58,17 @@ Scans), not by a directive or CLI verb of its own.
 
 ## Acceptance Criteria
 
-- [ ] Grep-based scan across `src/`, `dist/`, shipped docs, CLI output
-      strings, and error messages finds zero donor identity hits.
-- [ ] Scan is case-insensitive.
-- [ ] Scan explicitly excludes `MDs/livestage-spec.md`.
+- [!] Grep-based scan across `src/`, `dist/`, shipped docs, CLI output
+      strings, and error messages finds zero donor identity hits. As of this
+      build: zero hits outside `src/cli/commands/init.ts` and
+      `src/cli/templates/claude-section.ts` (and their `dist/` build output),
+      see Known Issues. `src/engine/stdlib.md` (shipped to `dist/`, auto
+      loaded into every render) carried a donor header and was cleaned; test
+      fixtures under `tests/` (out of this criterion's documented scope, but
+      raised directly by the user) were swept too, down to the same two
+      files.
+- [x] Scan is case-insensitive (`grep -i` used throughout verification).
+- [x] Scan explicitly excludes `MDs/livestage-spec.md`.
 
 ## Dependencies
 
@@ -68,4 +76,7 @@ None (this SPEC has no dependencies; it is a foundational contract).
 
 ## Known Issues
 
-None.
+- `src/cli/commands/init.ts` and `src/cli/templates/claude-section.ts` carry
+  donor identity strings throughout (a hardcoded MCP-tool instruction block
+  for a server this build does not ship, among others). Not a wave-1
+  COMPONENT; owned by feature 31 (Init, wave 6).

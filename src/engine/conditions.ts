@@ -6,7 +6,7 @@ import { makeFileHelpers, resolveDataJail } from './file-access.js'
 import { logEngineError } from './error-log.js'
 
 /**
- * Read <cwd>/.mdd/settings.json (or <cwd>/.markdownai/settings.json as a
+ * Read <cwd>/.mdd/settings.json (or <cwd>/.livestage/settings.json as a
  * fallback) and parse as JSON. Cached per (cwd, mtime) to avoid re-reading
  * on every expression evaluation. Failure is silent — returns undefined,
  * and `settings.X` references then resolve to ReferenceError (suppressed).
@@ -16,7 +16,7 @@ const settingsCache = new Map<string, { mtimeMs: number; value: unknown }>()
 function loadProjectSettings(cwd: string): unknown {
   const candidates = [
     resolve(cwd, '.mdd', 'settings.json'),
-    resolve(cwd, '.markdownai', 'settings.json'),
+    resolve(cwd, '.livestage', 'settings.json'),
   ]
   for (const path of candidates) {
     try {
@@ -218,7 +218,7 @@ function buildSandbox(ctx: EngineContext): Record<string, unknown> {
   for (const [k, v] of Object.entries(ctx.data ?? {})) {
     if (SAFE_ENV_KEY.test(k) && !RESERVED_SANDBOX_KEYS.has(k)) safeData[k] = v
   }
-  // Project settings: read .mdd/settings.json (or .markdownai/settings.json
+  // Project settings: read .mdd/settings.json (or .livestage/settings.json
   // as a fallback) from cwd and expose as `settings`. Lets flows read
   // {{ settings.telemetry.commandLogging }} etc. without each touching
   // the filesystem. Failure to read is silent — settings becomes undefined,

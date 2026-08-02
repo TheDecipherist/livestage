@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 export interface ShellSecurityConfig {
@@ -102,7 +101,8 @@ export function defaultSecurityConfig(): SecurityJsonConfig {
       // in rules.ts) still applies — destructive commands like rm/dd/mkfs
       // and code execution like `node -e`/`eval` are unconditionally blocked
       // regardless of allowlist. Users who want a stricter default can drop
-      // `~/.markdownai/security.json` with their own shell.allow_patterns.
+      // `.livestage/policy.json` (project root) with their own
+      // shell.allow_patterns.
       enabled: true,
       allow_patterns: [
         'git *',                          // branch, log, status, diff, rev-parse, config, show, etc.
@@ -165,14 +165,14 @@ export function defaultSecurityConfig(): SecurityJsonConfig {
   }
 }
 
-export function loadSecurityConfig(filePath?: string): SecurityJsonConfig {
-  const path = filePath ?? join(homedir(), '.markdownai', 'security.json')
+export function loadSecurityConfig(filePath?: string, cwd?: string): SecurityJsonConfig {
+  const path = filePath ?? join(cwd ?? process.cwd(), '.livestage', 'policy.json')
   let raw: string
   try { raw = readFileSync(path, 'utf8') } catch { return defaultSecurityConfig() }
   try {
     const parsed: unknown = JSON.parse(raw)
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      process.stderr.write(`[markdownai] security config invalid (${path}): expected object\n`)
+      process.stderr.write(`[livestage] security config invalid (${path}): expected object\n`)
       return defaultSecurityConfig()
     }
     const loaded = parsed as Record<string, unknown>
@@ -185,7 +185,7 @@ export function loadSecurityConfig(filePath?: string): SecurityJsonConfig {
       event: { ...defaults.event, ...(typeof loaded['event'] === 'object' && loaded['event'] !== null && !Array.isArray(loaded['event']) ? loaded['event'] as Partial<EventSecurityConfig> : {}) },
     }
   } catch (err) {
-    process.stderr.write(`[markdownai] security config parse error (${path}): ${String(err)}\n`)
+    process.stderr.write(`[livestage] security config parse error (${path}): ${String(err)}\n`)
     return defaultSecurityConfig()
   }
 }

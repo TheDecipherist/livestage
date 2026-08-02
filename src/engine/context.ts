@@ -87,8 +87,9 @@ export interface EngineContext {
   // results. Spread into the expression sandbox by buildSandbox(), so
   // {{ label.field.subfield }} navigates the struct directly. Keys here
   // shadow keys in envFiles when the same name is used, so directives
-  // that want struct access (e.g., @markdownai-detect with label=) store
-  // here while keeping the formatted text in envFiles for inline rendering.
+  // that want struct access (a structured source directive with label=)
+  // store here while keeping the formatted text in envFiles for inline
+  // rendering.
   data: Record<string, unknown>
   envFallbacks: Record<string, string>
   connections: Record<string, Connection>
@@ -122,9 +123,10 @@ export interface EngineContext {
   chosenTransition: ChosenTransition | null
   /**
    * When `"passthrough"`, the engine leaves `` !`...` `` shell-inline syntax
-   * untouched in the rendered output and skips its security gate. Set by
-   * `execute()` when the document's `@markdownai` header carries
-   * `shell-inline="passthrough"`. Default is `null` (intercept).
+   * untouched in the rendered output and skips its security gate. Nothing
+   * currently sets this to `"passthrough"`, no header directive exists;
+   * real per-document opt-out awaits the frontmatter schema engine. Default
+   * is `null` (intercept).
    */
   shellInline: 'passthrough' | null
 }

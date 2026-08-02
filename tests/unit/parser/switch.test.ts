@@ -11,7 +11,6 @@ describe('Parser — @switch directive', () => {
   describe('basic structure', () => {
     it('parses a basic @switch with two @case branches and a @default', () => {
       const src = [
-        '@markdownai',
         '@switch "hello"',
         '  @case "hello"',
         '    Hello body',
@@ -22,7 +21,7 @@ describe('Parser — @switch directive', () => {
         '@switch-end',
       ].join('\n')
       const result = parse(src)
-      const n = node<SwitchNode>(result.nodes, 1)
+      const n = node<SwitchNode>(result.nodes, 0)
       expect(n.type).toBe('switch')
       expect(n.expression).toBe('"hello"')
       expect(n.cases).toHaveLength(2)
@@ -33,7 +32,6 @@ describe('Parser — @switch directive', () => {
 
     it('parses a @switch with a {{ }} expression as its subject', () => {
       const src = [
-        '@markdownai',
         "@switch {{ARGUMENTS[0] || 'default'}}",
         '  @case "foo"',
         '    Foo body',
@@ -42,7 +40,7 @@ describe('Parser — @switch directive', () => {
         '@switch-end',
       ].join('\n')
       const result = parse(src)
-      const n = node<SwitchNode>(result.nodes, 1)
+      const n = node<SwitchNode>(result.nodes, 0)
       expect(n.type).toBe('switch')
       expect(n.expression).toBe("{{ARGUMENTS[0] || 'default'}}")
       expect(n.cases).toHaveLength(1)
@@ -51,7 +49,6 @@ describe('Parser — @switch directive', () => {
 
     it('parses a @switch with @case expressions using {{ }}', () => {
       const src = [
-        '@markdownai',
         '@switch "production"',
         '  @case {{ENV_STAGE}}',
         '    Stage body',
@@ -60,7 +57,7 @@ describe('Parser — @switch directive', () => {
         '@switch-end',
       ].join('\n')
       const result = parse(src)
-      const n = node<SwitchNode>(result.nodes, 1)
+      const n = node<SwitchNode>(result.nodes, 0)
       expect(n.type).toBe('switch')
       expect(n.cases[0]!.caseExpression).toBe('{{ENV_STAGE}}')
     })
@@ -69,7 +66,6 @@ describe('Parser — @switch directive', () => {
   describe('optional clauses', () => {
     it('parses a @switch with only @case branches — defaultBody should be null', () => {
       const src = [
-        '@markdownai',
         '@switch "foo"',
         '  @case "foo"',
         '    Foo body',
@@ -78,33 +74,31 @@ describe('Parser — @switch directive', () => {
         '@switch-end',
       ].join('\n')
       const result = parse(src)
-      const n = node<SwitchNode>(result.nodes, 1)
+      const n = node<SwitchNode>(result.nodes, 0)
       expect(n.cases).toHaveLength(2)
       expect(n.defaultBody).toBeNull()
     })
 
     it('parses a @switch with only @default — cases array should be empty', () => {
       const src = [
-        '@markdownai',
         '@switch "anything"',
         '  @default',
         '    Fallback body',
         '@switch-end',
       ].join('\n')
       const result = parse(src)
-      const n = node<SwitchNode>(result.nodes, 1)
+      const n = node<SwitchNode>(result.nodes, 0)
       expect(n.cases).toHaveLength(0)
       expect(n.defaultBody).not.toBeNull()
     })
 
     it('parses a @switch with an empty body (no cases, no default)', () => {
       const src = [
-        '@markdownai',
         '@switch "value"',
         '@switch-end',
       ].join('\n')
       const result = parse(src)
-      const n = node<SwitchNode>(result.nodes, 1)
+      const n = node<SwitchNode>(result.nodes, 0)
       expect(n.type).toBe('switch')
       expect(n.cases).toHaveLength(0)
       expect(n.defaultBody).toBeNull()
@@ -112,7 +106,6 @@ describe('Parser — @switch directive', () => {
 
     it('parses @switch where @default appears before the last @case (valid parse, out-of-order)', () => {
       const src = [
-        '@markdownai',
         '@switch "foo"',
         '  @default',
         '    Fallback body',
@@ -121,7 +114,7 @@ describe('Parser — @switch directive', () => {
         '@switch-end',
       ].join('\n')
       const result = parse(src)
-      const n = node<SwitchNode>(result.nodes, 1)
+      const n = node<SwitchNode>(result.nodes, 0)
       expect(n.cases).toHaveLength(1)
       expect(n.defaultBody).not.toBeNull()
     })
@@ -130,7 +123,6 @@ describe('Parser — @switch directive', () => {
   describe('nesting', () => {
     it('parses a nested @switch inside another @switch', () => {
       const src = [
-        '@markdownai',
         '@switch "outer"',
         '  @case "outer"',
         '    @switch "inner"',
@@ -144,7 +136,7 @@ describe('Parser — @switch directive', () => {
         '@switch-end',
       ].join('\n')
       const result = parse(src)
-      const outer = node<SwitchNode>(result.nodes, 1)
+      const outer = node<SwitchNode>(result.nodes, 0)
       expect(outer.type).toBe('switch')
       expect(outer.cases).toHaveLength(1)
       const inner = outer.cases[0]!.body.find(n => n.type === 'switch') as SwitchNode | undefined
@@ -155,7 +147,6 @@ describe('Parser — @switch directive', () => {
 
     it('parses a @switch inside a @foreach body', () => {
       const src = [
-        '@markdownai',
         '@foreach item in items',
         '  @switch {{item}}',
         '    @case "a"',
@@ -166,7 +157,7 @@ describe('Parser — @switch directive', () => {
         '@foreach-end',
       ].join('\n')
       const result = parse(src)
-      const fe = node<ForeachNode>(result.nodes, 1)
+      const fe = node<ForeachNode>(result.nodes, 0)
       expect(fe.type).toBe('foreach')
       const sw = fe.body.find(n => n.type === 'switch') as SwitchNode | undefined
       expect(sw).toBeDefined()
@@ -177,7 +168,6 @@ describe('Parser — @switch directive', () => {
   describe('error cases', () => {
     it('throws ParseError on unclosed @switch (no @endswitch)', () => {
       const src = [
-        '@markdownai',
         '@switch "foo"',
         '  @case "foo"',
         '    Body without closing',

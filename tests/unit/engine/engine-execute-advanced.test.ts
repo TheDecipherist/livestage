@@ -5,19 +5,19 @@ import type { ParseResult } from 'livestage/parser'
 
 describe('execute — macro params and positional call args', () => {
   it('expands macro with positional args via @define name(param) syntax', () => {
-    const ast = parse('@markdownai\n@define greet(name)\nHello, {{name}}!\n@define-end\n\n@call greet(World) /')
+    const ast = parse('@define greet(name)\nHello, {{name}}!\n@define-end\n\n@call greet(World) /')
     const result = execute(ast)
     expect(result.output).toBe('Hello, World!')
   })
 
   it('expands macro with named paren args', () => {
-    const ast = parse('@markdownai\n@define row(title, value)\n{{title}}: {{value}}\n@define-end\n\n@call row(title=Foo, value=Bar) /')
+    const ast = parse('@define row(title, value)\n{{title}}: {{value}}\n@define-end\n\n@call row(title=Foo, value=Bar) /')
     const result = execute(ast)
     expect(result.output).toBe('Foo: Bar')
   })
 
   it('unspecified param resolves to empty string', () => {
-    const ast = parse('@markdownai\n@define greet(name)\nHello, {{name}}!\n@define-end\n\n@call greet() /')
+    const ast = parse('@define greet(name)\nHello, {{name}}!\n@define-end\n\n@call greet() /')
     const result = execute(ast)
     expect(result.output).toBe('Hello, !')
   })
@@ -26,25 +26,25 @@ describe('execute — macro params and positional call args', () => {
 
 describe('execute — interpolation evaluation', () => {
   it('resolves env.VAR via env object in sandbox', () => {
-    const ast = parse('@markdownai\nHello {{ env.USER_NAME }}!')
+    const ast = parse('Hello {{ env.USER_NAME }}!')
     const result = execute(ast, { ctx: { env: { USER_NAME: 'Alice' }, envFiles: {}, envFallbacks: {} } })
     expect(result.output).toBe('Hello Alice!')
   })
 
   it('resolves env.VAR with nullish coalescing', () => {
-    const ast = parse('@markdownai\n{{ env.MISSING_VAR ?? "fallback" }}')
+    const ast = parse('{{ env.MISSING_VAR ?? "fallback" }}')
     const result = execute(ast, { ctx: { env: {}, envFiles: {}, envFallbacks: {} } })
     expect(result.output).toBe('fallback')
   })
 
   it('resolves ternary expression', () => {
-    const ast = parse('@markdownai\n{{ env.MODE == "prod" ? "production" : "dev" }}')
+    const ast = parse('{{ env.MODE == "prod" ? "production" : "dev" }}')
     const result = execute(ast, { ctx: { env: { MODE: 'prod' }, envFiles: {}, envFallbacks: {} } })
     expect(result.output).toBe('production')
   })
 
   it('resolves date format="YYYY" to current year', () => {
-    const ast = parse('@markdownai\nYear: {{ date format="YYYY" }}')
+    const ast = parse('Year: {{ date format="YYYY" }}')
     const result = execute(ast)
     expect(result.output).toContain(String(new Date().getFullYear()))
   })
@@ -56,9 +56,9 @@ describe('execute — interpolation evaluation', () => {
     // the current invocation legitimately reference variables set by
     // other phases. The warning per undefined ref floods the output
     // with noise that's already implied by the missing content.
-    // Errors are still captured to ~/.markdownai/logs/markdownai-error.log
+    // Errors are still captured to ~/.livestage/logs/livestage-error.log
     // for audit.
-    const ast = parse('@markdownai\n{{ totally.undefined.thing }}')
+    const ast = parse('{{ totally.undefined.thing }}')
     const result = execute(ast, { ctx: { env: {}, envFiles: {}, envFallbacks: {} } })
     expect(result.output.trim()).toBe('')
     expect(result.warnings.some(w => w.includes('totally'))).toBe(false)
@@ -68,14 +68,14 @@ describe('execute — interpolation evaluation', () => {
     // null.method() throws TypeError, not ReferenceError — that's a real
     // expression bug (not a phase-context issue) and should still surface
     // in the warnings array so authors notice.
-    const ast = parse('@markdownai\n{{ (null).method() }}')
+    const ast = parse('{{ (null).method() }}')
     const result = execute(ast, { ctx: { env: {}, envFiles: {}, envFallbacks: {} } })
     expect(result.output.trim()).toBe('')
     expect(result.warnings.some(w => w.includes('null'))).toBe(true)
   })
 
   it('escaped \\{{ renders as literal {{ }}', () => {
-    const ast = parse('@markdownai\nUse \\{{ env.NAME }} in config')
+    const ast = parse('Use \\{{ env.NAME }} in config')
     const result = execute(ast)
     expect(result.output).toContain('{{env.NAME}}')
   })

@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { CacheConfig } from 'livestage/parser'
 import { applyMasking } from './security/masking.js'
@@ -14,7 +13,9 @@ interface PersistEntry {
 }
 
 const SESSION_CACHE = new Map<string, string>()
-const CACHE_DIR = join(homedir(), '.markdownai', 'cache')
+// Config home is `.livestage/` in the project root (policy.json, schemas/,
+// cache/, trace/), not the user's home directory.
+const CACHE_DIR = join(process.cwd(), '.livestage', 'cache')
 
 export function cacheKey(directiveType: string, options: Record<string, unknown>): string {
   const sorted = Object.fromEntries(
@@ -83,7 +84,7 @@ export function clearPersistCache(directiveType?: string): void {
         } catch { continue }
       }
       try { unlinkSync(path) } catch (err) {
-        process.stderr.write(`[markdownai] cache: failed to delete ${path}: ${String(err)}\n`)
+        process.stderr.write(`[livestage] cache: failed to delete ${path}: ${String(err)}\n`)
       }
     }
   } catch { /* cache dir may not exist — not an error */ }

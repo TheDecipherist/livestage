@@ -1,7 +1,8 @@
 export interface TraceSpan {
+  t: 'directive'
   id: string
   runId: string
-  ast: 'markdownai' | 'markdown' | 'header'
+  ast: 'directive' | 'markdown'
   directive?: string
   status: 'start' | 'end' | 'error'
   timestamp: number
@@ -18,6 +19,20 @@ export interface TraceSpan {
   git: { hash: string; short: string } | null
   sessionId: string | null
 }
+
+// One per execute() call, written after the last directive span: a
+// render-level summary distinct from the per-directive spans above.
+export interface RenderRecord {
+  t: 'render'
+  render_id: string
+  doc: string
+  ms: number
+  directives: number
+  degraded: boolean
+  exit: number
+}
+
+export type TraceRecord = TraceSpan | RenderRecord
 
 export function extractArgs(node: Record<string, unknown>): Record<string, string> {
   const picks = ['name', 'path', 'url', 'command', 'transport', 'query', 'operation', 'fallback', 'source', 'format', 'key', 'version']

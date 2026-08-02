@@ -71,8 +71,7 @@ export function evaluateSource(literal: string, ctx: EngineContext): string {
     // — add ` /` if not already present.
     const needsSlash = !/\s\/\s*$/.test(trimmed)
     const dir = needsSlash ? `${trimmed} /` : trimmed
-    const wrapper = `@markdownai v1.0\n${dir}\n`
-    const ast = parserParse(wrapper)
+    const ast = parserParse(`${dir}\n`)
     const bodyNodes = ast.nodes.filter(n => n.type !== 'markdown' && n.type !== 'passthrough')
     if (bodyNodes.length === 0) return ''
     return _walk(bodyNodes, ctx).join('\n').trim()

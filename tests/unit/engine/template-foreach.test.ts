@@ -42,9 +42,9 @@ describe('@template composition with @foreach', () => {
   describe('per-iteration rendering', () => {
     it('renders the partial once per iteration of the loop', () => {
       makeNames('a', 'b', 'c')
-      write('card.md', '@markdownai v1.0\n[card]')
+      write('card.md', '[card]')
       const r = render(
-        '@markdownai v1.0\n@foreach n in @list ./names/ match="*.txt"\n@template ./card.md /\n@foreach-end',
+        '@foreach n in @list ./names/ match="*.txt"\n@template ./card.md /\n@foreach-end',
       )
       const matches = r.output.match(/\[card\]/g) ?? []
       expect(matches).toHaveLength(3)
@@ -52,9 +52,9 @@ describe('@template composition with @foreach', () => {
 
     it('binds the iteration variable to {{ data }} inside the partial', () => {
       makeNames('alice', 'bob')
-      write('card.md', '@markdownai v1.0\n<<{{ data }}>>')
+      write('card.md', '<<{{ data }}>>')
       const r = render(
-        '@markdownai v1.0\n@foreach name in @list ./names/ match="*.txt"\n@template ./card.md data=name /\n@foreach-end',
+        '@foreach name in @list ./names/ match="*.txt"\n@template ./card.md data=name /\n@foreach-end',
       )
       expect(r.output).toContain('<<./names/alice.txt>>')
       expect(r.output).toContain('<<./names/bob.txt>>')
@@ -62,9 +62,9 @@ describe('@template composition with @foreach', () => {
 
     it('honors as=<name> per iteration', () => {
       makeNames('ada', 'grace')
-      write('card.md', '@markdownai v1.0\n[{{ user }}]')
+      write('card.md', '[{{ user }}]')
       const r = render(
-        '@markdownai v1.0\n@foreach name in @list ./names/ match="*.txt"\n@template ./card.md data=name as=user /\n@foreach-end',
+        '@foreach name in @list ./names/ match="*.txt"\n@template ./card.md data=name as=user /\n@foreach-end',
       )
       expect(r.output).toContain('[./names/ada.txt]')
       expect(r.output).toContain('[./names/grace.txt]')
@@ -72,9 +72,9 @@ describe('@template composition with @foreach', () => {
 
     it('exposes a caller @set value inside every iteration of the partial', () => {
       makeNames('x', 'y')
-      write('card.md', '@markdownai v1.0\n{{ siteName }}:{{ data }}')
+      write('card.md', '{{ siteName }}:{{ data }}')
       const r = render(
-        '@markdownai v1.0\n@set siteName = "Acme" /\n@foreach n in @list ./names/ match="*.txt"\n@template ./card.md data=n /\n@foreach-end',
+        '@set siteName = "Acme" /\n@foreach n in @list ./names/ match="*.txt"\n@template ./card.md data=n /\n@foreach-end',
       )
       expect(r.output).toContain('Acme:./names/x.txt')
       expect(r.output).toContain('Acme:./names/y.txt')
@@ -82,9 +82,9 @@ describe('@template composition with @foreach', () => {
 
     it('iteration N does not see writes from iteration N-1 (sandbox per call)', () => {
       makeNames('first', 'second')
-      write('card.md', '@markdownai v1.0\nseen:{{ leaked }}|set:{{ data }}\n@set leaked = data /')
+      write('card.md', 'seen:{{ leaked }}|set:{{ data }}\n@set leaked = data /')
       const r = render(
-        '@markdownai v1.0\n@foreach n in @list ./names/ match="*.txt"\n@template ./card.md data=n /\n@foreach-end\nafter:{{ leaked }}end',
+        '@foreach n in @list ./names/ match="*.txt"\n@template ./card.md data=n /\n@foreach-end\nafter:{{ leaked }}end',
       )
       expect(r.output).toContain('seen:|set:./names/first.txt')
       expect(r.output).toContain('seen:|set:./names/second.txt')
@@ -93,9 +93,9 @@ describe('@template composition with @foreach', () => {
 
     it('empty loop source produces no template renders', () => {
       mkdirSync(join(projectDir, 'empty'), { recursive: true })
-      write('card.md', '@markdownai v1.0\n[card]')
+      write('card.md', '[card]')
       const r = render(
-        '@markdownai v1.0\n@foreach n in @list ./empty/ match="*.txt"\n@template ./card.md /\n@foreach-end',
+        '@foreach n in @list ./empty/ match="*.txt"\n@template ./card.md /\n@foreach-end',
       )
       expect(r.output).not.toContain('[card]')
     })
@@ -104,10 +104,10 @@ describe('@template composition with @foreach', () => {
   describe('nested composition', () => {
     it('renders nested @template calls inside per-iteration partials', () => {
       makeNames('a', 'b')
-      write('inner.md', '@markdownai v1.0\nINNER({{ data }})')
-      write('outer.md', '@markdownai v1.0\nOUTER({{ data }})\n@template ./inner.md data=data /')
+      write('inner.md', 'INNER({{ data }})')
+      write('outer.md', 'OUTER({{ data }})\n@template ./inner.md data=data /')
       const r = render(
-        '@markdownai v1.0\n@foreach n in @list ./names/ match="*.txt"\n@template ./outer.md data=n /\n@foreach-end',
+        '@foreach n in @list ./names/ match="*.txt"\n@template ./outer.md data=n /\n@foreach-end',
       )
       expect(r.output).toContain('OUTER(./names/a.txt)')
       expect(r.output).toContain('INNER(./names/a.txt)')

@@ -1,1 +1,1 @@
-{"lastCommand":"cd /home/tim_carter81/projects/livestage\ngit diff .mdd/statu","lastTool":"Read","lastTarget":"/home/tim_carter81/projects/livestage/.mdd/initiatives/livestage.md"}
+{"lastCommand":"git log --oneline -- .mdd/.status-activity.json .mdd/status-","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.gitignore"}

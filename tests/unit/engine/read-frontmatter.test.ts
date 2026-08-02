@@ -36,8 +36,7 @@ describe('@read-frontmatter', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nid: 01-test\nstatus: complete\ntitle: Test\n---\n\nBody.\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@read-frontmatter path="doc.md" field="status" label=doc_status /
+      `@read-frontmatter path="doc.md" field="status" label=doc_status /
 Status is {{ doc_status }}.
 `,
     )
@@ -48,8 +47,7 @@ Status is {{ doc_status }}.
     writeFileSync(join(projectDir, '01-widget.md'),
       '---\nid: 01-widget\nstatus: draft\n---\n\nBody.\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@set fid = {{ "01" + "-" + "widget" }} /
+      `@set fid = {{ "01" + "-" + "widget" }} /
 @read-frontmatter path="{{ fid }}.md" field="status" label=st /
 Status is {{ st }}.
 `,
@@ -61,8 +59,7 @@ Status is {{ st }}.
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nid: 01-test\nsource_files:\n  - src/a.ts\n  - src/b.ts\n---\n\nBody.\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@read-frontmatter path="doc.md" field="source_files" label=files /
+      `@read-frontmatter path="doc.md" field="source_files" label=files /
 Files: {{ files }}.
 `,
     )
@@ -73,8 +70,7 @@ Files: {{ files }}.
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nid: 01-test\n---\n\nBody.\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@read-frontmatter path="doc.md" field="status" label=doc_status /
+      `@read-frontmatter path="doc.md" field="status" label=doc_status /
 Status: "{{ doc_status }}".
 `,
     )
@@ -87,8 +83,7 @@ Status: "{{ doc_status }}".
   it('warns when file has no frontmatter block', () => {
     writeFileSync(join(projectDir, 'doc.md'), 'Plain text, no frontmatter.\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@read-frontmatter path="doc.md" field="status" /
+      `@read-frontmatter path="doc.md" field="status" /
 `,
     )
     expect(result.warnings.join('\n')).toMatch(/no YAML frontmatter/i)
@@ -98,8 +93,7 @@ Status: "{{ doc_status }}".
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nstatus: ready\n---\n\nBody.\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@read-frontmatter path="doc.md" field="status" /
+      `@read-frontmatter path="doc.md" field="status" /
 `,
     )
     expect(result.output).toContain('ready')
@@ -109,8 +103,7 @@ Status: "{{ doc_status }}".
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nstatus: complete\n---\n\nBody.\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@read-frontmatter path="doc.md" field="status" label=s /
+      `@read-frontmatter path="doc.md" field="status" label=s /
 @if {{ s }} == "complete"
   Doc is complete.
 @if-end
@@ -125,8 +118,7 @@ Status: "{{ doc_status }}".
 
   it('warns when file does not exist', () => {
     const result = render(
-      `@markdownai v1.0
-@read-frontmatter path="missing.md" field="status" /
+      `@read-frontmatter path="missing.md" field="status" /
 `,
     )
     expect(result.warnings.join('\n')).toMatch(/does not exist/i)

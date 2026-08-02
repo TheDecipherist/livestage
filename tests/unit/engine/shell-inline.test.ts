@@ -46,7 +46,7 @@ function getWarnings(source: string, allowShell = false, allowPatterns: string[]
   }).warnings
 }
 
-const DOC_PREFIX = '@markdownai v1.0\n'
+const DOC_PREFIX = ''
 
 describe('shell-inline: blocked by default', () => {
   it('blocks shell inline when allowShell is false and emits a warning', () => {

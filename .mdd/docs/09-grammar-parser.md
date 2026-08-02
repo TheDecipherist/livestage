@@ -3,15 +3,19 @@ id: 09-grammar-parser
 title: Grammar Parser
 type: COMPONENT
 path: Parser / Grammar
-source_files: [src/parser/index.ts, src/parser/types.ts, src/parser/args.ts, src/parser/grammar.ts]
-status: planned
-phase: idle
+source_files: [src/parser/index.ts, src/parser/types.ts, src/parser/args.ts, src/parser/parser.ts, src/parser/registry.ts, src/parser/lexer.ts, src/parser/interpolation.ts, src/parser/directives]
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [07-package-skeleton]
 tags: [grammar, ast, directive-registry, frontmatter, self-closing, block-directive]
-known_issues: []
+known_issues:
+  - "Found and fixed a real gap while verifying: ParseResult.version was always null, no frontmatter livestage: field was ever read despite this being an explicit acceptance criterion. Implemented a targeted VERSION_PIN_RE read (not a general YAML parser, that is Wave 5's Schema Engine)."
+  - "Found and fixed a related gap in src/cli/commands/validate.ts (not this feature's source_files but directly blocking its own acceptance criterion): validate never flagged an unregistered/passthrough directive as an error, so a document full of retired directives (@phase, @db, ...) validated clean. Added the check; covered by tests/unit/cli/cli-validate.test.ts."
+  - "The doc's listed source_files (index.ts, types.ts, args.ts, grammar.ts) do not match the actual file layout (parser.ts holds the parse()/parseNodes() logic, registry.ts + directives/ hold the directive table, there is no grammar.ts); corrected to the real files above."
+  - "livestage parser ast|check|directives|imports|macros as a namespaced CLI subcommand group does not exist yet; current commands are flat (parse, list-macros, list-imports). That CLI-shape work belongs to feature 13 (CLI Router)."
 ---
 
 # Grammar Parser
@@ -75,14 +79,20 @@ debugging.
 
 ## Acceptance Criteria
 
-- [ ] All three directive forms parse correctly against donor-copied fixture
-      tests.
-- [ ] Frontmatter is optional and, when present with `livestage: 1`, is read
-      as the version pin.
-- [ ] Every directive in the registry table parses; every excluded donor
-      directive name fails as unknown.
-- [ ] `parser ast|check|directives|imports|macros` subcommands each produce
-      correct output against a fixture doc.
+- [x] All three directive forms parse correctly against donor-copied fixture
+      tests. 675/675 tests green across the merged suite.
+- [x] Frontmatter is optional and, when present with `livestage: 1`, is read
+      as the version pin. Implemented; `tests/unit/parser/parser.test.ts`
+      "frontmatter version pin" block.
+- [x] Every directive in the registry table parses; every excluded donor
+      directive name fails as unknown. Verified live against all 18 excluded
+      directive names (phase, on-complete, event, prompt, section,
+      chunk-boundary, constraint, define-concept, note, plugin-meta, touch,
+      mkdir, copy, append-if-missing, render-template, db, connect, http):
+      every one parses as a passthrough (unknown) node, none silently drop.
+- [!] `parser ast|check|directives|imports|macros` subcommands each produce
+      correct output against a fixture doc. Deferred to feature 13 (CLI
+      Router): current commands are flat, not namespaced this way.
 
 ## Dependencies
 

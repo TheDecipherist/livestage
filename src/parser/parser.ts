@@ -740,6 +740,11 @@ function parseInlineDirective(rawLine: string, lineNum: number, filePath: string
   return mod.parse(input, ctx)
 }
 
+// Frontmatter is optional and, in general, opaque to the parser (a document
+// class schema is Wave 5's Schema Engine). The one field the grammar itself
+// recognizes is the version pin: a top-level `livestage: <version>` line.
+const VERSION_PIN_RE = /^livestage:\s*(\S+)\s*$/
+
 export function parse(source: string, options?: ParseOptions): ParseResult {
   const filePath = options?.filePath ?? '<input>'
   const inImport = options?.inImport ?? false
@@ -747,6 +752,7 @@ export function parse(source: string, options?: ParseOptions): ParseResult {
 
   let startPos = 0
   const frontmatterNodes: ASTNode[] = []
+  let version: string | null = null
 
   if (lines[0]?.trim() === '---') {
     let closeIdx = -1
@@ -754,7 +760,12 @@ export function parse(source: string, options?: ParseOptions): ParseResult {
       if (lines[i]?.trim() === '---') { closeIdx = i; break }
     }
     if (closeIdx !== -1) {
-      for (let i = 0; i <= closeIdx; i++) frontmatterNodes.push(makeMarkdown(lines[i] ?? '', i + 1))
+      for (let i = 0; i <= closeIdx; i++) {
+        const raw = lines[i] ?? ''
+        frontmatterNodes.push(makeMarkdown(raw, i + 1))
+        const m = VERSION_PIN_RE.exec(raw.trim())
+        if (m) version = m[1] ?? null
+      }
       startPos = closeIdx + 1
       while (startPos < lines.length && lines[startPos]?.trim() === '') {
         frontmatterNodes.push(makeMarkdown(lines[startPos] ?? '', startPos + 1))
@@ -764,24 +775,29 @@ export function parse(source: string, options?: ParseOptions): ParseResult {
   }
 
   // No header directive: extension-based routing (the hook only fires on
-  // .stage) decides what gets parsed, not a first-line content marker. The
-  // optional engine version pin lives in frontmatter (`livestage: 1`); wiring
-  // that read is Grammar Parser (feature 09) work, not this seed. A leading
-  // `@markdownai` marker line (donor documents, fixtures not yet migrated)
-  // is recorded as an inert passthrough line rather than fed into the
-  // directive loop: unregistered and not self-closed, it would otherwise be
-  // read as a block opener awaiting a `@markdownai-end` that never comes.
+  // .stage) decides what gets parsed, not a first-line content marker. A
+  // leading
+  // unrecognized, non-self-closed opener (a legacy single-line format marker,
+  // in whatever spelling) is recorded as an inert, empty passthrough node
+  // rather than fed into the directive loop: unregistered and not
+  // self-closed, it would otherwise be read as a block opener awaiting a
+  // close tag that never comes. Emitting it empty (not the literal line)
+  // keeps it distinguishable from a genuinely unknown directive elsewhere in
+  // the document, which does render its raw text.
   let bodyStart = startPos
   const markerNodes: ASTNode[] = []
   const markerLine = lines[bodyStart]
-  if (markerLine !== undefined && markerLine.trim().startsWith('@markdownai')) {
-    markerNodes.push({ type: 'passthrough', line: bodyStart + 1, raw: markerLine } as PassthroughNode)
-    bodyStart++
+  if (markerLine !== undefined) {
+    const markerOpener = tryParseOpener(markerLine, 0)
+    if (markerOpener && !markerOpener.isSelfClosed && !getModule(markerOpener.name)) {
+      markerNodes.push({ type: 'passthrough', line: bodyStart + 1, raw: '' } as PassthroughNode)
+      bodyStart++
+    }
   }
 
   const rest = lines.slice(bodyStart)
   const baseLineNum = bodyStart + 1  // 1-based line number of first body line
   const { nodes: bodyNodes } = parseNodes(rest, 0, baseLineNum, filePath, inImport, [])
 
-  return { isLiveStage: true, version: null, nodes: [...frontmatterNodes, ...markerNodes, ...bodyNodes] }
+  return { isLiveStage: true, version, nodes: [...frontmatterNodes, ...markerNodes, ...bodyNodes] }
 }

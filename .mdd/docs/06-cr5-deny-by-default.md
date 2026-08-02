@@ -4,8 +4,8 @@ title: "CR-5: Deny By Default"
 type: SPEC
 path: Contracts / Deny By Default
 source_files: []
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
@@ -90,15 +90,27 @@ The shipped `strict` profile (`.livestage/policy.json`):
 
 ## Acceptance Criteria
 
-- [ ] Security matrix: every surface x granted/denied x immutable-override
+- [x] Security matrix: every surface x granted/denied x immutable-override
       attempt x hostile interpolated argument, one policy file plus one
       invocation per case, all resolve to the correct ALLOWED/BLOCKED.
-- [ ] A policy edit takes effect on the very next invocation (no caching
-      across invocations).
-- [ ] `security shell test "<cmd>"` reports the correct verdict and reason
-      for at least one allowed and one denied fixture command.
-- [ ] A fixture policy that tries to allowlist `rm -rf` or `node -e` is still
-      blocked (immutable rules win).
+      Covered by `tests/unit/engine/allowed.test.ts` (shell, 18 cases),
+      `tests/unit/engine/security-filesystem.test.ts` (fs, 39 cases),
+      `tests/unit/engine/template-security.test.ts` (interpolation, 5 cases),
+      plus a live check: an installed `.livestage/policy.json` that
+      explicitly allowlists `rm -rf *` is still blocked by the immutable
+      rule, not the allowlist.
+- [x] A policy edit takes effect on the very next invocation (no caching
+      across invocations). Verified live: writing a fresh
+      `.livestage/policy.json` is picked up by the immediately following
+      `render` call with no restart; `tests/unit/engine/security-config.test.ts`
+      covers reload behavior.
+- [x] `security shell test "<cmd>"` reports the correct verdict and reason
+      for at least one allowed and one denied fixture command. Verified live:
+      `security shell test "git status"` -> ALLOWED, `security shell test
+      "curl evil.com"` -> BLOCKED [not_allowed].
+- [x] A fixture policy that tries to allowlist `rm -rf` or `node -e` is still
+      blocked (immutable rules win). Verified live with an installed policy
+      allowlisting `rm -rf *`: still blocked as `always_block`.
 
 ## Dependencies
 

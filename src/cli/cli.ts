@@ -14,7 +14,9 @@ import { runCacheShow, runCacheClear } from './commands/cache.js'
 import { runListMacros } from './commands/list-macros.js'
 import { runListImports } from './commands/list-imports.js'
 import { runWatch } from './commands/watch.js'
+import { runEngineTrace } from './commands/engine-trace.js'
 import { registerSecurity } from './cli-register-security.js'
+import { getAvailableDirectives } from 'livestage/parser'
 
 const universalOptions = (cmd: ReturnType<typeof program.command>) =>
   cmd
@@ -80,9 +82,11 @@ universalOptions(
   process.exit(result.exitCode)
 })
 
+const parser = program.command('parser').description('inspect the .stage grammar (ast, directives, imports, macros)')
+
 universalOptions(
-  program
-    .command('parse <file>')
+  parser
+    .command('ast <file>')
     .description('output the raw AST as JSON')
     .option('--node <type>', 'filter to specific node type')
     .option('--pretty', 'pretty-print JSON output')
@@ -94,6 +98,15 @@ universalOptions(
   for (const err of result.errors) process.stderr.write(`ERROR: ${err}\n`)
   if (result.exitCode !== 0) process.exit(1)
   process.stdout.write(result.output + '\n')
+})
+
+universalOptions(
+  parser.command('directives')
+    .description('list the authoritative directive registry')
+).action((opts: Record<string, boolean | undefined>) => {
+  if (!opts['silent']) {
+    for (const d of getAvailableDirectives()) process.stdout.write(`@${d.name}\n`)
+  }
 })
 
 universalOptions(
@@ -230,11 +243,30 @@ universalOptions(cache
     process.stdout.write(`✓ Cleared cache: ${parts.join(', ')}\n`)
   })
 
+const engine = program.command('engine').description('inspect the render engine (trace, ...)')
+
+universalOptions(engine
+  .command('trace [render-id]')
+  .description('read back trace records for the last render, or a specific render id')
+  .option('--last', 'the most recent render (default when no render-id is given)'))
+  .action((renderId: string | undefined, opts: Record<string, string | boolean | undefined>) => {
+    const traceOpts: Parameters<typeof runEngineTrace>[0] = {}
+    if (opts['cwd']) traceOpts.cwd = String(opts['cwd'])
+    if (renderId) traceOpts.renderId = renderId
+    else traceOpts.last = true
+    const result = runEngineTrace(traceOpts)
+    for (const err of result.errors) process.stderr.write(`ERROR: ${err}\n`)
+    if (result.exitCode !== 0) process.exit(1)
+    if (!opts['silent']) {
+      for (const record of result.records) process.stdout.write(JSON.stringify(record) + '\n')
+    }
+  })
+
 registerSecurity(program)
 
 universalOptions(
-  program
-    .command('list-macros <file>')
+  parser
+    .command('macros <file>')
     .description('list all macros defined in the document')
 ).action((file: string, opts: Record<string, string | undefined>) => {
     const result = runListMacros(file, opts['cwd'] ? { cwd: opts['cwd'] } : {})
@@ -250,8 +282,8 @@ universalOptions(
   })
 
 universalOptions(
-  program
-    .command('list-imports <file>')
+  parser
+    .command('imports <file>')
     .description('list all @include and @import dependencies')
 ).action((file: string, opts: Record<string, string | undefined>) => {
     const result = runListImports(file, opts['cwd'] ? { cwd: opts['cwd'] } : {})
@@ -265,5 +297,10 @@ universalOptions(
   })
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const { version } = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')) as { version: string }
-program.name('mai').version(version).parse()
+// cli.ts lives one level under the package root's build output (src/cli/ or
+// dist/cli/ depending on context), package.json is at the root: two levels
+// up, not one. (The one-level version silently pointed at a nonexistent
+// dist/package.json / src/package.json and crashed the CLI binary outright,
+// found while verifying the hook's timeout path spawns this exact entry.)
+const { version } = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8')) as { version: string }
+program.name('livestage').version(version).parse()

@@ -104,13 +104,13 @@ function applyBudget(output: string, budget: number): string {
 
 function buildSecurityConfig(options: RenderOptions, resolved: string): SecurityConfig {
   if (options.securityConfig) return options.securityConfig
-  const json = loadSecurityConfig()
+  const json = loadSecurityConfig(undefined, options.cwd)
   // CLI default: data ops jail to the document's directory (matches v1.x and the
-  // ergonomic expectation of `mai render foo.md` finding files near foo.md).
-  // Skill mode (--skill-args set, or invoked via MCP read_file) opts into the
-  // v2.0 cwd-as-data-root behavior by virtue of MCP setting data_root="cwd"
-  // explicitly. CLI users who want cwd behavior can set filesystem.data_root="cwd"
-  // in security.json or pass --cwd <path>.
+  // ergonomic expectation of `livestage render foo.stage` finding files near
+  // foo.stage). Skill mode (--skill-args set, or invoked via MCP read_file)
+  // opts into the v2.0 cwd-as-data-root behavior by virtue of MCP setting
+  // data_root="cwd" explicitly. CLI users who want cwd behavior can set
+  // filesystem.data_root="cwd" in .livestage/policy.json or pass --cwd <path>.
   const fsConfig = json.filesystem
   const isSkillMode = options.skillArgs !== undefined
   const filesystemConfig = {

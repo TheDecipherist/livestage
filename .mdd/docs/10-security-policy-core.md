@@ -3,18 +3,27 @@ id: 10-security-policy-core
 title: Security Policy Core
 type: COMPONENT
 path: Security / Policy Core
-source_files: [src/engine/security/policy.ts, src/engine/security/surfaces.ts, src/engine/security/immutable.ts, src/engine/security/masking.ts, src/engine/security/profiles.ts]
-status: planned
-phase: idle
+source_files: [src/engine/security/config.ts, src/engine/security/rules.ts, src/engine/security/shell.ts, src/engine/security/filesystem.ts, src/engine/security/masking.ts, src/engine/security/audit.ts, src/engine/security/path-expand.ts, src/engine/security/modes.ts, src/cli/commands/security.ts, src/cli/cli-register-security.ts]
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [07-package-skeleton, 06-cr5-deny-by-default]
 tags: [policy, allowlist, immutable-rules, masking, strict-profile, per-invocation-reload]
-known_issues: []
+known_issues:
+  - "The doc's stated source_files (policy.ts, surfaces.ts, immutable.ts, profiles.ts) and integration_contracts function name (enforcePolicy) do not match the real code: there is no single unified enforcePolicy gate. The real architecture has per-surface check functions (checkShellCommand for shell, checkDataPath/checkWritePath for filesystem, checkAbsolutePath/checkFilePath for path jails). Corrected source_files and integration_contracts below to match reality rather than the plan-time guess."
+  - "Found and fixed a real gap while verifying: config, and the cache directory, both defaulted to the user's home directory (~/.livestage/security.json, ~/.livestage/cache), not the project-local .livestage/ the spec calls for (Tech Stack: 'Config home: .livestage/ in the project root: policy.json, schemas/, cache/, trace/'). Fixed config.ts's loadSecurityConfig default path, security.ts's CLI-facing path (also renamed security.json -> policy.json to match the spec), cache.ts's CACHE_DIR, and threaded render.ts's --cwd option through to config resolution. Audit log and error log were left at ~/.livestage/ (not explicitly named in the project-local list, and an operational log surviving outside any one project is defensible)."
+  - "The @code carve-out acceptance criterion (an engine-built runner invocation passing despite node -e being always-blocked) cannot be verified: @code does not exist yet, it is feature 29 (Code Runners, wave 4)."
 integration_contracts:
-  - function: enforcePolicy
+  - function: checkShellCommand
     when: always
+    mandatory: true
+  - function: checkDataPath
+    when: always
+    mandatory: true
+  - function: checkWritePath
+    when: "filesystem.write_enabled is true"
     mandatory: true
 ---
 
@@ -80,14 +89,20 @@ satisfies; this doc covers only the implementation-specific rules:
 
 ## Acceptance Criteria
 
-- [ ] Policy reload: editing `.livestage/policy.json` between two invocations
-      changes behavior on the very next one, no restart.
-- [ ] `security show` prints the effective policy.
-- [ ] `security shell test "<cmd>"` returns correct ALLOWED/BLOCKED plus
-      reason for allowed and denied fixture commands.
+- [x] Policy reload: editing `.livestage/policy.json` between two invocations
+      changes behavior on the very next one, no restart. Verified live and in
+      `tests/unit/engine/security-config.test.ts`.
+- [x] `security show` prints the effective policy. Verified live.
+- [x] `security shell test "<cmd>"` returns correct ALLOWED/BLOCKED plus
+      reason for allowed and denied fixture commands. Verified live (`git
+      status` -> allowed; `eval something` -> always_block).
 - [ ] The `@code` carve-out test: an engine-built runner invocation
       (temp-file based) passes even though `node -e ...` is always-blocked.
-- [ ] Masking applies to output before cache and before any trace record.
+      Cannot verify, `@code` does not exist yet (feature 29, wave 4).
+- [x] Masking applies to output before cache and before any trace record.
+      Verified by inspection: `cache.ts` calls `applyMasking` before every
+      cache write; `engine.ts` builds `maskedArgs` via `applyMasking` before
+      passing them to `emitSpan`.
 
 ## Dependencies
 

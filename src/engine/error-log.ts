@@ -2,7 +2,7 @@
 //
 // Captures every error the engine catches and swallows — ReferenceError on
 // undefined variables, TypeError on bad property chains, expression timeouts,
-// path-resolution failures, etc. — to ~/.markdownai/logs/markdownai-error.log
+// path-resolution failures, etc. — to ~/.livestage/logs/livestage-error.log
 // so operators can audit them later even when the engine intentionally
 // suppresses them at runtime (e.g. ReferenceError during multi-phase
 // renders where unset variables are expected).
@@ -30,8 +30,8 @@ export interface ErrorLogEntry {
   detail?: unknown                        // free-form structured detail
 }
 
-const LOG_DIR = join(homedir(), '.markdownai', 'logs')
-const LOG_PATH = join(LOG_DIR, 'markdownai-error.log')
+const LOG_DIR = join(homedir(), '.livestage', 'logs')
+const LOG_PATH = join(LOG_DIR, 'livestage-error.log')
 
 let initialized = false
 
@@ -46,7 +46,7 @@ function ensureLogDir(): void {
 }
 
 /**
- * Log an engine error to ~/.markdownai/logs/markdownai-error.log.
+ * Log an engine error to ~/.livestage/logs/livestage-error.log.
  *
  * `decision` documents what the engine did with this error:
  *   - 'suppressed' — silently swallowed (e.g. ReferenceError on undefined
