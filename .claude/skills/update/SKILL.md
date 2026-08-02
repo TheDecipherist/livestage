@@ -32,8 +32,11 @@ Show what was added, removed, and changed since `last_synced`, and which doc sec
 need updating. Ask: proceed, review findings first, or cancel. Wait for confirmation.
 
 ## U5, rewrite only what changed
-Rewrite ONLY the drifted sections. Preserve `known_issues` (append-only, never drop),
-`depends_on` (add only, never remove without asking), and any still-accurate prose.
+Rewrite ONLY the drifted sections. Preserve `known_issues` as-is (it holds ACTIVE
+issues only; /update may append a newly-found issue but never closes one, closing
+is /fix-known-issues' job via the doc's `## Fixed Issues` section, which is also
+preserved verbatim), `depends_on` (add only, never remove without asking), and any
+still-accurate prose.
 Then update frontmatter: `last_synced: today`, ask whether to change `status`, update
 `phase`, and if the doc has no `path`, offer to add one (insert between `tags` and
 `known_issues`).

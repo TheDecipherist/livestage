@@ -14,6 +14,9 @@ tags: [update-frontmatter, sanctioned-write, atomic-write, schema-validated]
 known_issues:
   - "@update-frontmatter itself was already fully built and seeded (write-ops.ts, including the bracket/dot-path list addressing tested in update-frontmatter-list.test.ts from an earlier wave); this feature's real scope was the two things layered on top: the schema pre-write gate (feature 32) and true atomic writes."
   - "Writes were NOT atomic before this wave: a single writeFileSync(target, content) call, which does not guarantee no-partial-state-on-crash the way business rule 3 requires. Fixed with write-to-temp-then-rename in the same directory (rename() is atomic on the same filesystem); a failure mid-write leaves an orphaned .tmp file, never a truncated target."
+primitives:
+  - name: "@update-frontmatter"
+    kind: directive
 ---
 
 # Update Frontmatter
@@ -24,6 +27,34 @@ known_issues:
 `~/projects/markdownai/packages/engine/src/frontmatter-utils.ts` (extended
 with pre-write schema validation). The `@update-frontmatter` directive: THE
 one sanctioned write in the whole system, schema-validated pre-write, atomic.
+
+## Interface Overview
+
+`@update-frontmatter` is the one directive allowed to write anything.
+Everything else in LiveStage only reads; this is how a document persists
+state between renders, like a multi-step pipeline recording progress in
+its own frontmatter. The write is validated against the target's declared
+schema before it happens, and lands atomically, so a crash mid-write never
+leaves a corrupted file.
+
+| Name | What it does |
+|---|---|
+| `@update-frontmatter` | Writes one field into a markdown file's YAML frontmatter. |
+
+### @update-frontmatter
+
+Updates a single frontmatter field on the target document, creating it if
+absent.
+
+```stage
+@update-frontmatter path="state.md" field="status" value="done" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `path` | file path | The markdown file to update |
+| `field` | frontmatter key | Which field to set (supports dot/bracket addressing into a list) |
+| `value` | any string | The value to write |
 
 ## Architecture
 

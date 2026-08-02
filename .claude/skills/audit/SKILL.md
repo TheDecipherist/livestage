@@ -120,6 +120,23 @@ analysis (WHY the mistake was made, not just what), prevention rules (proposed C
 additions), and MDD self-improvement (classify each recurring gap as criteria-gap /
 criteria-ambiguous / build-gap / doc-field-gap, naming the exact MDD file to change).
 
+The report ALWAYS carries an **Open Items Backlog** section, first-class, not a
+grep afterthought: enumerate every unchecked `[ ]`/`[!]` checkbox and every
+`known_issues` entry across the whole doc corpus (docs, waves, initiatives),
+grouped `[deferred]` vs `[gap]` (untagged counts as `[gap]` and gets flagged for
+classification). For each `[gap]`, check whether the feature it waits on has since
+landed (grep the referenced feature id, compare its doc `status`), and mark those
+"unblocked, re-open candidate". This is the re-open trigger the process otherwise
+lacks: a wave closed with an honest documented gap is a decision; an initiative
+closed with no visible list of what is still open is debt nobody is looking at.
+
+Spec-fidelity pass (same shape as the donor-provenance check): for each doc, compare
+the Business Rules section's own wording against what the doc's scope actually
+delivers. A rule whose wording implies more than the doc implements ("schema-validated
+documents" delivered as write-path-only) is either a documented narrowing decision
+(fine, cite the line where it was decided) or an implicit scope cut (finding, P2+).
+Narrowing is allowed; silent narrowing is the defect.
+
 Integration contract verification, proactive, re-reads source as needed: for each
 contract, for each caller source file, read its `Contracts:` line in the notes. SATISFIED
 is fine; VIOLATION is P1; `(none)` on a file that IS a caller, or a missing line, means

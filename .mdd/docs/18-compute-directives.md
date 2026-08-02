@@ -14,6 +14,15 @@ tags: [hash, query, test, check, shell-allowlist, structured-results]
 known_issues:
   - "source_files corrected: src/engine/shell.ts removed (it is feature 22's pipe-stage shell helper, runShell, dispatched from a @pipe stage, not from @query/@test/@check; feature 22's doc now lists it and got its own Windows-stripping fix, see there). @hash's engine implementation (executeHash) lives in feature 17's read-ops.ts, and @query's (executeQuery) lives in feature 17's sources.ts; exec-ops.ts here owns only @test/@check. See 17's known_issues for the same cross-reference from its side."
   - "Fixed a real, host-project-visible bug while verifying acceptance criterion 3: the shipped strict profile was missing plain npm/npm run allow patterns (only pnpm variants existed), so @test / with no explicit command= (auto-detected via npm run <script>, always npm regardless of package manager) was blocked by default on this project itself. Fixed in defaultSecurityConfig() (config.ts); documented retroactively in 06-cr5-deny-by-default.md's known_issues since that SPEC (wave 1, already closed) is where the shipped profile's shape is specified."
+primitives:
+  - name: "@hash"
+    kind: directive
+  - name: "@query"
+    kind: directive
+  - name: "@test"
+    kind: directive
+  - name: "@check"
+    kind: directive
 satisfies_contracts:
   - from: 10-security-policy-core
     function: checkShellCommand
@@ -41,6 +50,82 @@ satisfies_contracts:
 `packages/engine/src/*`. `@hash` (content hash), `@query` (allowlisted shell,
 captured output), `@test`/`@check` (structured `_exit`, `_summary` from a
 test/check command run through the same allowlist).
+
+## Interface Overview
+
+These four directives run something and hand back the result: a shell
+command, a content hash, or your project's test/check scripts. `@query` is
+the general-purpose escape hatch for allowlisted shell commands; `@test`
+and `@check` are the same idea shaped specifically for pass/fail results
+you can branch on. Nothing here runs unless your project's security policy
+explicitly allows it.
+
+| Name | What it does |
+|---|---|
+| `@hash` | A content hash of a file, for change detection. |
+| `@query` | Runs an allowlisted shell command and captures its output. |
+| `@test` | Runs the project's test suite and returns a structured pass/fail summary. |
+| `@check` | Runs a typecheck/lint/build script and returns a structured pass/fail summary. |
+
+### @hash
+
+Content-hashes a file, handy for detecting whether something changed
+without diffing the whole thing.
+
+```stage
+@hash "package.json" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The file to hash |
+| `algo` | hash algorithm (default `sha256`) | Which algorithm to use |
+| `length` | integer | Truncate the hash to this many characters |
+| `exclude-line` | text to match | Strip a matching line (e.g. a timestamp) before hashing, so that line's changes don't change the hash |
+
+### @query
+
+Runs a shell command, but only if it matches the project's
+`.livestage/policy.json` allowlist; nothing runs by default.
+
+```stage
+@query "git status --short" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `command` | shell command | The command to run |
+
+### @test
+
+Runs the project's test suite and hands back a structured result instead of
+raw text, so you can branch on pass/fail without parsing output. With no
+`command=`, it auto-detects the project's test script.
+
+```stage
+@test label="result" /
+Tests: {{ result_summary }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `command` | shell command | Override the auto-detected test command |
+| `label` | name | Capture the structured result (`_exit`, a summary) into a variable |
+
+### @check
+
+The same idea as `@test`, shaped for a typecheck, lint, or build step
+instead of the test suite.
+
+```stage
+@check label="result" /
+Check: {{ result_summary }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `command` | shell command | Override the auto-detected check command |
+| `label` | name | Capture the structured result (`_exit`, a summary) into a variable |
 
 ## Architecture
 

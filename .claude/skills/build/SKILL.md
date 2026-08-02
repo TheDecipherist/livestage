@@ -84,6 +84,8 @@ the whole tree.
 - Trace every data value the feature consumes, transforms, or displays: backend origin (file:line, the logic), API transport (exact response shape and type), frontend consumption (any transformation), and whether the same concept is computed elsewhere with different logic.
 - LSP preconditions first: if the project's typecheck script declares a codegen step (framework typegen, generated clients), run it before any LSP lookup, or references resolve against nothing and the trace silently under-reports. If the language server itself is unavailable (the readiness hook reports it), the trace runs DEGRADED on grep: say so in the gate output and in the doc's known_issues, never report a degraded trace as a full one.
 - Impact: for each endpoint or function the feature modifies, find every call site with LSP `findReferences` (exact callers, no false hits from comments or a same-named symbol, and it catches aliased imports and re-exports that `grep` misses). Fall back to `grep -rn` only when no language server covers the file type. Every consumer listed may break silently after the change.
+- Name the ENTRY SURFACES: every externally invokable way into this feature (a CLI subcommand, a directive/DSL syntax parsed out of documents, an HTTP route, a hook firing, a config key). These are recorded in the flow doc and each one owes a live invocation at the Green Gate; a feature whose functions are only ever called by its own unit tests has an unreachable surface, which is a bug the unit suite cannot see.
+- Name the PROCESS BOUNDARIES: any point where the flow crosses processes (spawnSync, a hook shelling to a CLI, a queue, IPC). Each boundary owes a two-sided test at the Red Gate, phrased "does the parent observe what the child recorded", because the two sides tested independently is exactly how a child's trace flag never reaches the parent's record.
 - Write findings to `.mdd/audits/flow-<slug>-<date>.md` as you go, not into memory. `data_flow` frontmatter points here.
 - Gate: present the values, any consistency issues found, and the impact list. Ask "proceed with documentation, adjust scope, or stop." Mandatory, do not proceed unconfirmed. If consistency issues exist, decide with the user whether to fix them here or record them as known issues first.
 
@@ -108,9 +110,41 @@ frontmatter-validate hook BLOCKS any doc that violates `.mdd/00-frontmatter-spec
 (a missing field, a bad `status`/`phase` enum, a SPEC with `source_files`, an
 unsatisfied contract), so write them all correctly on the first write, not after a block.
 
-Write the doc body with these sections: Purpose, Architecture, Data Model, API
-Endpoints, Business Rules, Data Flow, Dependencies, Security, Known Issues (empty on a
-new feature). Determine `path` by reading existing docs' `path` values for the
+Also set `primitives`: every CONSUMER-callable surface the Phase 2 flow doc named,
+one block-style entry per primitive with its exact identifier as `name` and a
+free-form lowercase-kebab `kind` chosen from this project's own vocabulary
+(directive, cli-verb, endpoint, driver, ui-component, whatever the project hands
+its users; keep the per-project set small, ask if genuinely ambiguous). This is
+the machine-readable form of the entry-surface list, the Green Gate iterates it
+and any corpus tool queries it instead of guessing path conventions. A feature
+with no externally callable surface leaves it absent, most docs will.
+
+Write the doc body with these sections: Purpose, Architecture, Data Model,
+API/Interface, Business Rules, Data Flow, Dependencies, Security, Known Issues (empty
+on a new feature). The headings `## API/Interface` and `## Business Rules` are exact
+spellings, schema-enforced when `primitives` is present: generators and
+`read_section` tooling match headings literally, and "## API" instead of
+"## API/Interface" silently vanishes from every generated view instead of erroring.
+
+When `primitives` is set, ALSO write `## Interface Overview`, and write it as a
+synthesis section (your judgment, never a discovery agent's): the one section for a
+total stranger, in three parts. Part 1, a short prose overview first, 1 to 2
+paragraphs with no heading of its own: what this set of primitives is as a whole
+and why someone reaches for it, plain human terms, no per-primitive detail (a
+reader must never land on a table with zero framing). Part 2, the quick table
+(header exactly `| Name | What it does |`, one row per primitive, one line each),
+for someone who only wants to know what exists. Part 3, one `### <exact
+identifier>` per primitive, a one-to-two-sentence blurb (what it is for and why
+someone reaches for it, never implementation or history), a `Parameter` / `Values`
+/ `Description` table ONLY when it takes named parameters (a single positional
+value goes in the blurb), at least one minimal runnable example in the section. No feature
+numbers, no CR-refs, no `(line NNN)`, no RESOLVED notes, that history lives in
+Business Rules and Known Issues, which stay exactly as build-facing as they are.
+The acceptance test before moving on: could someone with zero context on this
+project read only this section and know what to do with the thing? The validator
+enforces presence and per-primitive headings and warns on jargon; the judgment
+part, whether it actually reads human, is yours here, this content exists nowhere
+else in the corpus and cannot be extracted later from sections written for builds. Determine `path` by reading existing docs' `path` values for the
 product's established vocabulary, then place this feature where a user would navigate
 to reach it (1 to 3 Title-Case segments, siblings spelled identically); ask if
 genuinely ambiguous.
@@ -153,6 +187,13 @@ dedicated skeleton that asserts the contract holds specifically under that condi
 (name it for the condition, e.g. `lookup carries tenant scope`). A when-conditioned
 contract with no condition-specific test is not covered.
 
+For every PROCESS BOUNDARY the flow doc names, write one skeleton that crosses the
+REAL boundary (actually spawn the child, actually fire the hook) and asserts the
+parent observes what the child recorded (the flag in the trace file, the exit detail,
+the record the child wrote). Two one-sided tests do not cover a boundary; the field
+case was a degraded-render banner that worked while `degraded: true` never reached
+the trace, because each side was tested alone.
+
 Red Gate, mandatory, no skip: run only the new test files. Every one MUST fail. If one
 passes, either the assertion is empty (fix the assertion, never delete it), the
 behavior already exists (retarget the test and note the overlap in `known_issues`), or
@@ -193,7 +234,17 @@ targeted fix), then fix the implementation only, never the test (if a test looks
 re-read the doc; if the doc looks wrong, stop and ask). One line per iteration. Stop at
 five iterations and present options (keep debugging, narrow scope, review together),
 never a sixth. After a block goes green, run the full suite: any regression counts
-against that block's remaining budget. On all green, `gate: passed`.
+against that block's remaining budget.
+
+Before `gate: passed`, the ENTRY-SURFACE check: for each entry surface the flow doc
+names (recorded as the doc's `primitives` field, which is the authoritative list to
+iterate), run ONE live invocation through the real surface (the actual CLI subcommand
+with the real syntax, a real document containing the real directive, a real request
+to the route) and paste the command and output as gate evidence. A green unit suite
+does not satisfy this: "the function works" and "the syntax reaches the function" are
+different claims, and units only prove the first. The field case was three features
+whose exported functions passed every test while being partly unreachable from any
+actual document. On all green plus surfaces exercised, `gate: passed`.
 
 ## Phase 7, verify and report
 
@@ -246,8 +297,10 @@ implementation were wrong.
 Completion, if integration verified:
 - Contract gate: every `satisfies_contracts` entry must be `status: done`. For each, list every call site of the function with LSP `findReferences`; if the language server is unavailable, the gate must SAY it ran degraded on grep and record that in the doc, a degraded gate never reports itself as fully passed (`grep` under-matches here, an aliased import or a re-export hides a real caller, and a missed caller is a contract falsely marked satisfied), fall back to `grep -rn` only when no language server covers the file type. Every call site must invoke it (a contract wired in one layer but not another is not satisfied), set `verified_at` to the confirmed call site as a `path.ext:line` locator, never a date. For every entry whose `when` is a specific condition (not `always`), confirm a test exercises that exact condition and is in the running suite; a when-conditioned contract with no condition-specific test does NOT count as satisfied and blocks completion. A pending contract blocks completion. Confirm every `source_files` entry exists on disk.
 - Set the doc `status: complete`, `phase: all`, `last_synced: today`. (Writing the doc regenerates `.mdd/connections.md` on its own, the connections-sync hook owns the map, no manual rebuild.)
+- Backward sweep, on every close: `grep -rn "<this feature's id>" .mdd/docs/` (and the waves). Any OTHER doc whose known_issues or body references this feature (a stub waiting on it, "blocked until NN lands") is listed in the close report as "docs waiting on this feature, now unblocked", and each gets its entry resolved or re-tagged now, not left for someone to happen upon. `depends_on` orders builds forward; nobody walks it backward unless this step does.
+- Every `known_issues` entry written during this build carries a tag: `[deferred]` (a decision was made not to do this now, with the one-line why) or `[gap]` (found, real, nobody decided anything yet). Untagged entries read as `[gap]`. This is what lets an audit distinguish "we chose not to" from "we forgot" later; without the tag the two are identical in a grep.
 - Clear `.state.json` to `{ "phase": "idle", "gate": "none" }`, and if any lesson from this build qualifies (prevents a repeat mistake, not derivable from code, durable, not already covered), route it: a file-typed lesson to a path rule, a checkable one to a hook, else a CLAUDE.md line.
-- Report: doc, flow doc, files, blocks, tests, integration result, and the branch, then offer to commit and merge to main (stage, conventional commit, merge --no-ff, ask before push).
+- Report: doc, flow doc, files, blocks, tests, integration result, and the branch, then offer to commit and merge to main (stage, conventional commit, merge --no-ff, ask before push). Before the merge itself, run the main-safety gate from plan-execute PE4: if main advanced since the branch was cut, merge main into the feature branch first, prove the merged tree (suite, typecheck, conformance) there, and only then touch main; a red merged tree or a semantic conflict stops and asks, main is never the place a problem is discovered.
 
 If integration is blocked by an external condition: set `status: in_progress`,
 `phase: integration-pending`, `gate: integration-pending`, record the exact blocker,

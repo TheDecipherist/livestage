@@ -34,6 +34,9 @@ known_issues:
     to exercise `@graph target=.../ ` instead
     (tests/unit/parser/parser-directives.test.ts,
     tests/unit/engine/stripper.test.ts, tests/unit/cli/cli-sources.test.ts)."
+primitives:
+  - name: "@graph"
+    kind: directive
 ---
 
 # Graph
@@ -46,6 +49,34 @@ implementation. `@graph`: relation fields, `format=tree|table|mermaid`,
 `format=mermaid` emits a fenced ` ```mermaid ` block (pure markdown per
 CR-11, feature 16) with per-node status classDefs. Structured counts
 (`_nodes`, `_edges`, `_cycles`, `_broken`, `_broken_list`) capturable.
+
+## Interface Overview
+
+`@graph` walks a relationship between markdown documents, like a
+`depends_on` chain across a set of feature docs, and renders it as a
+tree, a table, or a Mermaid diagram. It catches cycles and broken
+references (a doc pointing at an id that doesn't exist) automatically, so
+you don't have to eyeball a big dependency list to spot them.
+
+| Name | What it does |
+|---|---|
+| `@graph` | Walks a frontmatter relationship across a set of documents and renders it as a tree, table, or diagram. |
+
+### @graph
+
+Builds the relationship graph starting from `target` and renders it.
+
+```stage
+@graph target=".mdd/docs/*.md" relation="depends_on" format="tree" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `target` | glob | Which documents to include in the graph |
+| `relation` | frontmatter field (default `depends_on`) | Which relationship field defines the edges |
+| `id-field` | frontmatter field (default `id`) | Which field identifies each node |
+| `format` | `tree` \| `table` \| `mermaid` (default `tree`) | How to render the graph |
+| `label` | name | Capture the structured result (`_nodes`, `_edges`, `_cycles`, `_broken`, `_broken_list`) into a variable |
 
 ## Architecture
 

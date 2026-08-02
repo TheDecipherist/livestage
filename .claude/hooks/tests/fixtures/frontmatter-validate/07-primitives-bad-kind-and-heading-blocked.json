@@ -1,0 +1,7 @@
+{
+  "name": "a non-kebab kind, a near-miss API heading, and a missing Interface Overview are blocked",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": ".claude/hooks/tests/fixtures/frontmatter-validate/docs/primitives-bad.md" } },
+  "env": { "MDD_DIR": ".claude/hooks/tests/fixtures/frontmatter-validate", "MDD_DOCS": ".claude/hooks/tests/fixtures/frontmatter-validate/docs" },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["\"decision\":\"block\"", "kebab-case", "API/Interface", "Interface Overview"]
+}

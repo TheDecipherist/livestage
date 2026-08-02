@@ -28,7 +28,18 @@ section, so the file is durable if a long run compacts. Remove any deleted doc's
 ## M3, generate sections (incremental, batch by batch)
 For each changed or new doc, write a user-facing section wrapped in section markers: a
 plain-English description, What It Does, How To Use It, and where applicable Commands, API
-Endpoints, Configuration, and Examples tables. Ops runbooks get a condensed
+Endpoints, Configuration, and Examples tables. Source priority: when the doc declares
+`primitives`, its `## Interface Overview` section IS the user-facing content, pull each
+primitive's blurb and Parameter/Values/Description table via its exact `### <name>`
+heading and use them nearly verbatim; never quote `## API/Interface` or
+`## Business Rules` to end users, those are build-facing and read like a changelog
+(internal ids, RESOLVED notes, line citations leak straight through). Discover
+primitive-owning docs by the `primitives` field, never by path convention. Docs without
+primitives (architecture, contracts, tooling) keep the rewrite-from-scratch treatment.
+A "primitives at a glance" table opens the Features chapter when any doc declares
+them, assembled by concatenating each doc's Interface Overview Part 2 quick table (the Part 1 prose overview makes a ready-made section introduction)
+(| Name | What it does |) plus a kind and owning-section column; group rows by
+`tags` where the tags suggest reader-facing groupings, falling back to kind. Ops runbooks get a condensed
 Purpose/When-To-Use/Steps form. Verify against the doc's `source_files` (read them briefly,
 do not invent capabilities; mark "(planned)" if the files do not exist yet). Parallelism:
 1 to 4 docs sequentially, patching each to disk before the next; 5+ in batches of up to 8

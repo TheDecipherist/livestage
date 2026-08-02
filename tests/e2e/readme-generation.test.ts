@@ -19,15 +19,17 @@ function renderReadme(): string {
   return execFileSync('node', [cliEntry, 'render', 'README.stage'], { cwd: repoRoot, encoding: 'utf8' })
 }
 
-// The doc-owner-per-directive mapping is a fixed, known set (each directive
-// belongs to exactly one owning doc's API/Interface, per the project's own
-// build docs); "pipe" is the one registry entry with no owning doc of its
-// own (a grammar-internal parse module for the `|` operator, not a
-// directive anyone writes as literal "@pipe" syntax).
+// The doc-owner-per-directive mapping is a fixed, known set: each doc that
+// declares a non-empty `primitives` frontmatter field owns one or more
+// directives' (or pipe builtins') Interface Overview. 27-assert-liveness
+// (a validate-time check on @assert, owned by 26) and 36-frontmatter-query
+// (a where=/fields= extension of @list, owned by 17) document behavior of
+// an existing primitive rather than introducing a new one, so neither
+// declares its own `primitives` entry.
 const EXPECTED_DIRECTIVE_DOCS = [
   '17-source-directives', '18-compute-directives', '19-composition-directives',
-  '20-render-formats', '22-pipe', '26-assert-operators', '27-assert-liveness',
-  '29-code-runners', '33-update-frontmatter', '34-graph', '36-frontmatter-query',
+  '20-render-formats', '22-pipe', '26-assert-operators',
+  '29-code-runners', '33-update-frontmatter', '34-graph',
 ]
 
 describe('README.stage renders README.md content live from the project itself', () => {

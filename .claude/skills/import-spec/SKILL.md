@@ -71,13 +71,27 @@ Before writing anything, show the full proposed tree (this IS the waveplan): fea
 identified and merged, the initiative decision and why (per IS2's structure rule), every
 wave in build order with its demo-state and member features (each tagged COMPONENT or
 SPEC with its path and depends_on), the id range, the merge summary, and the content
-mapping (which spec line ranges feed each doc).
+mapping (which spec line ranges feed each doc). Annotate each wave with its expected
+build shape from the depends_on graph: `sequential` (foundation waves, features chain)
+or `parallel-eligible: N of M` (leaf features with no same-wave dependencies);
+/plan-execute computes the authoritative lane plan at build time, this annotation is
+what lets the user see where the parallel speedup will come from.
 Then present this numbered choice and WAIT for the answer. Never just stop with an empty
 prompt, always show the options:
   1) Accept plan, write the .mdd docs and waves
   2) Save the full waveplan to ./waveplan.md only (human-readable file, no .mdd changes)
   3) Both, save ./waveplan.md and write the .mdd docs and waves
   (or say adjust with what to change and I re-plan, or abort to do nothing)
+In the SAME interaction (one answer, not two prompts), ask the execution mode for
+after the write:
+  a) Unattended end-to-end: build EVERY wave via /plan-execute back to back, best
+     judgment on the small stuff, no "next wave" prompts, stop only on a genuine
+     blocker. Walk away, come back to a built project.
+  b) Build wave 1, then pause for review before each next wave.
+  c) Docs and waves only, no build (the current default).
+This is the LAST interaction of an unattended run, so say that plainly when (a) is
+chosen: every decision after this point is made by the judgment protocol in
+plan-execute or stops the run as BLOCKED.
 On 2 or 3, write `./waveplan.md` at the project root containing exactly the plan shown:
 project type, structure decision and why, every wave with its demo-state, a features
 table of id / feature / doc / COMPONENT-or-SPEC / depends_on, the id range, the merge
@@ -93,6 +107,8 @@ docs. Write in order: CLAUDE.md (if approved), the initiative doc (whenever the 
 - Initiative: id, title, status active, version 1, a real 3-to-6-paragraph Overview (what/why/philosophy/components/done), and a Waves table. Compute its content hash.
 - Waves: id, title, initiative, initiative_version, status, depends_on the prior wave, demo_state, plus a Features table. Compute the hash.
 - Feature docs, per feature in wave order: auto-number from the highest existing id. RE-READ the source line ranges recorded in IS2 now, do not write from the extraction summary. Run the completeness checklist against the freshly-read source (every options table row and default, every CLI flag, every config key and type, every interface and AST node, every error format and trigger, every behavioral table, every always/never rule, every edge-case example, every named distinction). Then write the doc with sections: What to Build (concrete inputs/outputs/must-nots, not a vague description), Architecture (place in the system, interfaces copied verbatim), Implementation Notes (only the non-obvious constraints), Data Model, API/Interface (every export, flag, key), Business Rules (exhaustive, with exact error formats), Acceptance Criteria (concrete, verifiable statements), Dependencies, Known Issues. Frontmatter carries every required schema field (`id`, `title`, `type`, `path`, `source_files`, `status: planned`, `phase: idle`, `last_synced`) plus `initiative`, `wave`, `depends_on` (COMPONENTs list the SPECs and lower COMPONENTs they build on; a SPEC's `depends_on` never contains a COMPONENT), `tags` (4 to 8 concepts, never file paths), and the contract fields below. A SPEC's `source_files` is empty. The frontmatter-validate hook now BLOCKS any doc that violates `.mdd/00-frontmatter-spec.md`, so every field must be correct on the first write, not fixed later.
+- Set `primitives` on every doc that documents consumer-callable surfaces: one entry per primitive the doc owns, block style only (`- name: "@list"` / `  kind: directive`; inline braces do not parse), `kind` free-form lowercase kebab-case from the project's own vocabulary (keep the set small and consistent across the import). For each such doc also write `## Interface Overview` per the spec template's convention, three parts in order: the Part 1 prose overview (1 to 2 paragraphs, no heading of its own, what this primitive set is as a whole and why someone reaches for it), the Part 2 quick table (header exactly `| Name | What it does |`, one row per primitive), then Part 3, `### <exact identifier>` per primitive with a stranger-readable blurb, a Parameter/Values/Description table when it takes named parameters, and one runnable example somewhere in the section, zero internal jargon (the validator enforces structure and warns on jargon). The spec's syntax tables are the raw material, but REWRITE for a stranger, never paste spec prose that leans on the spec's own context. Pull the names from the spec's own syntax tables and command lists, they are exactly what the completeness checklist already extracts. This field is how any tool finds "every directive doc" or "every CLI verb doc" with zero path guessing; a doc with primitives must carry the exact `## API/Interface` and `## Business Rules` headings (the validator blocks otherwise).
+- Narrowing is a decision, never a default: whenever the doc scopes a business rule tighter than the rule's own wording in the source spec (the spec says "schema-validated documents", the doc delivers write-path validation only; the spec names a user-level path, the doc builds only project-level), write the narrowing INTO the doc as an explicit line, `Scope decision: <rule> narrowed to <scope> because <why>`, and surface every such line in the IS gate's WAITING ON YOU block for sign-off. A reader of the spec must never assume a delivery the doc quietly cut; the audit's fidelity pass flags exactly this, so record it here where it is a choice instead of there where it is a finding.
 - Contracts (declare on providers, wire on consumers), so the build's Phase 7 contract gate has something real to verify instead of passing vacuously: for each SPEC invariant or security rule that names a REQUIRED gate function (identifier resolution, an auth or permission check, input validation, masking, any "check before X"), find the COMPONENT that PROVIDES that function and add an `integration_contracts` entry on that provider (`function`, `when` the condition or `always`, `mandatory: true`). Declare it on the provider COMPONENT, never on the SPEC, so the provider is not asked to satisfy its own function. Then for every COMPONENT whose `depends_on` includes that provider AND that actually calls the function, add a matching `satisfies_contracts` placeholder (`from` the provider id, `function`, `when`, `status: pending`, `verified_at: ""`); a dependent that never calls it carries no entry. The build flips each to `status: done` with a real call site at Phase 7, and a `complete` doc must carry no `pending` contract.
 As each file is written, print one indented line `  wrote <id>-<slug>` so the user watches the tree fill in. Mark each file `[~]` before writing and `[x]` after, so a resume never rewrites a done file.
 
@@ -111,6 +127,15 @@ Say: `[import-spec 6/6] Rebuilding startup, regenerating the connections map, cl
 Rebuild `.mdd/.startup.md` (add the initiative and wave summary, preserve Notes), then
 regenerate the connections map explicitly by running `node .claude/hooks/lib/connections-gen.cjs`
 (this skill runs forked, so trigger the generator directly rather than relying on the
-connections-sync hook), and delete the job folder. Report the tree and the next steps
-(`/plan-execute <slug>-wave-1` to build the first wave, or `/audit` to review). The spec
-snapshot lives in `.mdd/specs/` for future re-imports and audits.
+connections-sync hook), and delete the job folder. The spec snapshot lives in
+`.mdd/specs/` for future re-imports and audits.
+
+Then act on the IS3 execution mode:
+- (a) unattended: read `.claude/skills/plan-execute/SKILL.md` and execute it for
+  wave 1 in unattended mode, then wave 2, and so on through the last wave, no
+  prompt between waves. Each wave gets its own branch and its own merge to main
+  (plan-execute owns that hard rule). If any wave stops BLOCKED, stop the run
+  there with the blocker report; never skip a blocked wave to start the next.
+- (b) execute wave 1 the same way, then stop and report, naming the next wave.
+- (c) report the tree and the next steps (`/plan-execute <slug>-wave-1`, or
+  `/audit` to review).

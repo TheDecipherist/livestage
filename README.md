@@ -166,276 +166,663 @@ project without a path escaping this example's own directory.
 
 ## Directive reference
 
-Every directive LiveStage ships, grouped exactly as the project's own
-build docs group them, and pulled live from those docs on every render of
-this file. Add a directive to an existing group's documentation and it
-appears here on the next `npm run readme`, no separate README work.
+Every directive LiveStage ships, pulled live from whichever docs declare
+`primitives` in their frontmatter, no path convention to keep in sync by
+hand. Document a new directive with a `primitives` entry and its Interface
+Overview appears here on the next `npm run readme`.
 
 
 ### Source Directives
 
-## API/Interface
+These seven directives are how a `.stage` document reads the real world:
+the filesystem, structured JSON/CSV files, another document's frontmatter,
+and the environment. Reach for one of these any time you'd otherwise write
+a paragraph by hand and hope it stays accurate, a file listing, a value
+pulled out of `package.json`, the current date, a config value from the
+environment. Every read is live: run the same document again later and it
+answers again, from whatever is true then.
 
-| Directive | Key attrs | Behavior |
+| Name | What it does |
+|---|---|
+| `@list` | Lists files in a directory, or rows from a JSON array or CSV file. |
+| `@read` | Reads a file's raw content, or one value/table out of a JSON or CSV file. |
+| `@read-frontmatter` | Reads one field out of a markdown file's YAML frontmatter. |
+| `@tree` | Renders a directory as an indented tree. |
+| `@count` | Counts files in a directory, or lines in a file. |
+| `@date` | The current date/time, or a file's last-modified time, in a format you choose. |
+| `@env` | An environment variable, with an optional fallback. |
+
+### @list
+
+Lists the entries in a directory, or reads rows out of a JSON array or a CSV
+file when the path ends in `.json`/`.csv`.
+
+```stage
+@list "src" match="*.ts" type="files" /
+```
+
+| Parameter | Values | Description |
 |---|---|---|
-| `@list` | glob/`match`/`type`/`depth` (filesystem), `path`/`mode` (JSON), `columns`+`where` (structured rows), `label`, `as=` | files, dirs, JSON array/object items, CSV rows |
-| `@read` | `file`, `path=` (dot-notation, JSON/YAML/TOML), `column=`+`where=` (CSV), `key=` (.env) implemented but unreachable, see Known Issues), `label`, `as=` | raw file content, or a value/table extracted from structured files |
-| `@read-frontmatter` | `path`, `field` (single, seeded) | schema-validated (F-SCHEMA); reads ONE top-level field per call, arrays comma-joined |
-| `@tree` / `@count` | path/glob | tree render / count |
-| `@date` / `@env` | format / `fallback` | now / env value; `@env` has no `masked` attribute. A resolved secret-shaped value is masked before it is written to cache (`cache.ts`) or a trace record (`engine.ts`'s `applyMasking` on directive args), never in the primary render/stdout output, which shows the value the caller explicitly requested |
+| `match` | glob pattern | Only include entries whose name matches |
+| `type` | `files` \| `dirs` \| `both` (default `files`) | What kind of entries to include |
+| `depth` | integer | How many directory levels to recurse (unlimited if omitted) |
+| `path` | dot-path (JSON only) | Pull one nested value or array out of a JSON file instead of listing its top level |
+| `columns` | `col1,col2` (JSON/CSV) | Which fields to show, in order, for array/row data |
+| `where` | expression | Keep only rows/items matching the expression |
+| `column` | name (CSV only) | Return a single column instead of full rows |
+| `label` | name | Capture the result into a variable instead of (or as well as) printing it |
 
-## Business Rules
+### @read
 
-1. `@read`'s access option is expected to match the file format. RESOLVED
-   (2026-08-02, post-initiative known_issues sweep): a mismatched option
-   (e.g. `column=` against JSON, `path=` against CSV, any structured option
-   against a plain file) now pushes a named warning identifying the option
-   and the actual file kind, rather than silently falling through with no
-   signal at all. Still not a hard error, matching this directive's
-   established degrade-with-a-warning contract rather than a crash; the
-   read itself still completes (raw content for a non-structured file, the
-   correctly-typed structured read when the file DOES match one of the two
-   supported kinds, just the extra option ignored). See Known Issues.
-2. `@read-frontmatter`'s seeded form reads exactly one top-level field per
-   call; arrays are comma-joined (line 335).
-3. `@list`'s `where` filters structured rows only in the seed; frontmatter-
-   aware `where` is not yet supported (deferred to feature 36) (line 333).
-4. `@read`'s `key=` reads a named value from a `.env` file (`readEnvFile` in
-   `sources.ts`), but `.env*`/`*.env` sits in the immutable
-   `FILESYSTEM_ALWAYS_BLOCK_PATTERNS` list, so this path never actually
-   executes; the sanctioned way to reach an env value is `@env NAME` backed
-   by the CLI's `--env <file>` loader (feature 13), not a direct file read.
-5. All filesystem access resolves through the security policy (feature 10),
-   including path traversal checks.
-6. `@read-frontmatter` honors `visible="false"`/`silent="true"` the same way
-   `@list`/`@read`/`@tree`/`@code` do: suppresses inline output, `label=`
-   still captures the value (RESOLVED 2026-08-02, see known_issues).
+Reads a file's content as-is, or pulls one value or table out of a JSON or
+CSV file when `path=`/`column=` is given.
+
+```stage
+@read "package.json" path="name" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `path` | dot-path (JSON only) | Extract one nested value out of a JSON file |
+| `columns` | `col1,col2` (JSON/CSV) | Which fields to show, in order |
+| `where` | expression | Keep only rows/items matching the expression |
+| `column` | name (CSV only) | Return a single column instead of full rows |
+| `label` | name | Capture the result into a variable |
+| `visible` / `silent` | `false` / `true` | Suppress the inline print, useful when only the captured `label=` value is needed |
+
+### @read-frontmatter
+
+Reads one named field out of a markdown file's YAML frontmatter block,
+useful for pulling a doc's `status`, `title`, or any other frontmatter value
+into a render without opening the file yourself.
+
+```stage
+@read-frontmatter "README.stage" field="title" label="doc_title" visible="false" /
+{{ doc_title }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `field` | frontmatter key | The single top-level field to read (arrays come back comma-joined) |
+| `label` | name | Capture the value into a variable |
+| `visible` / `silent` | `false` / `true` | Suppress the inline print, keep only the captured value |
+
+### @tree
+
+Renders a directory as an indented tree, the same shape as the Unix `tree`
+command.
+
+```stage
+@tree "src" depth="2" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `match` | glob pattern | Only include entries whose name matches |
+| `depth` | integer | How many levels to recurse (unlimited if omitted) |
+
+### @count
+
+Counts the files in a directory (optionally filtered by `match=`), or the
+lines in a file.
+
+```stage
+@count "src" match="*.ts" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `match` | glob pattern | Only count entries whose name matches |
+| `type` | `files` \| `dirs` \| `both` (default `files`) | What kind of entries to count |
+
+### @date
+
+The current date and time, or a file's last-modified time, in a format you
+choose.
+
+```stage
+@date format="YYYY-MM-DD" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `format` | `ISO`, `date`, or a token pattern (`YYYY-MM-DD HH:mm`, etc.) | How to format the result (default `ISO`) |
+| `type` | `current` (default) \| `modified` | Use now, or a file's last-modified time |
+| `file` | path | The file to read the modified time from, when `type="modified"` |
+
+### @env
+
+Reads an environment variable, with an optional fallback when it isn't set.
+
+```stage
+@env "NODE_ENV" fallback="development" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | variable name | The environment variable to read |
+| `fallback` | any string | Value to use when the variable isn't set |
 
 ### Compute Directives
 
-## API/Interface
+These four directives run something and hand back the result: a shell
+command, a content hash, or your project's test/check scripts. `@query` is
+the general-purpose escape hatch for allowlisted shell commands; `@test`
+and `@check` are the same idea shaped specifically for pass/fail results
+you can branch on. Nothing here runs unless your project's security policy
+explicitly allows it.
 
-| Directive | Key attrs | Behavior |
+| Name | What it does |
+|---|---|
+| `@hash` | A content hash of a file, for change detection. |
+| `@query` | Runs an allowlisted shell command and captures its output. |
+| `@test` | Runs the project's test suite and returns a structured pass/fail summary. |
+| `@check` | Runs a typecheck/lint/build script and returns a structured pass/fail summary. |
+
+### @hash
+
+Content-hashes a file, handy for detecting whether something changed
+without diffing the whole thing.
+
+```stage
+@hash "package.json" /
+```
+
+| Parameter | Values | Description |
 |---|---|---|
-| `@hash` | `path`, `exclude-line`, `label` | content hash |
-| `@query` | `command` | allowlisted shell, captured output |
-| `@test` / `@check` | `command` | structured `_exit`, `_summary` |
+| (positional) or `path` | file path | The file to hash |
+| `algo` | hash algorithm (default `sha256`) | Which algorithm to use |
+| `length` | integer | Truncate the hash to this many characters |
+| `exclude-line` | text to match | Strip a matching line (e.g. a timestamp) before hashing, so that line's changes don't change the hash |
 
-## Business Rules
+### @query
 
-1. `@query` executes only allowlisted shell commands (line 339, feature 06
-   rule 1).
-2. `@test`/`@check` execute through the same allowlist as `@query`; the
-   runner patterns must be present in the shipped profile (line 424-428).
-3. `@hash`'s `exclude-line` option excludes a matching line before hashing
-   (e.g. to hash content ignoring a timestamp line).
+Runs a shell command, but only if it matches the project's
+`.livestage/policy.json` allowlist; nothing runs by default.
+
+```stage
+@query "git status --short" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `command` | shell command | The command to run |
+
+### @test
+
+Runs the project's test suite and hands back a structured result instead of
+raw text, so you can branch on pass/fail without parsing output. With no
+`command=`, it auto-detects the project's test script.
+
+```stage
+@test label="result" /
+Tests: {{ result_summary }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `command` | shell command | Override the auto-detected test command |
+| `label` | name | Capture the structured result (`_exit`, a summary) into a variable |
+
+### @check
+
+The same idea as `@test`, shaped for a typecheck, lint, or build step
+instead of the test suite.
+
+```stage
+@check label="result" /
+Check: {{ result_summary }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `command` | shell command | Override the auto-detected check command |
+| `label` | name | Capture the structured result (`_exit`, a summary) into a variable |
 
 ### Composition Directives
 
-## API/Interface
+These ten directives are how a `.stage` document controls what renders and
+reuses logic instead of just listing data top to bottom: branching on a
+condition, looping over a list, defining a reusable snippet once and
+calling it from several places, or pulling in another `.stage` file. Reach
+for these once a document needs to do more than read one thing and print
+it.
 
-| Directive | Key attrs | Behavior |
+| Name | What it does |
+|---|---|
+| `@set` | Assigns a variable for later `{{ }}` use. |
+| `@if` | Branches on a condition, rendering its body only when true. |
+| `@foreach` | Loops over a list or a query's result. |
+| `@switch` | Branches on an expression across multiple cases. |
+| `@define` | Defines a reusable, parameterized block (a macro). |
+| `@call` | Invokes a macro defined with `@define`. |
+| `@include` | Renders another `.stage` file's content inline. |
+| `@import` | Pulls in another `.stage` file's macros/env fallbacks without rendering it. |
+| `@template` | Renders a reusable partial file against a bound data value. |
+| `@data` | Defines a small structured data value inline, for `@template` or `{{ }}` use. |
+
+### @set
+
+Assigns a variable, scoped to the current render only; nothing set here
+leaks into a later render of the same document.
+
+```stage
+@set count = @count "src" match="*.ts" /
+{{ count }} TypeScript files.
+```
+
+### @if
+
+Branches on a condition, rendering its body only when the condition is
+true. Closed with `@if-end`.
+
+```stage
+@set count = @count "src" match="*.ts" /
+@if count > 50
+This is a big module.
+@if-end
+```
+
+### @foreach
+
+Loops over a list, or a query's result rows, binding each item to a
+variable for the loop body. Closed with `@foreach-end`.
+
+```stage
+@foreach file in @list "src" match="*.ts" /
+- {{ file }}
+@foreach-end
+```
+
+### @switch
+
+Branches on an expression across multiple `@case` values, with an optional
+`@default` when nothing matches. Closed with `@switch-end`.
+
+```stage
+@switch status
+@case "active"
+Active.
+@case "complete"
+Done.
+@default
+Unknown.
+@switch-end
+```
+
+### @define
+
+Defines a reusable, parameterized block of markdown and directives (a
+macro), invoked later with `@call`. Closed with `@define-end`.
+
+```stage
+@define greet(name)
+Hello, {{ name }}!
+@define-end
+```
+
+| Parameter | Values | Description |
 |---|---|---|
-| `@set` | `name`, `value` | single-render scope |
-| `@if`/`@foreach`/`@switch` | `expr` / `x in {{ }}` | control flow |
-| `@define`/`@call` | `name` | macros |
-| `@include`/`@import` | `path` | inline / import macros |
-| `@template`/`@data` | `data=`, `as=` | bound-data partials |
+| (positional) | `name(param1, param2)` | The macro's name and parameter list |
+| `local` | flag | Scope the macro to this file only, not shared with files that `@include` it |
 
-## Business Rules
+### @call
 
-1. `@set` scopes to a single render pass; no leakage across invocations
-   (line 93-94).
-2. `@include`/`@import`/`@template` resolve `.stage` files relative to the
-   including document, subject to filesystem policy (line 322-324).
-3. The `allowed()` sandbox builtin performs validated dispatch against a
-   fixed list of allowed values (line 455-456).
+Invokes a macro previously defined with `@define`, passing arguments
+either positionally or as `key=value` pairs.
+
+```stage
+@call greet("world")
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | `name(arg1, arg2)` or `name key=value` | The macro to invoke and its arguments |
+
+### @include
+
+Renders another `.stage` file's content inline, as if it were pasted at
+this point in the document. Paths are confined to the project, no
+absolute paths and no `..` traversal.
+
+```stage
+@include "partials/header.stage" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The `.stage` file to render inline |
+| `if` | expression | Only include when the expression is true |
+| `local` | flag | Don't share this file's own macros back out |
+
+### @import
+
+Pulls in another `.stage` file's macro and environment-fallback
+definitions without rendering any of its content, useful for sharing
+`@define`d macros across files.
+
+```stage
+@import "partials/macros.stage" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The `.stage` file to import definitions from |
+| `if` | expression | Only import when the expression is true |
+| `local` | flag | Don't re-export this file's own macros |
+
+### @template
+
+Renders a reusable partial file against a bound data value, useful for
+rendering the same layout once per item in a `@foreach`.
+
+```stage
+@foreach user in @list "data/users.json" /
+@template "partials/user-card.stage" data="{{ user }}" as="user" /
+@foreach-end
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The partial `.stage` file to render |
+| `data` | expression | The value to bind into the partial |
+| `as` | identifier (default `data`) | The variable name the partial sees |
+| `if` | expression | Only render when the expression is true |
+
+### @data
+
+Defines a small structured data value inline, one `key = expression` (or
+`...expression` to spread another value's fields) per line, for use with
+`@template` or `{{ }}` interpolation elsewhere in the document.
+
+```stage
+@data user
+  name = "Ada"
+  role = "engineer"
+@data-end
+{{ user.name }}, {{ user.role }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `name` | identifier | The variable name this data is bound to |
 
 ### Render Formats
 
-## API/Interface
+`@render` is how piped data becomes readable markdown instead of raw
+tab-separated lines: point it at a shape (a table, a tree, a bulleted
+list, a bar chart, and five more) and it formats whatever the pipe handed
+it. It's always the last stage of a pipeline, taking the output of a
+source directive like `@list` or `@query` and turning it into something a
+person would actually want to read.
 
-`@render type=table|tree|list|numbered|bar|code|json|inline|links` (line
-349). Pipe sink syntax: `<source> | [grep/sort/head/tail/uniq/wc]* | @render
-<type>`.
+| Name | What it does |
+|---|---|
+| `@render` | Turns piped data into a markdown shape, table, tree, list, and six more. |
 
-## Business Rules
+### @render
 
-1. `@render` is the pipe SINK, never standalone (line 349).
-2. `as="type"` is shorthand for `| @render type` (line 349).
-3. All nine formats emit plain markdown constructs only (line 326-327,
-   CR-11).
-4. `flow`, `timeline`, and `row` formats must not exist in this build
-   (line 593-594): `row`'s only consumer was the retired `@db as=row`
-   directive, and `flow`/`timeline` supported the retired workflow-spine
-   directives.
+Always the last stage of a pipe: takes whatever a source directive produced
+(optionally filtered through `grep`/`sort`/`head`/`tail`/`uniq`/`wc`) and
+turns it into a specific markdown shape. `as="type"` on the source directive
+itself is shorthand for `| @render type="type"`.
+
+```stage
+@list "src" match="*.ts" | @render type="table" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `type` | `table` \| `tree` \| `list` \| `numbered` \| `bar` \| `code` \| `json` \| `inline` \| `links` | Which markdown shape to produce |
+| `columns` | `col1,col2` | Column headers, for `table` |
+| `lang` | language name | Fence language, for `code` |
 
 ### Pipe
 
-## API/Interface
+These are the Unix-style filters you chain between a source directive and
+`@render` (or a scalar result), the same way you'd pipe commands on a
+command line. They never spawn a process, so they work identically on
+every platform, and each one takes plain lines of piped data and narrows,
+reorders, or summarizes them before the next stage sees the result.
 
-`source | [grep/sort/head/tail/uniq/wc]* | sink` (line 348). Sink is either
-`@render <type>` (feature 20) or, when the last stage is a command, the
-pipeline inlines a scalar result.
+| Name | What it does |
+|---|---|
+| `grep` | Keeps only lines matching (or, with `-v`, not matching) a pattern. |
+| `sort` | Sorts lines alphabetically or numerically. |
+| `head` | Keeps only the first N lines. |
+| `tail` | Keeps only the last N lines. |
+| `uniq` | Drops consecutive duplicate lines. |
+| `wc` | Counts lines, words, or characters. |
+| `count-by` | Groups rows by a column and counts how many fall in each group. |
 
-## Business Rules
+### grep
 
-1. `grep`/`sort`/`head`/`tail`/`uniq`/`wc` are cross-platform Node built-ins,
-   never spawning processes (line 348).
-2. Other shell utilities in a pipe stage pass through the shell allowlist
-   (feature 10) and are stripped with a WARN on Windows (line 348).
-3. A pipe ending in a command inlines the scalar result, e.g.
-   `@list ./src | wc -l` renders a bare number (line 348).
+Keeps only the lines matching a pattern, or with `-v`, only the ones that
+don't.
+
+```stage
+@list "src" match="*.ts" | grep -v test | @render type="list" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | text or pattern | What to match against each line |
+| `-i` | flag | Case-insensitive match |
+| `-v` | flag | Invert the match: keep non-matching lines instead |
+
+### sort
+
+Sorts the piped lines alphabetically by default, or numerically with `-n`;
+`-r` reverses either order.
+
+```stage
+@list "src" match="*.ts" | sort | @render type="list" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `-n` | flag | Sort numerically instead of alphabetically |
+| `-r` | flag | Reverse the sort order |
+
+### head
+
+Keeps only the first N lines (10 by default).
+
+```stage
+@query "git log --oneline" | head 5 | @render type="list" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | integer (default 10) | How many lines to keep from the start |
+
+### tail
+
+Keeps only the last N lines (10 by default).
+
+```stage
+@query "git log --oneline" | tail 5 | @render type="list" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | integer (default 10) | How many lines to keep from the end |
+
+### uniq
+
+Drops a line when it's identical to the one immediately before it, the
+same behavior as the Unix `uniq` command (sort first if you need
+duplicates removed regardless of position).
+
+```stage
+@query "git log --format='%ae'" | sort | uniq | @render type="list" /
+```
+
+### wc
+
+Counts lines by default; `-w` counts words instead, `-c` counts
+characters. A pipe that ends in `wc` (with no `@render`) inlines the bare
+number.
+
+```stage
+@list "src" match="*.ts" | wc -l
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `-l` | flag (default) | Count lines |
+| `-w` | flag | Count words |
+| `-c` | flag | Count characters |
+
+### count-by
+
+Groups rows by one column and counts how many rows fall into each group,
+sorted from most to least common, handy for a quick "how many of each"
+summary over tabular data.
+
+```stage
+@list "data/issues.csv" | count-by status | @render type="table" columns="status,count" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) | column name | Which column to group rows by |
 
 ### Assert Operators
 
-## API/Interface
+`@assert` is a pass/fail check against real files: does this path exist,
+does it contain a pattern, does a JSON key have the value you expect. It's
+the building block `livestage validate` and `livestage assert` use to gate
+a document (or a whole project) in CI, so a broken assumption fails the
+build instead of silently shipping.
 
-`@assert` (self-closing), attrs: `operator`, `target`, plus `pattern`/`key`/
-`equals=` depending on operator (line 342).
+| Name | What it does |
+|---|---|
+| `@assert` | Checks a file (or set of files) against a condition and reports pass or fail. |
 
-| Operator | Passes when | Zero-match behavior |
+### @assert
+
+Runs one check against `target` (a file path or glob) using the chosen
+`operator`, and renders an inline pass/fail line.
+
+```stage
+@assert operator="file-exists" target="package.json" /
+```
+
+| Parameter | Values | Description |
 |---|---|---|
-| `file-exists` | every path matching `target` exists | FAIL |
-| `contains` | every matched file contains `pattern` | FAIL |
-| `some-contains` | at least one matched file contains `pattern` | FAIL |
-| `contains-if-present` | every matched file that exists contains `pattern` | pass (explicitly conditional) |
-| `absent` | no matched file contains `pattern` | pass (vacuous pass permitted, flagged `vacuous: true`) |
-| `json-key` | key path present (optionally `equals=`) in matched JSON/frontmatter | FAIL |
+| `operator` | `file-exists` \| `contains` \| `some-contains` \| `contains-if-present` \| `absent` \| `json-key` | Which check to run |
+| `target` | glob | The file(s) to check |
+| `pattern` | text | Content to look for, for `contains`/`some-contains`/`contains-if-present`/`absent` |
+| `key` | dot/bracket path | The key to look up, for `json-key` |
+| `equals` | value | Require the key to equal this value, for `json-key` |
+| `label` | name | Capture the structured result (`operator`, `matches`, `passed`, `vacuous`) into a variable |
 
-## Business Rules
-
-1. `file-exists`, `contains`, `some-contains`, `json-key` FAIL on zero
-   matches (line 367-372, table).
-2. `contains-if-present` passes vacuously and explicitly (not flagged) when
-   nothing matches (line 370).
-3. `absent` is the only operator permitted to pass vacuously, and it is
-   flagged `vacuous: true` when it does (line 371).
-4. Every result carries `{ operator, target, matches, passed, vacuous }`
-   (line 374).
-
-### Assert Liveness
-
-## API/Interface
-
-Consumed by `livestage validate <file|glob>` (line 520): exit 0 all valid,
-exit 1 any invalid (including inert assertions, removed directives, args
-without fallback, ungranted `@code` language), exit 2 usage/parse error.
-
-## Business Rules
-
-1. `validate` refuses a document whose every assertion is inert (line 374-375).
-2. `validate` warns on suspicious regexes (double-escape compiling to a
-   literal backslash) (line 375-376).
-3. `validate` fails a document that dereferences args without an absent-args
-   fallback (line 459-460, shared rule with feature 23).
-4. `validate` fails a document using an ungranted `@code` language (line 520,
-   shared rule with feature 29).
+Only `absent` and `contains-if-present` are allowed to pass when nothing
+matches (a missing target is exactly what they're checking for); every
+other operator fails on zero matches, so a check can never quietly pass
+because its target went missing by accident.
 
 ### Code Runners
 
-## API/Interface
+`@code` is the escape hatch for anything with no dedicated directive: hit
+an HTTP API, query a database, run a small transformation, whatever a
+five-line script can do. It's off by default; your project's security
+policy has to explicitly grant the language before any script runs.
 
-`@code language= src?= label?= timeout?= interpolate=false` (line 341,
-378-392).
+| Name | What it does |
+|---|---|
+| `@code` | Runs a real script (JavaScript, Python, or another granted language) and captures its output. |
 
-## Business Rules
+### @code
 
-1. Runner map comes from policy config; `javascript -> node`, `python ->
-   python3`, `bash -> bash`, extensible (line 381-382).
-2. Results: `_exit`, `_stdout`, `_stderr`, `_duration`; JSON stdout binds as
-   structured data under `label` (line 382-384).
-3. Context in via `LIVESTAGE_CONTEXT` (JSON) and stdin; `{{ }}` interpolation
-   inside the body is opt-in via `interpolate=true` (line 384-386).
-4. OFF in every profile until the project policy grants `code: { languages:
-   [...], timeout: <ms> }`; an ungranted language fails at `validate` AND at
-   runtime (line 388-390).
-5. Engine-built runner invocations always execute a temp script file, never
-   an inline `-e`/`-c` string; this is the single sanctioned exception to the
-   inline-execution always-block (line 436-441).
-6. A user's `@query "node -e ..."` remains always-blocked even if a pattern
-   would allow it (line 439-441).
+Runs a script, either inline as a block body or from a file via `src=`,
+and captures its result. If the script's stdout is valid JSON, it's bound
+as structured data under `label` instead of raw text.
+
+```stage
+@code language="javascript" label="health"
+const res = await fetch('http://localhost:3000/health')
+console.log(JSON.stringify({ ok: res.ok, status: res.status }))
+@code-end
+
+Status: {{ health.status }}, OK: {{ health.ok }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `language` | granted language (e.g. `javascript`, `python`, `bash`) | Which runner to use; inferred from `src=`'s extension when omitted |
+| `src` | file path | Run a script file instead of an inline body |
+| `label` | name | Capture the result (raw output, or parsed JSON) into a variable |
+| `timeout` | milliseconds | Override the default execution timeout |
+| `interpolate` | `true` \| `false` (default) | Expand `{{ }}` inside the script body before running it |
 
 ### Update Frontmatter
 
-## API/Interface
+`@update-frontmatter` is the one directive allowed to write anything.
+Everything else in LiveStage only reads; this is how a document persists
+state between renders, like a multi-step pipeline recording progress in
+its own frontmatter. The write is validated against the target's declared
+schema before it happens, and lands atomically, so a crash mid-write never
+leaves a corrupted file.
 
-`@update-frontmatter path= <fields>` (line 350).
+| Name | What it does |
+|---|---|
+| `@update-frontmatter` | Writes one field into a markdown file's YAML frontmatter. |
 
-## Business Rules
+### @update-frontmatter
 
-1. THE sanctioned write; schema-validated pre-write; atomic (line 350,
-   95-97).
-2. A write violating the target's declared schema is blocked pre-write with
-   a named error (line 631-632, Wave 5 demo-state).
-3. A conforming update lands atomically (line 632).
+Updates a single frontmatter field on the target document, creating it if
+absent.
 
-- [x] A conforming `@update-frontmatter` call updates the target document's
-      frontmatter and the change is durable and atomic. Live-verified and
-      `tests/unit/engine/schema-engine.test.ts` (write-to-temp-then-rename,
-      no orphaned temp file after a successful write).
-- [x] A call that violates the target's declared schema is blocked pre-write
-      with a named, specific error. Live-verified and tested.
-- [!] CR-10 (Render Purity, feature 15) confirms this is the only write
-      surface exercised by the purity harness. Not directly checked: the
-      corpus-wide purity harness itself does not exist yet (feature 42,
-      wave 6, per CR-10's own known_issues).
+```stage
+@update-frontmatter path="state.md" field="status" value="done" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `path` | file path | The markdown file to update |
+| `field` | frontmatter key | Which field to set (supports dot/bracket addressing into a list) |
+| `value` | any string | The value to write |
 
 ### Graph
 
-## API/Interface
+`@graph` walks a relationship between markdown documents, like a
+`depends_on` chain across a set of feature docs, and renders it as a
+tree, a table, or a Mermaid diagram. It catches cycles and broken
+references (a doc pointing at an id that doesn't exist) automatically, so
+you don't have to eyeball a big dependency list to spot them.
 
-`@graph <relation fields> format=tree|table|mermaid label=` (line 351,
-640-645).
+| Name | What it does |
+|---|---|
+| `@graph` | Walks a frontmatter relationship across a set of documents and renders it as a tree, table, or diagram. |
 
-## Business Rules
+### @graph
 
-1. Native edges are read from frontmatter relation fields (e.g.
-   `depends_on`, `relates`), schema-validated.
-2. Cycle detection and broken-edge detection both run on every `@graph`
-   call (line 351, 641).
-3. `format=mermaid` emits a fenced ` ```mermaid ` block with per-node status
-   classDefs (line 642-644).
-4. Structured counts (`_nodes`, `_edges`, `_cycles`, `_broken`,
-   `_broken_list`) are label-capturable (line 644-645).
+Builds the relationship graph starting from `target` and renders it.
 
-### Frontmatter Query
+```stage
+@graph target=".mdd/docs/*.md" relation="depends_on" format="tree" /
+```
 
-## API/Interface
-
-- `@list <glob> where="<expr>" fields="a,b,c" | @render table` (line
-  650-654).
-- `@read-frontmatter path=... label=doc` (struct mode; `{{ doc.status }}`
-  dot-access) (line 655-656).
-- `count-by <field>` pipe builtin (line 656-657).
-- `@render tree` over projected rows (path-tree view) (line 660-662).
-
-## Business Rules
-
-1. `where` evaluates against each matched file's frontmatter; array
-   predicates support emptiness/length checks (line 650-652).
-2. `fields=` projects frontmatter columns as rows for `@render table`
-   (line 652-653).
-3. `@read-frontmatter ... label=doc` struct mode captures all fields;
-   `{{ doc.status }}` dot-access works inside loops (line 655-656).
-4. `count-by <field>` aggregates projected rows by field value (line
-   656-657).
-5. Schema validation (F-SCHEMA, feature 32) applies to every projected read
-   (line 657).
-6. Nested-array frontmatter queries via `where` are NOT supported; they are
-   the documented `@code` pattern instead (line 658-660).
-7. `@render tree` over projected rows uses column one (a slash-delimited
-   breadcrumb like `path`) as the tree key, remaining columns annotate the
-   leaf (line 660-662).
+| Parameter | Values | Description |
+|---|---|---|
+| `target` | glob | Which documents to include in the graph |
+| `relation` | frontmatter field (default `depends_on`) | Which relationship field defines the edges |
+| `id-field` | frontmatter field (default `id`) | Which field identifies each node |
+| `format` | `tree` \| `table` \| `mermaid` (default `tree`) | How to render the graph |
+| `label` | name | Capture the structured result (`_nodes`, `_edges`, `_cycles`, `_broken`, `_broken_list`) into a variable |
 
 
 ## How this README stays current
 
 `README.stage` (the source of this file, not `README.md` itself) reads:
 
-- the directive reference above, live, from `.mdd/docs/*.md`'s
-  `## API/Interface` and `## Business Rules` sections, via a frontmatter
-  query (`where=`/`fields=`) plus the `read_section()` builtin,
+- the directive reference above, live, from every `.mdd/docs/*.md` doc
+  that declares `primitives` in its frontmatter, via a frontmatter query
+  (`where="primitives.length > 0"`) plus the `read_section()` builtin
+  pulling each doc's `## Interface Overview`, the one section in the doc
+  corpus written for a reader with zero project context,
 - `package.json`'s name, version, and description, via `@read`,
 - the current test count, via `@read` on `scripts/test-baseline.json`,
 - the three worked examples' actual source, via `@read`, so the shown
@@ -447,10 +834,10 @@ throwaway comparison and fails if the committed `README.md` differs, and
 that check runs in CI on every push, so a stale README fails the build
 instead of quietly persisting.
 
-The one thing that still needs a human: a brand-new directive filed under
-a doc outside the `Directives /` / `Renderer / Formats` / `Engine / Code
-Runners` path convention needs a one-line addition to the query above.
-Everything else, names, syntax, examples, counts, is automatic.
+The one thing that still needs a human: writing `## Interface Overview`
+itself when a new directive lands, the same way `title` or any other
+judgment-call frontmatter field is authored by hand. Everything else,
+discovery, names, syntax, examples, counts, is automatic.
 
 ---
 
