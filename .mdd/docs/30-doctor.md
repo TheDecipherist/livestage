@@ -13,7 +13,7 @@ depends_on: [10-security-policy-core, 12-render-trace, 29-code-runners, 27-asser
 tags: [doctor, health-check, json-output, rules-for, coverage]
 known_issues:
   - "doctor never existed (not registered in cli.ts) and depended on feature 31's hook registration format to check hooks, so it was built after init's real rewrite, not before. --rules-for actually executes each matching document's assertions (via feature 28's runAssert) to report real pass state, not a structural listing with a hardcoded guess."
-  - "The schemas check is a placeholder: feature 32 (Schema Engine, wave 5) does not exist yet, so there is nothing to validate; it always reports healthy with a note, never a real check. Revisit when feature 32 lands."
+  - "RESOLVED (2026-08-02): the schemas check was a placeholder when this doc last synced (feature 32, Schema Engine, did not exist yet in wave 4). Feature 32 landed in wave 5 and checkSchemas was rewritten to a real check (src/cli/commands/doctor.ts::checkSchemas, using listSchemaFiles) at that time, but this doc's own known_issues was never revisited to say so, a concrete instance of the 'downstream landed, nobody swept the upstream stub' pattern in the post-initiative known_issues retrospective. checkSchemas now reports 'no schema files declared', a valid count, or the invalid files by name and parse error; covered by tests/unit/cli/doctor.test.ts::'fails an intentionally malformed schema file'."
   - "checkDocsParse deliberately checks parse() only, not full validate()-level semantics (undefined macros, missing includes, etc.), matching business rule 1's literal wording ('every project .stage parses'). A document with e.g. an undefined @call macro is NOT flagged unhealthy by doctor; run validate for that."
 satisfies_contracts:
   - from: 10-security-policy-core
@@ -103,6 +103,6 @@ liveness (assertion-liveness summary).
 
 ## Known Issues
 
-See the frontmatter `known_issues` above: the schemas check placeholder
-(feature 32 not built yet), and `checkDocsParse`'s scope being parse-only,
-not full `validate()` semantics.
+See the frontmatter `known_issues` above: the schemas check placeholder is
+now resolved, `checkDocsParse`'s scope being parse-only (not full
+`validate()` semantics) remains a deliberate, documented limitation.

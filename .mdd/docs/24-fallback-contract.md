@@ -6,7 +6,7 @@ path: Engine / Fallback Contract
 source_files: [src/engine/stripper.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [14-cr6-fallback-totality, 11-extension-routing, 12-render-trace]
@@ -77,11 +77,12 @@ interface; consumed internally by strip and by the hook's timeout path.
       `tests/unit/engine/fallback-registry.test.ts` exercising a real
       fixture per registered directive (26 cases) plus the pre-existing
       `stripper.test.ts` (32 tests).
-- [!] A simulated hook timeout produces the degraded banner plus strip
-      output (verified, feature 11), but the render trace record's
-      `degraded: true` is NOT wired: the spawned child process's trace run
-      is a separate process/invocation from the hook's. Same gap already
-      recorded in 11-extension-routing.md's known_issues; not fixed here.
+- [x] A simulated hook timeout produces the degraded banner plus strip
+      output (verified, feature 11), and the render trace record's
+      `degraded: true` is now wired too. RESOLVED (2026-08-02,
+      post-initiative known_issues sweep): the fix lives in
+      src/hook/pretooluse.ts (feature 11's own file), full detail and test
+      references in 11-extension-routing.md's known_issues.
 - [x] CR-6's registry-iterating test passes against the real directive
       registry, and a synthetic unhandled-node-type case proves the test
       actually catches a missing fallback (not vacuous):

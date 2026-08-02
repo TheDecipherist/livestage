@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse } from 'livestage/parser'
@@ -122,5 +122,66 @@ Status: "{{ doc_status }}".
 `,
     )
     expect(result.warnings.join('\n')).toMatch(/does not exist/i)
+  })
+})
+
+// Read-side schema check (feature 32, F-SCHEMA): only @update-frontmatter's
+// write path was validated before this; a document can drift out of
+// conformance (hand-edited, or predating the schema) and be read with no
+// warning at all. Reads stay pure, so this warns rather than blocking.
+describe('@read-frontmatter schema check', () => {
+  let projectDir: string
+
+  beforeEach(() => {
+    projectDir = mkdtempSync(join(tmpdir(), 'ls-readfm-schema-'))
+    mkdirSync(join(projectDir, '.livestage', 'schemas'), { recursive: true })
+    writeFileSync(join(projectDir, '.livestage', 'schemas', 'feature-doc.json'),
+      JSON.stringify({ class: 'feature-doc', fields: { status: { type: 'string', enum: ['complete', 'planned'] } } }))
+  })
+
+  afterEach(() => {
+    try { rmSync(projectDir, { recursive: true, force: true }) } catch { /* ignore */ }
+  })
+
+  function render(content: string) {
+    const filePath = join(projectDir, 'main.md')
+    writeFileSync(filePath, content, 'utf8')
+    const ast = parse(content, { filePath })
+    return execute(ast, {
+      filePath,
+      ctx: { cwd: projectDir, security: { allowShell: false, allowHttp: false, allowDb: false, jailRoot: null } },
+    })
+  }
+
+  it('single-field mode: warns when the read value violates the declared schema, still returns it', () => {
+    writeFileSync(join(projectDir, 'doc.md'), '---\nclass: feature-doc\nstatus: bogus\n---\nbody')
+    const result = render('@read-frontmatter path="doc.md" field="status" /')
+    expect(result.warnings.join('\n')).toMatch(/does not conform to its declared schema/)
+    expect(result.output.trim()).toBe('bogus')
+  })
+
+  it('single-field mode: no warning when the value conforms', () => {
+    writeFileSync(join(projectDir, 'doc.md'), '---\nclass: feature-doc\nstatus: complete\n---\nbody')
+    const result = render('@read-frontmatter path="doc.md" field="status" /')
+    expect(result.warnings).toHaveLength(0)
+  })
+
+  it('struct mode (label=, no field=): warns on the nonconforming field, still captures the struct', () => {
+    writeFileSync(join(projectDir, 'doc.md'), '---\nclass: feature-doc\nstatus: bogus\n---\nbody')
+    const result = render('@read-frontmatter path="doc.md" label="doc" /\n{{ doc.status }}')
+    expect(result.warnings.join('\n')).toMatch(/does not conform to its declared schema/)
+    expect(result.output).toContain('bogus')
+  })
+
+  it('no class= field: unvalidated, no warning', () => {
+    writeFileSync(join(projectDir, 'doc.md'), '---\nstatus: bogus\n---\nbody')
+    const result = render('@read-frontmatter path="doc.md" field="status" /')
+    expect(result.warnings).toHaveLength(0)
+  })
+
+  it('class= with no matching schema file: unvalidated, no warning', () => {
+    writeFileSync(join(projectDir, 'doc.md'), '---\nclass: no-such-schema\nstatus: bogus\n---\nbody')
+    const result = render('@read-frontmatter path="doc.md" field="status" /')
+    expect(result.warnings).toHaveLength(0)
   })
 })

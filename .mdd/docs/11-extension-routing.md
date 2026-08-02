@@ -3,10 +3,10 @@ id: 11-extension-routing
 title: Extension Routing (Hook)
 type: COMPONENT
 path: Hook / Extension Routing
-source_files: [src/hook/pretooluse.ts]
+source_files: [src/hook/pretooluse.ts, src/engine/index.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [09-grammar-parser, 04-cr3-stage-only]
@@ -17,6 +17,18 @@ known_issues:
   - "Real timeout required spawning the built CLI as a child process (spawnSync with a timeout kills via SIGTERM); an in-process call to execute() cannot be interrupted once a synchronous engine operation (e.g. a slow @query) is underway. This also gives 'calls the same code path as cli render' literally, at the cost of the boundary-lint test checking for a subprocess invocation of the built cli.js rather than a static import (eslint's no-restricted-imports can only forbid, not require, so this was always going to be a test either way, see feature 08)."
   - "Found and fixed two real bugs while building this: (1) the spawned CLI process never passed --cwd, so it resolved .livestage/policy.json against the hook's own launch directory instead of the target project, silently applying the wrong security grants. (2) src/cli/cli.ts's package.json version lookup used one level of relative-path traversal (../package.json) but needed two (../../package.json) from src/cli/ or dist/cli/ to reach the repo root; this crashed the CLI binary outright on every invocation (never caught before because prior verification only ever called library functions like runRender directly, never the actual cli.js entry point). Also renamed program.name('mai') -> program.name('livestage') while fixing this line (CR-1)."
   - "Found and fixed a real gap during wave 2 verification (feature 21, Cache): writeRenderCache wrote the fully rendered document straight to .livestage/cache/<hash>.md with no masking at all, bypassing cache.ts's applyMasking entirely (a separate, unmanaged cache location invisible to cache show/clear). A resolved secret-shaped value (e.g. from @env) sat on disk in plaintext indefinitely. Fixed by masking content before this write; the returned substitution (what the caller actually sees) is deliberately left unmasked, matching CR-5's rule that masking applies before cache/trace persistence, never to the primary render output. Test: tests/unit/hook/pretooluse.test.ts::the render cache artifact is masked even though the returned substitution is not."
+  - "RESOLVED (2026-08-02, post-initiative known_issues sweep): the trace
+    record's degraded: true flag is now wired. engine.ts's own render-level
+    trace record hardcodes degraded: false, because the engine has no way
+    to know it is running under a hook that might kill it mid-render; on a
+    timeout the child never reaches that emitRecord call at all, so no
+    trace record for the attempt existed anywhere. renderViaCli now emits
+    its own record (using the same parseTraceConfig/emitRecord the engine
+    uses, exported from the public livestage/engine barrel for this) when
+    it falls back to the degraded banner, covering both the SIGTERM/timeout
+    case and any other spawn-level failure. tests/unit/hook/pretooluse.test.ts's
+    two new trace tests (one for the degraded case, one confirming a clean
+    render does not add a spurious record)."
 ---
 
 # Extension Routing (Hook)
@@ -90,10 +102,10 @@ Claude Code hook runtime.
       strip output. Verified live and in a permanent test: a short custom
       timeout against a genuinely slow `@query "sleep 2"` is killed via
       SIGTERM in ~300ms, not left to run the full 2s.
-- [!] ...and the trace record has `degraded: true`. NOT wired: the spawned
-      child process's own trace run is a separate process/invocation from
-      the hook's; the hook does not currently emit its own trace span
-      recording the degraded fallback. Gap, not fixed here.
+- [x] ...and the trace record has `degraded: true`. Live-verified (a
+      timed-out render against a real trace file shows a
+      `{"degraded":true,...}` line); tests/unit/hook/pretooluse.test.ts's
+      "a timed-out render still gets a degraded: true trace record...".
 - [x] An engine error during hook render still returns the raw file content
       (fail open), never an exception surfaced to the caller. `handlePostToolUse`
       never throws (verified: a malformed/unclosed-block fixture returns a
@@ -114,7 +126,9 @@ Claude Code hook runtime.
 SETTLED: the hook substitution mechanism is PostToolUse (`updatedToolOutput.
 content`), not PreToolUse; see the frontmatter `known_issues` above for the
 full reasoning. The file is still named `pretooluse.ts` to match the spec's
-layout, but registers as a PostToolUse hook.
+layout, but registers as a PostToolUse hook. The trace record's `degraded:
+true` flag (previously not wired) is now resolved, see the frontmatter
+`known_issues` above.
 
 The trace record's `degraded: true` flag is not wired for a hook-side
 timeout: the spawned child process's own trace run is a separate

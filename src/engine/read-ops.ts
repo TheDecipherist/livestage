@@ -14,6 +14,8 @@ import { expandPattern } from './security/path-expand.js'
 import { interpolatePathSoft } from './engine-include.js'
 import { readFrontmatterField, parseFrontmatterRow } from './frontmatter-utils.js'
 import { resolveDataJail } from './file-access.js'
+import { loadSchema } from './schema/loader.js'
+import { validateFieldValue } from './schema/validate.js'
 
 function buildExpandContext(ctx: EngineContext) {
   const env: Record<string, string> = { ...ctx.env, ...ctx.envFiles }
@@ -65,6 +67,19 @@ export function executeReadFrontmatter(node: ReadFrontmatterNode, ctx: EngineCon
     ctx.warnings.push(`@read-frontmatter: cannot read ${node.path}: ${String(err)}`)
     return ''
   }
+
+  // Read-side schema check (feature 32, F-SCHEMA): only @update-frontmatter's
+  // write path was validated before; a document can still declare a class,
+  // drift out of conformance by hand-editing or predating the schema, and
+  // be read here without anyone finding out. Warn, never block, reads are
+  // pure and must still return the (possibly nonconforming) value; this is
+  // a visibility gate, not a gate on the read itself.
+  const docClass = readFrontmatterField(content, 'class')
+  const schema = docClass ? loadSchema(docClass, ctx.cwd) : null
+  if (schema?.error) {
+    ctx.warnings.push(`@read-frontmatter: schema error for class "${docClass}": ${schema.error}`)
+  }
+
   // Struct mode (feature 36, F-FM-QUERY): no field= given, capture every
   // top-level frontmatter field under label= so {{ label.field }} dot-access
   // works, including inside a @foreach body re-executed each iteration.
@@ -74,6 +89,14 @@ export function executeReadFrontmatter(node: ReadFrontmatterNode, ctx: EngineCon
       ctx.warnings.push(`@read-frontmatter: ${node.path} has no YAML frontmatter block`)
       return ''
     }
+    if (schema?.schema) {
+      for (const field of Object.keys(schema.schema.fields)) {
+        const fieldValue = row[field]
+        if (typeof fieldValue !== 'string') continue // schema fields are scalar-typed; list values are unconstrained here
+        const result = validateFieldValue(schema.schema, field, fieldValue)
+        if (!result.valid) ctx.warnings.push(`@read-frontmatter: ${node.path} does not conform to its declared schema, ${result.error}`)
+      }
+    }
     ctx.data[label!] = row
     return ''
   }
@@ -81,6 +104,10 @@ export function executeReadFrontmatter(node: ReadFrontmatterNode, ctx: EngineCon
   if (value === null) {
     ctx.warnings.push(`@read-frontmatter: ${node.path} has no YAML frontmatter block`)
     return ''
+  }
+  if (schema?.schema) {
+    const result = validateFieldValue(schema.schema, node.field, value)
+    if (!result.valid) ctx.warnings.push(`@read-frontmatter: ${node.path} does not conform to its declared schema, ${result.error}`)
   }
   if (label) ctx.envFiles[label] = value
   return value

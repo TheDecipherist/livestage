@@ -43,6 +43,10 @@ export interface EngineOptions {
   // --deterministic CLI flag: same effect as LIVESTAGE_DETERMINISTIC=1 in
   // the environment, without requiring the caller to touch process.env.
   deterministic?: boolean
+  // --timeout <ms>: a wall-clock deadline for the whole render, checked
+  // once per node (see EngineContext.deadline). undefined/0 means no
+  // deadline, the default.
+  timeout?: number
 }
 
 export interface EngineResult {
@@ -162,6 +166,7 @@ export function execute(ast: ParseResult, options?: EngineOptions): EngineResult
   const base = makeContext(options?.ctx)
   if (!base.runId) base.runId = crypto.randomUUID()
   if (!base.gitMeta) base.gitMeta = resolveGitMeta(base.cwd)
+  if (options?.timeout && options.timeout > 0) base.deadline = Date.now() + options.timeout
   // Distinct from `!base.traceConfig`: a caller can explicitly pass
   // `ctx: { traceConfig: null }` to force tracing off, which must not be
   // clobbered by the env-var-derived default (tracing is on by default, so
@@ -207,6 +212,7 @@ export function execute(ast: ParseResult, options?: EngineOptions): EngineResult
       if (out !== '' || (node.type === 'markdown' && node.text.trim() === '')) parts.push(out)
     } catch (err) {
       errors.push(String(err))
+      if (base.timedOut) break
     }
   }
   if (mainFile) {
@@ -317,12 +323,28 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
       ctx.assertResults?.push(result)
       return formatAssertResult(result)
     }
-    case 'code': return executeCode(node, ctx)
+    case 'code': {
+      const stdout = executeCode(node, ctx)
+      // visible="false" or silent="true" suppresses inline output, same
+      // convention as @list/@read/@query/etc: label= already captured the
+      // structured result, so the raw stdout dump would just duplicate it
+      // in the rendered output (found live building the http-health
+      // example, feature 47, where {{ label.field }} prose repeated the
+      // same JSON @code had already printed inline).
+      const visible = node.args['visible']
+      const silent = node.args['silent']
+      if (visible === 'false' || silent === 'true') return ''
+      return stdout
+    }
     default: throw new Error(`walkNode: unhandled AST node type "${(node as { type: string }).type}"`)
   }
 }
 
 function walkNode(node: ASTNode, ctx: EngineContext): string {
+  if (ctx.deadline !== null && !ctx.timedOut && Date.now() > ctx.deadline) {
+    ctx.timedOut = true
+    throw new FatalError('render exceeded --timeout')
+  }
   if (!ctx.traceConfig) return walkNodeCore(node, ctx)
 
   const id = crypto.randomUUID()

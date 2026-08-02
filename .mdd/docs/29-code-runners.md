@@ -3,7 +3,7 @@ id: 29-code-runners
 title: Code Runners
 type: COMPONENT
 path: Engine / Code Runners
-source_files: [src/parser/directives/code.ts, src/engine/code-runners.ts]
+source_files: [src/parser/directives/code.ts, src/engine/code-runners.ts, src/engine/engine.ts]
 status: complete
 phase: all
 last_synced: 2026-08-02
@@ -16,6 +16,15 @@ known_issues:
   - "The always-block carve-out is architectural, not a policy exception: @code never constructs a shell string at all (spawnSync(runnerCmd, [scriptPath], ...), argv-array form, shell:false implicitly), so it never reaches checkShellCommand or the SHELL_ALWAYS_BLOCK pattern list in the first place. A user's @query \"node -e ...\" still hits that immutable block because @query always builds a shell string. Live-verified: both behaviors hold simultaneously against the same granted policy."
   - "The validate-time ungranted-language check (business rule 4, shared with feature 27) did not exist: validate.ts had no security-config awareness at all before this wave. Added checkUngrantedCodeLanguages (liveness.ts) and wired loadSecurityConfig into validate.ts."
   - "@code could not be used as a pipe source at all (executeSource's switch had no 'code' case, would throw); found while verifying the wave-4 demo-state's '@render table shows its rows'. Added: only the self-closed src= form works as a pipe source (source | sink is one-line syntax; a multi-line @code...@code-end block cannot be followed by a pipe on a later line). A trailing empty line from the script's own trailing newline is dropped so it doesn't become a spurious blank table row. tests/unit/engine/code-runners.test.ts::can be used as a pipe source."
+  - "RESOLVED (2026-08-02, post-initiative known_issues sweep): @code had no
+    visible=/silent= suppression, unlike every source directive
+    (@list/@read/@query/...), so pairing label= with a {{ label.field }}
+    prose summary duplicated the same data (raw stdout, then the summary).
+    Found live building the http-health example (feature 47) and flagged
+    there as a deferred follow-up rather than fixed mid-example; fixed
+    here, in engine.ts's 'code' case, the same convention the shared
+    source-directive dispatch already uses. tests/unit/engine/code-runners.test.ts's
+    three visible=/silent= tests."
 satisfies_contracts:
   - from: 10-security-policy-core
     function: checkDataPath

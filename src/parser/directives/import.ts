@@ -12,6 +12,9 @@ const importDirective: ParseModule = {
       path,
       condition,
       local,
+      // @import is side-effect only (registers macros/env fallbacks into
+      // ctx, returns nothing renderable), so there is no single value to
+      // cache; unlike @include, mock=/cache= are not accepted here.
       cache: null,
     }
     return node

@@ -1,4 +1,5 @@
 import type { ParseModule, ParseContext, DirectiveInput, ASTNode, QueryNode } from '../types.js'
+import { parseCacheAttrs } from './cache-attrs.js'
 
 const query: ParseModule = {
   name: 'query',
@@ -16,13 +17,12 @@ const query: ParseModule = {
     } else {
       command = input.positional
     }
-    const mockPath = input.attrs['mock']
     const node: QueryNode = {
       type: 'query',
       line: ctx.line,
       command,
       args: { ...input.attrs },
-      cache: mockPath ? { mode: 'mock', mockPath } : null,
+      cache: parseCacheAttrs(input.attrs),
     }
     return node
   },

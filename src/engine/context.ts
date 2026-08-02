@@ -146,6 +146,19 @@ export interface EngineContext {
   // and @date resolution in one render sees the same frozen `now` and the
   // same seeded uuid sequence a second identical render would produce.
   determinism: import('./determinism.js').DeterminismState | null
+  // --timeout (feature 13, CLI Router): absolute Date.now() past which a
+  // render aborts. null means no deadline, the default. Checked once per
+  // node in walkNode, the single choke point every top-level node, foreach
+  // iteration, and nested @include walk passes through, so a runaway loop
+  // or deep include chain is caught without threading a check through each
+  // of those call sites individually. Cooperative, not preemptive: a single
+  // long-running node (an unbounded @query/@code) still needs its own
+  // timeout, this only stops the NEXT node from starting once expired.
+  deadline: number | null
+  // Set once walkNode's deadline check trips, so execute()'s top-level loop
+  // can stop after the current node instead of re-throwing (and re-logging)
+  // the same timeout error for every remaining sibling.
+  timedOut: boolean
 }
 
 export interface ChosenTransition {
@@ -189,6 +202,8 @@ export function makeContext(overrides?: Partial<EngineContext>): EngineContext {
     chosenTransition: null,
     shellInline: null,
     determinism: null,
+    deadline: null,
+    timedOut: false,
   }
   if (!overrides) return base
   const { warnings, resolutionStack, completedSet, localConnectionNames, glossary, constraints, events, callstack, ...rest } = overrides

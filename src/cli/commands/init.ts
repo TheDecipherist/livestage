@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,6 +25,9 @@ export interface InitResult {
   configPath: string
   alreadyInstalled: boolean
   message: string
+  // Whether "livestage" resolved on PATH after install (business rule 1).
+  // Absent on a failed init, since the check never runs in that path.
+  pathVerified?: boolean
 }
 
 /**
@@ -202,11 +206,31 @@ try {
 }
 `
 
-function ensureSessionStartHookFile(hookDir: string, hookPath: string): void {
+// Transactional rollback (business rule 5): each write init performs
+// records how to undo itself BEFORE it happens, pushed onto a shared
+// stack. If a later step in the same runInit() call throws (a permission
+// error on the second or third write, say), the caller runs every
+// recorded undo in reverse order, so a partial failure leaves the
+// filesystem exactly as it was before init started, not a half-installed
+// state. A step that never got recorded (because it threw before pushing
+// its own undo) has nothing to roll back, which is correct: it never
+// wrote anything.
+type Undo = () => void
+
+function snapshotFile(path: string): Undo {
+  if (existsSync(path)) {
+    const original = readFileSync(path, 'utf8')
+    return () => { writeFileSync(path, original, 'utf8') }
+  }
+  return () => { try { unlinkSync(path) } catch { /* already gone, nothing to roll back */ } }
+}
+
+function ensureSessionStartHookFile(hookDir: string, hookPath: string, undoStack: Undo[]): void {
   mkdirSync(hookDir, { recursive: true })
   const hookAlreadyExists = existsSync(hookPath) &&
     readFileSync(hookPath, 'utf8').includes('LiveStage SessionStart hook')
   if (!hookAlreadyExists) {
+    undoStack.push(snapshotFile(hookPath))
     writeFileSync(hookPath, SESSION_START_HOOK_SCRIPT, 'utf8')
   }
 }
@@ -216,7 +240,7 @@ interface HookUpdateResult {
   error?: string
 }
 
-function updateClientHooks(configPath: string, hookPath: string, sessionStartHookPath: string): HookUpdateResult {
+function updateClientHooks(configPath: string, hookPath: string, sessionStartHookPath: string, undoStack: Undo[]): HookUpdateResult {
   let config: Record<string, unknown> = {}
   if (existsSync(configPath)) {
     try {
@@ -258,6 +282,7 @@ function updateClientHooks(configPath: string, hookPath: string, sessionStartHoo
   if (!alreadyInstalled) {
     config['hooks'] = hooks
     mkdirSync(dirname(configPath), { recursive: true })
+    undoStack.push(snapshotFile(configPath))
     writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8')
   }
   return { alreadyInstalled }
@@ -267,12 +292,28 @@ function updateClientHooks(configPath: string, hookPath: string, sessionStartHoo
 // rule 1). A no-op, not an overwrite, when a policy file already exists,
 // consistent with init's idempotence rule (business rule 1, re-run is a
 // no-op).
-function ensureProjectPolicy(cwd: string): { seeded: boolean; policyPath: string } {
+function ensureProjectPolicy(cwd: string, undoStack: Undo[]): { seeded: boolean; policyPath: string } {
   const policyPath = join(cwd, '.livestage', 'policy.json')
   if (existsSync(policyPath)) return { seeded: false, policyPath }
   mkdirSync(dirname(policyPath), { recursive: true })
+  undoStack.push(snapshotFile(policyPath))
   writeFileSync(policyPath, JSON.stringify(defaultSecurityConfig(), null, 2) + '\n', 'utf8')
   return { seeded: true, policyPath }
+}
+
+// Business rule 1 ("verifies the bundle on PATH"): a courtesy check, not a
+// gate. The SessionStart hook script already handles "livestage not on
+// PATH" gracefully at runtime (warns to stderr, never blocks a session),
+// but nothing told the person running init that it would happen. A short
+// timeout since this only needs to prove the binary resolves, not do real
+// work; failure here never fails init itself.
+function verifyBundleOnPath(): boolean {
+  try {
+    const result = spawnSync('livestage', ['--version'], { encoding: 'utf8', timeout: 3000 })
+    return !result.error && result.status === 0
+  } catch {
+    return false
+  }
 }
 
 export function runInit(options: InitOptions = {}): InitResult {
@@ -291,14 +332,28 @@ export function runInit(options: InitOptions = {}): InitResult {
   const hookPath = resolvePretoolUseHookPath()
   const hookDir = join(home, '.livestage', 'hooks')
   const sessionStartHookPath = join(hookDir, 'sessionStart.mjs')
-  ensureSessionStartHookFile(hookDir, sessionStartHookPath)
 
-  const result = updateClientHooks(configPath, hookPath, sessionStartHookPath)
-  if (result.error) {
-    return { success: false, clientDetected: clientType, configPath, alreadyInstalled: false, message: result.error }
+  const undoStack: Undo[] = []
+  let result: HookUpdateResult
+  let policyResult: { seeded: boolean; policyPath: string }
+  try {
+    ensureSessionStartHookFile(hookDir, sessionStartHookPath, undoStack)
+    result = updateClientHooks(configPath, hookPath, sessionStartHookPath, undoStack)
+    if (result.error) {
+      // Not a thrown exception: updateClientHooks reports a parse failure
+      // as a result field, not a throw, and never got as far as writing
+      // anything for this call, so there is nothing this specific step
+      // needs rolled back. Earlier steps (the session-start hook file)
+      // still get their own rollback below, same as any other failure.
+      throw new Error(result.error)
+    }
+    policyResult = ensureProjectPolicy(cwd, undoStack)
+  } catch (err) {
+    for (const undo of undoStack.reverse()) {
+      try { undo() } catch { /* best-effort rollback; the original error is what gets reported */ }
+    }
+    return { success: false, clientDetected: clientType, configPath, alreadyInstalled: false, message: `init failed, rolled back: ${String(err instanceof Error ? err.message : err)}` }
   }
-
-  const policyResult = ensureProjectPolicy(cwd)
 
   const hookMessage = result.alreadyInstalled
     ? `LiveStage hooks already installed in ${configPath}`
@@ -306,12 +361,17 @@ export function runInit(options: InitOptions = {}): InitResult {
   const policyMessage = policyResult.seeded
     ? ` and policy seeded at ${policyResult.policyPath}`
     : ` (policy already present at ${policyResult.policyPath})`
+  const pathVerified = verifyBundleOnPath()
+  const pathMessage = pathVerified
+    ? ''
+    : ' (WARNING: "livestage" is not resolvable on PATH; the SessionStart hook will not be able to run render calls until it is)'
 
   return {
     success: true,
     clientDetected: clientType,
     configPath,
     alreadyInstalled: result.alreadyInstalled,
-    message: hookMessage + policyMessage,
+    pathVerified,
+    message: hookMessage + policyMessage + pathMessage,
   }
 }

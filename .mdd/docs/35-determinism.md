@@ -5,8 +5,11 @@ type: COMPONENT
 path: Engine / Determinism
 source_files: [src/engine/determinism.ts, src/engine/context.ts, src/engine/engine.ts,
   src/engine/sources.ts, src/engine/engine-interpolate.ts, src/engine/conditions.ts,
-  src/engine/code-runners.ts, src/parser/directives/query.ts, src/parser/directives/code.ts,
-  src/parser/types.ts, src/cli/cli.ts, src/cli/commands/render.ts]
+  src/engine/code-runners.ts, src/engine/engine-include.ts, src/parser/directives/query.ts,
+  src/parser/directives/code.ts, src/parser/directives/list.ts, src/parser/directives/read.ts,
+  src/parser/directives/tree.ts, src/parser/directives/include.ts, src/parser/directives/import.ts,
+  src/parser/directives/cache-attrs.ts, src/parser/types.ts, src/cli/cli.ts, src/cli/commands/render.ts]
+test_files: [tests/golden/deterministic-snapshots.test.ts, tests/golden/fixtures.ts]
 status: complete
 phase: all
 last_synced: 2026-08-02
@@ -30,16 +33,28 @@ known_issues:
     unit calls into cache.ts itself (tests/unit/engine/cache.test.ts). This is
     a real, pre-wave-5 gap in feature 21 (Cache), not something introduced
     here."
-  - "Rather than resurrect the orphaned args.ts multi-token @cache syntax,
-    mock-serving for @query and @code was wired as a plain `mock=\"path\"`
-    attribute directly on each directive's own opener line (query.ts:12-19,
-    code.ts:29-42), consistent with the rest of the v2.0 grammar's key=value
-    attrs. session/persist cache modes for @query/@code, and mock/session/
-    persist for @list/@read/@tree/@include/@import, remain unreachable from
-    real documents; only the mock path needed by this feature's business rule
-    4 was closed. Resurrecting the rest is feature 21's debt, not filed as a
-    new known_issue on that already-complete doc since it was never a
-    regression, just an always-dead path."
+  - "RESOLVED (post-initiative known_issues sweep, 2026-08-02): rather than
+    resurrect the orphaned args.ts multi-token @cache syntax, the same plain
+    key=value convention this feature shipped for `mock=\"path\"` was
+    extended to a `cache=\"session\"|\"persist\"` attribute (optional
+    `ttl=` for persist), parsed by the new shared
+    src/parser/directives/cache-attrs.ts and applied to every directive that
+    carries a CacheConfig: @list, @read, @tree, @query, @code, @include.
+    @import intentionally still parses cache: null (see its own inline
+    comment): it is side-effect only, registering macros/env fallbacks into
+    ctx with nothing renderable to cache. Every wiring site follows the same
+    security rule: path/shell/grant checks always run live, cache hit or
+    not, only the actual read/spawn/render is what a hit skips (see
+    21-cache.md's known_issues for the full mechanism). Live-verified
+    against the built binary: session mode does not survive a fresh CLI
+    process, persist mode does (confirmed via `cache show` and
+    `.livestage/cache/` contents across two separate invocations)."
+  - "RESOLVED (post-initiative known_issues sweep, task 35, 2026-08-02): the
+    acceptance criterion's golden-file snapshot suite now exists,
+    tests/golden/deterministic-snapshots.test.ts, covering every registered
+    directive (27, via the shared tests/golden/fixtures.ts table), every
+    @render format (9), and three representative fallback/degraded paths.
+    See the acceptance criteria below for the full description."
   - "'Env-overridable paths' (business rule 3) was interpreted narrowly: the
     frozen clock and seeded uuid are the two literal mechanisms the wave-5
     demo-state exercises (byte-identical renders), and no other source of
@@ -82,7 +97,11 @@ N/A (env/flag-driven runtime mode, not a persisted data model).
 
 - Flag: `--deterministic`; env: `LIVESTAGE_DETERMINISTIC=1`.
 - `LIVESTAGE_NOW` (frozen clock), `LIVESTAGE_SEED` (seeded UUIDs).
-- `@cache mock=fixture.json` on `@query`/`@code`.
+- `mock="fixture.json"` on `@list`/`@read`/`@tree`/`@query`/`@code`/`@include`.
+- `cache="session"|"persist"` (optional `ttl="<seconds>"` for persist) on the
+  same six directives, for caching a real result rather than substituting a
+  fixture; not deterministic-mode-specific, works with or without
+  `--deterministic`.
 
 ## Business Rules
 
@@ -90,7 +109,9 @@ N/A (env/flag-driven runtime mode, not a persisted data model).
 2. Seeded UUIDs via `LIVESTAGE_SEED` (line 544).
 3. Env-overridable paths (line 544).
 4. `@cache mock=fixture.json` serves fixtures for `@query` and `@code`
-   (line 545).
+   (line 545). Extended (post-initiative sweep) to `@list`/`@read`/`@tree`/
+   `@include` too, plus `cache="session"|"persist"` for caching a real
+   result on all six, see known_issues.
 5. Two deterministic runs of the same document are byte-identical (line
    546-547).
 
@@ -115,13 +136,34 @@ N/A (env/flag-driven runtime mode, not a persisted data model).
       mock= serves the fixture..." and "@code mock= serves the fixture...";
       tests/unit/engine/code-runners.test.ts::"mock= serves the fixture and
       never spawns the runner, even for an ungranted language".
-- [!] Golden-file snapshots for every directive, format, and fallback path
-      pass under `--deterministic`. No golden-file snapshot suite exists yet
-      (the render surface has no such harness); this criterion describes a
-      downstream consequence of determinism existing (CR-10's corpus-wide
-      purity harness, feature 42, wave 6), not something this feature builds
-      itself. The building block (frozen clock + seeded uuid + mock cache)
-      is complete and independently tested above.
+- [x] `mock=`/`cache=` reach all six source-shaped directives (@list, @read,
+      @tree, @query, @code, @include), not just @query/@code, and a cache
+      hit never skips a security check. tests/unit/engine/directive-cache.test.ts
+      (15 tests: parseCacheAttrs unit coverage, session mode not surviving a
+      fresh process, persist mode surviving one, the security check running
+      live on every call including cache hits, @code's label= data replaying
+      correctly from a cache hit, @include's mock= never touching its real
+      target). Live-verified against the built binary for @list session mode
+      and @read persist mode (including `cache show` seeing the entry).
+- [x] Golden-file snapshots for every directive, format, and fallback path
+      pass under `--deterministic`. `tests/golden/deterministic-snapshots.test.ts`
+      (post-initiative sweep, task 35, 2026-08-02): reuses the exact
+      directive fixture table `tests/golden/fixtures.ts` maintains for CR-11
+      (one fixture per registered directive, 27), so this can't silently
+      drift from "every directive" as the registry grows; adds fixtures for
+      all nine `@render` formats and three representative fallback/degraded
+      paths (a missing file, a blocked path traversal, a policy-blocked
+      shell command). Each of the 39 cases renders twice under a fixed
+      `LIVESTAGE_NOW`/`LIVESTAGE_SEED`, asserts byte-identical output between
+      the two runs (business rule 5, registry-wide), and snapshots the
+      result via vitest's `toMatchSnapshot()`, the actual checked-in
+      golden-file mechanism, not a re-run comparison alone. Proven non-vacuous:
+      a companion test confirms the frozen `@date` output differs from a
+      real wall-clock render, and a different `LIVESTAGE_SEED` changes
+      `uuid_v4()` output. This is independent of, not blocked by, CR-10's
+      corpus-wide purity harness (feature 42, wave 6): that harness checks
+      markdown purity across the doc corpus, this one checks byte-identical
+      stability under determinism specifically.
 
 ## Dependencies
 
@@ -130,4 +172,9 @@ directives (the directives being made deterministic).
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: the first three entries are
+RESOLVED (the plain-attribute `mock=`/`cache=`/`ttl=` convention now reaches
+all six source-shaped directives, replacing the dead donor multi-token
+@cache syntax; the golden-snapshot suite now exists); the fourth
+(env-overridable paths interpreted narrowly to the frozen clock and seeded
+uuid) stands as a scope note, not a gap.

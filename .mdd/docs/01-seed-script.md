@@ -6,21 +6,21 @@ path: Build / Seed Script
 source_files: []
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-0
 depends_on: []
 tags: [seed, donor-copy, rename, doc-corpus, exclusion-list, package-scaffold]
 known_issues:
-  - "Seed ran as one-off shell/editor operations, not a checked-in scripts/seed.mjs"
-  - "CR-1 brand-identity grep not zeroed (lowercase markdownai residue in ~19 src files, 38 test files)"
-  - "Hook routing (src/hook/hook.ts) still content-sniffs .md instead of using .stage extension routing"
-  - "init's MCP server registration code is dead functionality, not removed"
-  - "Header/version-pin architecture stubbed (ParseResult.version always null), not redesigned"
-  - "CR-7 baseline tests removed at the source rather than enumerated as failing; donor e2e/ suite not carried"
-  - "Doc corpus mechanical pass (business rule 8) not done, collides with the 47 imported planning docs"
-  - "examples/showcase, examples/connections, user guide seed, examples/multi-step not copied"
-  - "~/.livestage/ user-level hook install path not yet referenced in src/cli/commands/init.ts"
+  - "Seed ran as one-off shell/editor operations, not a checked-in scripts/seed.mjs. Still true, and not worth fixing retroactively: the seed only ever runs once per project, a checked-in re-runnable script would never actually run again."
+  - "RESOLVED (wave 4, confirmed in feature 02's own known_issues): CR-1 brand-identity grep is zero as of wave 4 (feature 31, Init), the last two files (init.ts, claude-section.ts) were fixed then."
+  - "RESOLVED (wave 1, feature 11): hook routing (src/hook/pretooluse.ts, the old hook.ts is gone) is pure .stage-extension match, no content sniffing."
+  - "RESOLVED (wave 4, feature 31): init's MCP server registration code was removed entirely, not left dead."
+  - "RESOLVED: the header/version-pin architecture is not stubbed. ParseResult.version is populated from a real `livestage: <version>` line when present (src/parser/parser.ts) and engine.ts's versionIsNewer check consumes it to warn when a document requires a newer version than what's installed; tests/unit/parser/parser.test.ts covers it. This known_issue's premise (version always null) was never true past wave 1 and should have been corrected then."
+  - "CR-7 baseline tests removed at the source rather than enumerated as failing; donor e2e/ suite not carried. Partially still true: see 25-cr7-suite-baseline.md's own known_issues for the current, more precise state of the baseline-tracking gap (still open as of the post-initiative known_issues sweep)."
+  - "RESOLVED (post-initiative known_issues sweep, 2026-08-02): the doc corpus now exists as a real, built 47-feature-doc set (not a mechanical donor copy, which this project's own CLAUDE.md constraint against referencing the donor codebase outside MDs/livestage-spec.md ruled out from the start, the same constraint 44-examples-showcase.md and 45-user-guide.md document). Business rule 8 as originally worded assumed a literal donor-doc migration that was never going to happen under that constraint; superseded by the actual build."
+  - "RESOLVED (wave 6, features 40/44/45/46): examples/multi-step, examples/showcase, docs/user-guide.md, and examples/connections all now exist, built fresh rather than copied (same donor-access constraint as above)."
+  - "RESOLVED (post-initiative known_issues sweep, 2026-08-02): init.ts DOES reference ~/.livestage/ (ensureSessionStartHookFile writes ~/.livestage/hooks/sessionStart.mjs, tested in tests/unit/cli/init-session-start-hook.test.ts). This known_issue predates that hook installer being built and should have been corrected once it landed; the PreToolUse hook deliberately does NOT get a copy under ~/.livestage/hooks/ (registers the installed package's real dist/hook/pretooluse.js directly instead, see 31-init.md's known_issues), which is an intentional architecture decision, not a gap."
 ---
 
 # Seed Script
@@ -114,18 +114,29 @@ N/A (no directive, no CLI verb; a local script invoked by hand).
 - [x] `package.json` is single-package: name `livestage`, bin `livestage`,
       export subpaths `livestage/parser`, `livestage/engine`,
       `livestage/renderer`.
-- [ ] `.mdd/docs/` contains the mechanically migrated donor doc corpus with
+- [!] `.mdd/docs/` contains the mechanically migrated donor doc corpus with
       repathed `source_files`/`test_files` and recomputed content hashes.
-      NOT done, see Known Issues (conflicts with the 47 planning docs already
-      imported from the spec).
-- [ ] CR-1 identity grep is clean, or every remaining hit is enumerated as an
-      explicit Wave 1 task. Grep run, hits enumerated below, not yet zeroed.
+      Superseded, see Known Issues: this project's own CLAUDE.md constraint
+      against referencing the donor codebase outside MDs/livestage-spec.md
+      ruled out a literal mechanical migration from the start. What exists
+      instead: the full 47-feature-doc corpus, built and verified across
+      all 7 waves, not mechanically copied.
+- [x] CR-1 identity grep is clean, or every remaining hit is enumerated as an
+      explicit Wave 1 task. Grep run initially, hits enumerated as Wave 1
+      tasks; fully zeroed as of wave 4 (feature 31), confirmed in feature
+      02's own known_issues.
 
 ## Dependencies
 
 None (this is the first artifact in the build).
 
 ## Known Issues
+
+Most of the items below describe wave-0 state and are now resolved; see the
+frontmatter `known_issues` above for current status of each, updated during
+the post-initiative known_issues sweep (2026-08-02) after most of these had
+sat unrevisited since the wave they were actually fixed in. The prose below
+is kept as the original historical record of what wave 0 actually shipped.
 
 - **Seed executed directly, not via a committed script.** The copy/exclude/
   rename/scaffold steps ran as one-off shell and editor operations in this

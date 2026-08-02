@@ -1,6 +1,8 @@
 export type { EngineContext, Connection, SecurityConfig, MCPContext, MacroDefinition, EngineEvent, EventMeta, ChosenTransition } from './context.js'
 export type { TraceConfig } from './trace/config.js'
+export { parseTraceConfig } from './trace/config.js'
 export type { TraceSpan, RenderRecord, TraceRecord } from './trace/span.js'
+export { emitRecord } from './trace/emit.js'
 export { defaultSecurityConfig, loadSecurityConfig } from './security/config.js'
 export type { SecurityJsonConfig, ShellSecurityConfig, HttpSecurityConfig, DbSecurityConfig, FilesystemSecurityConfig, DbConnectionSecurityConfig, EventSecurityConfig, EventTransportConfig } from './security/config.js'
 export { makeContext, resolveEnv } from './context.js'

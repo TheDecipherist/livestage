@@ -24,7 +24,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:unit": "vitest run tests/unit"
+    "test:unit": "vitest run tests/unit",
+    "test:baseline": "node scripts/check-test-baseline.mjs",
+    "test:baseline:update": "node scripts/check-test-baseline.mjs --update"
   },
   "keywords": [
     "livestage",

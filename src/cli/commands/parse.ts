@@ -15,6 +15,40 @@ export interface ParseCmdResult {
   exitCode: number
 }
 
+export interface ParseCheckOptions {
+  cwd?: string
+}
+
+export interface ParseCheckResult {
+  valid: boolean
+  errors: string[]
+  exitCode: number
+}
+
+// `parser check` is scoped to grammar validity only (does this parse at
+// all), distinct from `validate` (macro references, @include/@import
+// targets, code-language grants, assert liveness), which is a broader
+// policy/semantics check layered on top of a successful parse.
+export function runParseCheck(filePath: string, options: ParseCheckOptions = {}): ParseCheckResult {
+  const cwd = options.cwd ?? process.cwd()
+  const check = isAbsolute(filePath) ? checkAbsolutePath(filePath) : checkFilePath(filePath, cwd)
+  if (check.level === 'blocked') return { valid: false, errors: [`Path blocked: ${check.reason}`], exitCode: 2 }
+  const resolved = resolve(cwd, filePath)
+  let source: string
+  try {
+    source = readFileSync(resolved, 'utf8')
+  } catch {
+    return { valid: false, errors: [`Cannot read file: ${filePath}`], exitCode: 2 }
+  }
+  try {
+    parse(source, { filePath: resolved })
+    return { valid: true, errors: [], exitCode: 0 }
+  } catch (err) {
+    const msg = err instanceof ParseError ? err.message : String(err)
+    return { valid: false, errors: [msg], exitCode: 1 }
+  }
+}
+
 export function runParse(filePath: string, options: ParseCmdOptions = {}): ParseCmdResult {
   const cwd = options.cwd ?? process.cwd()
   const check = isAbsolute(filePath) ? checkAbsolutePath(filePath) : checkFilePath(filePath, cwd)

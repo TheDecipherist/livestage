@@ -5,8 +5,9 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runRender } from './commands/render.js'
 import { runValidate } from './commands/validate.js'
-import { runParse } from './commands/parse.js'
+import { runParse, runParseCheck } from './commands/parse.js'
 import { runEval } from './commands/eval.js'
+import { runRendererPreview } from './commands/renderer-preview.js'
 import { runStrip } from './commands/strip.js'
 import { runBuild } from './commands/build.js'
 import { runInit, runInitClaudeMd } from './commands/init.js'
@@ -39,13 +40,14 @@ universalOptions(
     .option('--budget <n>', 'token budget — drop low-priority @section blocks to fit', parseInt)
     .option('--passthrough', 'pass plain markdown files through unchanged instead of erroring')
     .option('--deterministic', 'freeze the clock (LIVESTAGE_NOW) and seed UUIDs (LIVESTAGE_SEED) for byte-identical renders')
+    .option('--timeout <ms>', 'abort the render if it exceeds this wall-clock deadline (checked once per directive)', parseInt)
     .option('--skill-args <args>', 'skill ARGUMENTS string (for testing Claude Code skill files locally)')
     .option('--skill-dir <path>', 'skill directory ($CLAUDE_SKILL_DIR)')
     .option('--skill-session-id <id>', 'Claude Code session id ($CLAUDE_SESSION_ID)')
     .option('--skill-effort <level>', 'Claude effort level ($CLAUDE_EFFORT): low|medium|high|xhigh|max')
     .option('--args <string>', 'raw argument string, exposed as {{ args }} / {{ arg0 }}..{{ arg3 }}')
     .option('--var <k=v>', 'a named value, exposed as {{ vars.k }} (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
-).action((file: string, opts: Record<string, string | string[] | boolean | undefined>) => {
+).action((file: string, opts: Record<string, string | number | string[] | boolean | undefined>) => {
   const renderOpts: Parameters<typeof runRender>[1] = {
     ...opts,
     passthrough: Boolean(opts['passthrough']),
@@ -53,6 +55,7 @@ universalOptions(
   }
   // Commander stores flags with kebab-case names as camelCase, but our options
   // come through as a string-keyed record. Map them explicitly.
+  if (typeof opts['timeout'] === 'number' && !isNaN(opts['timeout'])) renderOpts.timeout = opts['timeout']
   if (typeof opts['skillArgs'] === 'string') renderOpts.skillArgs = opts['skillArgs']
   if (typeof opts['skillDir'] === 'string') renderOpts.skillDir = opts['skillDir']
   if (typeof opts['skillSessionId'] === 'string') renderOpts.skillSessionId = opts['skillSessionId']
@@ -193,15 +196,30 @@ universalOptions(
 })
 
 universalOptions(
-  program
-    .command('eval <expression>')
-    .description('evaluate a single expression against current environment')
-).action((expression: string, opts: Record<string, string | undefined>) => {
+  parser
+    .command('check <file>')
+    .description('check .stage grammar validity, without validating macros/includes/policy (see validate for that)')
+).action((file: string, opts: Record<string, string | boolean | undefined>) => {
+  const result = runParseCheck(file, opts['cwd'] ? { cwd: String(opts['cwd']) } : {})
+  for (const err of result.errors) process.stderr.write(`ERROR: ${err}\n`)
+  if (result.exitCode === 0 && !opts['silent']) process.stdout.write(`✓ ${file}: valid grammar\n`)
+  process.exit(result.exitCode)
+})
+
+function registerEval(cmd: ReturnType<typeof program.command>): void {
+  universalOptions(
+    cmd
+      .command('eval <expression>')
+      .description('evaluate a single expression against current environment')
+  ).action((expression: string, opts: Record<string, string | undefined>) => {
     const evalOpts: import('./commands/eval.js').EvalOptions = {}
     if (opts['env']) evalOpts.env = opts['env']
     const result = runEval(expression, evalOpts)
     if (!opts['silent']) process.stdout.write(result.output + '\n')
   })
+}
+
+registerEval(program)
 
 universalOptions(
   program
@@ -328,7 +346,8 @@ universalOptions(cache
     process.stdout.write(`✓ Cleared cache: ${parts.join(', ')}\n`)
   })
 
-const engine = program.command('engine').description('inspect the render engine (trace, ...)')
+const engine = program.command('engine').description('inspect the render engine (trace, eval, ...)')
+registerEval(engine)
 
 universalOptions(engine
   .command('trace [render-id]')
@@ -346,6 +365,31 @@ universalOptions(engine
       for (const record of result.records) process.stdout.write(JSON.stringify(record) + '\n')
     }
   })
+
+const renderer = program.command('renderer').description('render formats standalone (preview, ...)')
+
+universalOptions(
+  renderer
+    .command('preview [file]')
+    .description('preview a @render format against raw data (tab-separated rows for table), reading from stdin if no file is given')
+    .option('--format <type>', 'render format: list|numbered|links|table|code|inline|bar|tree|json (required)')
+    .option('--columns <c1,c2,...>', 'explicit column headers (comma-separated)')
+    .option('--option <k=v>', 'a format-specific option (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
+).action((file: string | undefined, opts: Record<string, string | string[] | boolean | undefined>) => {
+  const format = opts['format']
+  if (typeof format !== 'string' || format === '') {
+    process.stderr.write('ERROR: renderer preview: --format is required\n')
+    process.exit(2)
+  }
+  const previewOpts: Parameters<typeof runRendererPreview>[2] = {}
+  if (opts['cwd']) previewOpts.cwd = String(opts['cwd'])
+  if (opts['columns']) previewOpts.columns = String(opts['columns'])
+  if (Array.isArray(opts['option']) && opts['option'].length > 0) previewOpts.optionFlags = opts['option']
+  const result = runRendererPreview(file, format, previewOpts)
+  for (const err of result.errors) process.stderr.write(`ERROR: ${err}\n`)
+  if (result.exitCode !== 0) process.exit(result.exitCode)
+  if (!opts['silent']) process.stdout.write(result.output + '\n')
+})
 
 registerSecurity(program)
 

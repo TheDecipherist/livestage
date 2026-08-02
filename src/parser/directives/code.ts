@@ -1,5 +1,6 @@
 import type { ParseModule, ParseContext, DirectiveInput, ASTNode, CodeNode } from '../types.js'
 import { ParseError } from '../types.js'
+import { parseCacheAttrs } from './cache-attrs.js'
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
   '.js': 'javascript', '.mjs': 'javascript', '.cjs': 'javascript',
@@ -32,7 +33,6 @@ const code: ParseModule = {
     }
     const timeoutRaw = input.attrs['timeout']
     const timeout = timeoutRaw !== undefined ? parseInt(timeoutRaw, 10) : null
-    const mockPath = input.attrs['mock']
     const node: CodeNode = {
       type: 'code',
       line: ctx.line,
@@ -43,7 +43,7 @@ const code: ParseModule = {
       timeout: timeout !== null && !isNaN(timeout) ? timeout : null,
       interpolate: input.attrs['interpolate'] === 'true',
       args: { ...input.attrs },
-      cache: mockPath ? { mode: 'mock', mockPath } : null,
+      cache: parseCacheAttrs(input.attrs),
     }
     return node
   },

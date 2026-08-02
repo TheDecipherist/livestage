@@ -1,0 +1,164 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden snapshots under --deterministic: every @render format > bar 1`] = `
+"./a.md     █ 0
+./defs.md  █ 0
+./doc.md   █ 0
+./x.md     █ 0"
+`;
+
+exports[`golden snapshots under --deterministic: every @render format > code 1`] = `
+"\`\`\`
+./a.md
+./defs.md
+./doc.md
+./x.md
+\`\`\`"
+`;
+
+exports[`golden snapshots under --deterministic: every @render format > inline 1`] = `"./a.md ./defs.md ./doc.md ./x.md"`;
+
+exports[`golden snapshots under --deterministic: every @render format > json 1`] = `
+"\`\`\`json
+./a.md
+./defs.md
+./doc.md
+./x.md
+\`\`\`"
+`;
+
+exports[`golden snapshots under --deterministic: every @render format > links 1`] = `
+"- [a](./a.md)
+- [defs](./defs.md)
+- [doc](./doc.md)
+- [x](./x.md)"
+`;
+
+exports[`golden snapshots under --deterministic: every @render format > list 1`] = `
+"- ./a.md
+- ./defs.md
+- ./doc.md
+- ./x.md"
+`;
+
+exports[`golden snapshots under --deterministic: every @render format > numbered 1`] = `
+"1. ./a.md
+2. ./defs.md
+3. ./doc.md
+4. ./x.md"
+`;
+
+exports[`golden snapshots under --deterministic: every @render format > table 1`] = `
+"| ./a.md    |
+|-----------|
+| ./defs.md |
+| ./doc.md  |
+| ./x.md    |"
+`;
+
+exports[`golden snapshots under --deterministic: every @render format > tree 1`] = `
+"\`\`\`
+./a.md
+./defs.md
+./doc.md
+./x.md
+\`\`\`"
+`;
+
+exports[`golden snapshots under --deterministic: every registered directive > assert 1`] = `"✓ file-exists package.json: PASS (1 match)"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > call 1`] = `"defined body"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > check 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: every registered directive > code 1`] = `
+"1
+"
+`;
+
+exports[`golden snapshots under --deterministic: every registered directive > count 1`] = `"4"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > data 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: every registered directive > date 1`] = `"2030-01-01T00:00:00.000Z"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > define 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: every registered directive > env 1`] = `"none"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > foreach 1`] = `
+"body
+body
+body
+body"
+`;
+
+exports[`golden snapshots under --deterministic: every registered directive > graph 1`] = `"- a"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > hash 1`] = `"d7d234f759ec34fd6298b7e32318614760070aaef9f4e92ced928324b49a0602"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > if 1`] = `"body"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > import 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: every registered directive > include 1`] = `
+"---
+status: draft
+---
+Shared body."
+`;
+
+exports[`golden snapshots under --deterministic: every registered directive > list 1`] = `
+"./a.md
+./defs.md
+./doc.md
+./x.md"
+`;
+
+exports[`golden snapshots under --deterministic: every registered directive > pipe 1`] = `
+"- ./a.md
+- ./defs.md
+- ./doc.md
+- ./x.md"
+`;
+
+exports[`golden snapshots under --deterministic: every registered directive > query 1`] = `"hi"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > read 1`] = `"demo"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > read-frontmatter 1`] = `"draft"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > render 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: every registered directive > set 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: every registered directive > switch 1`] = `"yes"`;
+
+exports[`golden snapshots under --deterministic: every registered directive > template 1`] = `
+"---
+status: draft
+---
+Shared body."
+`;
+
+exports[`golden snapshots under --deterministic: every registered directive > test 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: every registered directive > tree 1`] = `
+"├── .livestage
+│   ├── policy.json
+│   └── trace
+│       └── 2026-08-02.jsonl
+├── a.md
+├── defs.md
+├── doc.md
+├── package.json
+└── x.md"
+`;
+
+exports[`golden snapshots under --deterministic: every registered directive > update-frontmatter 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: representative fallback/degraded paths > list-blocked-traversal 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: representative fallback/degraded paths > query-blocked-by-policy 1`] = `""`;
+
+exports[`golden snapshots under --deterministic: representative fallback/degraded paths > read-missing-file 1`] = `""`;

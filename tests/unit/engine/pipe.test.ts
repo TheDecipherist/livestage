@@ -105,11 +105,22 @@ describe('runBuiltin — grep', () => {
     expect(runBuiltin("grep 'foo bar'", lines)).toEqual(['foo bar'])
   })
 
-  // Known limitation, not fixed here: tokenize() strips quotes before
-  // runGrep sees the tokens, so it cannot distinguish a quoted "-i" (meant
-  // as a literal pattern) from a bare -i flag; both are treated as the
-  // flag. Fixing this would need the tokenizer to preserve quoted-ness
-  // per token, not just resolve strings.
+  // RESOLVED: tokenize() now preserves per-token quoted-ness, so runGrep
+  // can tell a quoted "-i" (a literal two-character pattern) apart from a
+  // bare -i flag, even though both resolve to the same token text.
+  it('a quoted "-i" is a literal pattern, not the case-insensitive flag', () => {
+    const dashLines = ['-item', 'other', 'has-i-in-it']
+    expect(runBuiltin('grep "-i"', dashLines)).toEqual(['-item', 'has-i-in-it'])
+  })
+
+  it('a bare -i (unquoted) is still the case-insensitive flag, unchanged', () => {
+    expect(runBuiltin('grep -i foo', lines)).toEqual(['foo bar', 'FOO baz'])
+  })
+
+  it('a quoted "-v" is a literal pattern, not the invert flag', () => {
+    const dashLines = ['-value', 'other']
+    expect(runBuiltin('grep "-v"', dashLines)).toEqual(['-value'])
+  })
 })
 
 describe('runBuiltin — wc', () => {

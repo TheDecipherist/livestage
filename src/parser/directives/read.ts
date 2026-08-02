@@ -1,4 +1,5 @@
 import type { ParseModule, ParseContext, DirectiveInput, ASTNode, ReadNode } from '../types.js'
+import { parseCacheAttrs } from './cache-attrs.js'
 
 const read: ParseModule = {
   name: 'read',
@@ -9,7 +10,7 @@ const read: ParseModule = {
       line: ctx.line,
       path,
       args: { ...input.attrs },
-      cache: null,
+      cache: parseCacheAttrs(input.attrs),
     }
     return node
   },

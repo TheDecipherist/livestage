@@ -3,7 +3,8 @@ id: 32-schema-engine
 title: Schema Engine
 type: COMPONENT
 path: Engine / Schema Engine
-source_files: [src/engine/schema/loader.ts, src/engine/schema/validate.ts]
+source_files: [src/engine/schema/loader.ts, src/engine/schema/validate.ts,
+  src/engine/read-ops.ts, src/engine/graph.ts]
 status: complete
 phase: all
 last_synced: 2026-08-02
@@ -13,7 +14,7 @@ depends_on: [17-source-directives, 10-security-policy-core]
 tags: [schema, frontmatter-classes, validation, doctor-integration, F-SCHEMA]
 known_issues:
   - "Design decision made during build (not specified further than 'illustrative' in this doc): a document opts into schema validation via a top-level class: frontmatter field naming which .livestage/schemas/<class>.json applies. No class field, or a class with no matching schema file, means unvalidated, not an error, matching business rule 2's 'once a schema is declared' framing."
-  - "Read-side validation (business rule 2, acceptance criterion 2, '@read-frontmatter is checked against its schema') is not wired: only the write side (feature 33's pre-write gate) consumes this component so far, which is the demo-tested, higher-risk path (a bad write corrupts state; a read is idempotent). Deferred, not fixed here."
+  - "RESOLVED (2026-08-02, post-initiative known_issues sweep): read-side validation is now wired. @read-frontmatter (both single-field mode and struct/label= mode) and @graph (every scalar field on a graphed doc other than the relation field itself, which is list-shaped and outside the schema vocabulary) now check the target document against its declared class if one exists, warning rather than blocking since reads must stay pure. tests/unit/engine/read-frontmatter.test.ts's '@read-frontmatter schema check' describe block (5 tests), tests/unit/engine/graph-schema.test.ts (3 tests)."
   - "Validation is scoped to plain top-level scalar fields; list-addressed fields (field[N], field[append]) are not schema-checked, since a schema field declares a single type/enum, not a list-item shape."
   - "Found and fixed a real path-traversal gap while writing tests: schemaPath() joined an unsanitized class name into .livestage/schemas/<class>.json without checking it. Since class: is a document's own frontmatter field (untrusted content), a value like class: \"../../../etc/passwd\" resolved via path.join()'s .. handling to a path OUTSIDE the schemas directory entirely, reading an arbitrary file as if it were a schema (not full checkDataPath jailing, but the same class of bug that gate exists to prevent). Fixed with a strict identifier allowlist ([A-Za-z0-9_-]+) for class names; a class name is a simple identifier, never a path component. tests/unit/engine/schema-engine.test.ts (2 tests)."
 satisfies_contracts:
@@ -82,10 +83,12 @@ and `@list ... fields=`. Surfaced via `doctor` (schema files valid check).
 
 - [x] A schema declares a project's doc class; `doctor` confirms it is
       valid. Live-verified and `tests/unit/cli/doctor.test.ts`.
-- [!] Settled the "exact surfacing" question this criterion left open:
+- [x] Settled the "exact surfacing" question this criterion left open:
       surfaced on the write side (`@update-frontmatter`, feature 33) as a
-      pre-write block with a named error, live-verified and tested. Not
-      surfaced on the read side (`@read-frontmatter`), see Known Issues.
+      pre-write block with a named error, live-verified and tested; and on
+      the read side (`@read-frontmatter`, `@graph`) as a warning, since
+      reads must stay pure and cannot block. Live-verified and tested, see
+      Known Issues.
 - [x] An intentionally malformed schema file fails `doctor`'s
       schema-validity check. Live-verified and tested.
 
