@@ -4,15 +4,33 @@
 // via checkWritePath(), that the donor's scaffolding write-ops (@mkdir, @copy,
 // @touch, @append-if-missing) also used; those directives are not carried.
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { resolve, isAbsolute } from 'node:path'
+import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
+import { resolve, isAbsolute, dirname, basename } from 'node:path'
+import { randomBytes } from 'node:crypto'
 import type { UpdateFrontmatterNode } from 'livestage/parser'
 import type { EngineContext } from './context.js'
 import { checkWritePath } from './security/filesystem.js'
 import { expandPattern } from './security/path-expand.js'
 import { interpolatePathSoft } from './engine-include.js'
-import { extractFrontmatter, fieldRegex } from './frontmatter-utils.js'
+import { extractFrontmatter, fieldRegex, readFrontmatterField } from './frontmatter-utils.js'
 import { buildExpandContext } from './expand-context.js'
+import { loadSchema } from './schema/loader.js'
+import { validateFieldValue } from './schema/validate.js'
+
+// Atomic write: same directory as the target (so rename() is guaranteed to
+// be same-filesystem, hence atomic on POSIX), write the full content to a
+// temp file, then rename over the target. A crash or failure mid-write
+// leaves the temp file, never a truncated/partial target (business rule 3).
+function writeFileAtomic(target: string, content: string): void {
+  const tmpPath = resolve(dirname(target), `.${basename(target)}.${randomBytes(6).toString('hex')}.tmp`)
+  writeFileSync(tmpPath, content, 'utf8')
+  try {
+    renameSync(tmpPath, target)
+  } catch (err) {
+    try { unlinkSync(tmpPath) } catch { /* best effort cleanup */ }
+    throw err
+  }
+}
 
 function ensureWriteEnabled(ctx: EngineContext, directive: string): boolean {
   if (!ctx.security.writeEnabled) {
@@ -87,6 +105,28 @@ export function executeUpdateFrontmatter(node: UpdateFrontmatterNode, ctx: Engin
   const fmBody = fm.body
   const fmFull = fm.fullBlock
 
+  // Schema pre-write gate (F-SCHEMA, feature 32): if the target document
+  // declares a class, and that class has a schema, and the schema
+  // constrains this field, the proposed value must satisfy it or the write
+  // is blocked before anything touches disk. A document with no class, or
+  // a class with no schema file, has nothing to validate against, business
+  // rule 2 only gates "once a schema is declared". Scoped to plain
+  // top-level scalar fields; list-addressed fields (field[N]) are not
+  // schema-checked.
+  const docClass = readFrontmatterField(content, 'class')
+  if (docClass) {
+    const { schema, error: loadError } = loadSchema(docClass, ctx.cwd)
+    if (loadError) {
+      ctx.warnings.push(`@update-frontmatter: schema error for class "${docClass}": ${loadError}`)
+    } else if (schema && !node.field.includes('[')) {
+      const result = validateFieldValue(schema, node.field, node.value)
+      if (!result.valid) {
+        ctx.warnings.push(`@update-frontmatter: blocked, ${result.error}`)
+        return ''
+      }
+    }
+  }
+
   // Detect list-style field addressing: `field[N].subfield`, `field[N]`,
   // or `field[append]`. These rewrite the block-list YAML inside the
   // frontmatter rather than top-level scalars.
@@ -116,7 +156,7 @@ export function executeUpdateFrontmatter(node: UpdateFrontmatterNode, ctx: Engin
 
   const newContent = content.replace(fmFull, `---\n${newFmBody}\n---\n`)
   try {
-    writeFileSync(target, newContent, 'utf8')
+    writeFileAtomic(target, newContent)
   } catch (err) {
     ctx.warnings.push(`@update-frontmatter failed: cannot write ${node.path}: ${String(err)}`)
   }

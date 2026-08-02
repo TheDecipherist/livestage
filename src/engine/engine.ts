@@ -22,6 +22,8 @@ import { executeTemplate, executeData } from './engine-template.js'
 import { evaluateAssert } from './assert/operators.js'
 import { formatAssertResult } from './assert/results.js'
 import { executeCode } from './code-runners.js'
+import { executeGraph } from './graph.js'
+import { buildDeterminism } from './determinism.js'
 import { parseTraceConfig } from './trace/config.js'
 import { emitRecord } from './trace/emit.js'
 import { extractArgs } from './trace/span.js'
@@ -38,6 +40,9 @@ export interface EngineOptions {
   ctx?: Partial<EngineContext>
   filePath?: string
   passthrough?: boolean
+  // --deterministic CLI flag: same effect as LIVESTAGE_DETERMINISTIC=1 in
+  // the environment, without requiring the caller to touch process.env.
+  deterministic?: boolean
 }
 
 export interface EngineResult {
@@ -165,6 +170,9 @@ export function execute(ast: ParseResult, options?: EngineOptions): EngineResult
   if (options?.ctx?.traceConfig === undefined) {
     base.traceConfig = parseTraceConfig(process.env['LIVESTAGE_TRACE'], base.cwd)
   }
+  if (options?.ctx?.determinism === undefined) {
+    base.determinism = buildDeterminism(base.env, options?.deterministic)
+  }
   loadStdlib(base)
   const mainFile = options?.filePath ? resolve(options.filePath) : null
   if (mainFile) {
@@ -258,7 +266,7 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
     // as an inert passthrough node with an empty raw (see parser.ts): it
     // contributes nothing to output, same as the retired header node used to.
     case 'passthrough': return node.raw
-    case 'graph': return node.raw
+    case 'graph': return executeGraph(node, ctx)
     case 'markdown': return resolveInterpolations(node.text, node.interpolations, ctx, node.shellInlines)
     case 'env': return resolveEnv(node.name, node.fallback, ctx)
     case 'define': { ctx.macros[node.name] = { body: node.body, params: node.params }; return '' }

@@ -62,3 +62,60 @@ export function readFrontmatterField(content: string, field: string): string | n
   }
   return items.length > 0 ? items.join(', ') : ''
 }
+
+function unquoteScalar(v: string): string {
+  if (v.length >= 2) {
+    if (v.startsWith('"') && v.endsWith('"')) return v.slice(1, -1)
+    if (v.startsWith("'") && v.endsWith("'")) return v.slice(1, -1)
+  }
+  return v
+}
+
+/**
+ * Parse every top-level frontmatter field into a flat row, scalars as
+ * (unquoted) strings and list fields (inline `[a, b]` or block `- a`/`- b`)
+ * as real string arrays, so a `where=` expression can use `.length`/array
+ * comparisons against them (feature 36, F-FM-QUERY). Same subset as
+ * readFrontmatterField: top-level only, no nested objects. Returns null when
+ * the file has no frontmatter block at all.
+ */
+export function parseFrontmatterRow(content: string): Record<string, unknown> | null {
+  const fm = extractFrontmatter(content)
+  if (!fm) return null
+  const lines = fm.body.split('\n')
+  const row: Record<string, unknown> = {}
+  const FIELD_RE = /^([A-Za-z_][A-Za-z0-9_-]*):[ \t]*(.*)$/
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? ''
+    const m = line.match(FIELD_RE)
+    if (!m) continue
+    const key = m[1]!
+    const rest = (m[2] ?? '').trim()
+    if (rest.startsWith('[') && rest.endsWith(']')) {
+      const inner = rest.slice(1, -1).trim()
+      row[key] = inner === '' ? [] : inner.split(',').map(s => unquoteScalar(s.trim()))
+      continue
+    }
+    if (rest !== '') {
+      row[key] = unquoteScalar(rest)
+      continue
+    }
+    // Empty tail: either a block list on subsequent indented `- ` lines, or
+    // a genuinely empty scalar field.
+    const items: string[] = []
+    let j = i + 1
+    for (; j < lines.length; j++) {
+      const l = lines[j] ?? ''
+      if (/^\s+-\s/.test(l)) { items.push(unquoteScalar(l.trim().replace(/^-\s*/, ''))); continue }
+      if (l === '' || /^\s/.test(l)) continue
+      break
+    }
+    if (items.length > 0) {
+      row[key] = items
+      i = j - 1
+      continue
+    }
+    row[key] = ''
+  }
+  return row
+}

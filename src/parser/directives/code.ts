@@ -32,6 +32,7 @@ const code: ParseModule = {
     }
     const timeoutRaw = input.attrs['timeout']
     const timeout = timeoutRaw !== undefined ? parseInt(timeoutRaw, 10) : null
+    const mockPath = input.attrs['mock']
     const node: CodeNode = {
       type: 'code',
       line: ctx.line,
@@ -42,6 +43,7 @@ const code: ParseModule = {
       timeout: timeout !== null && !isNaN(timeout) ? timeout : null,
       interpolate: input.attrs['interpolate'] === 'true',
       args: { ...input.attrs },
+      cache: mockPath ? { mode: 'mock', mockPath } : null,
     }
     return node
   },

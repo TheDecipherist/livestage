@@ -60,15 +60,15 @@ overlap_count: 3
 **Directives / Compute**
   └── `18-compute-directives` - Compute Directives (complete)
 **Directives / Frontmatter Query**
-  └── `36-frontmatter-query` - Frontmatter Query (planned)
+  └── `36-frontmatter-query` - Frontmatter Query (complete)
 **Directives / Graph**
-  └── `34-graph` - Graph (planned)
+  └── `34-graph` - Graph (complete)
 **Directives / Pipe**
   └── `22-pipe` - Pipe (complete)
 **Directives / Sources**
   └── `17-source-directives` - Source Directives (complete)
 **Directives / Update Frontmatter**
-  └── `33-update-frontmatter` - Update Frontmatter (planned)
+  └── `33-update-frontmatter` - Update Frontmatter (complete)
 **Docs / User Guide**
   └── `45-user-guide` - User Guide (planned)
 **Docs / Verification Closeout**
@@ -80,13 +80,13 @@ overlap_count: 3
 **Engine / Code Runners**
   └── `29-code-runners` - Code Runners (complete)
 **Engine / Determinism**
-  └── `35-determinism` - Determinism (planned)
+  └── `35-determinism` - Determinism (complete)
 **Engine / Fallback Contract**
   └── `24-fallback-contract` - Fallback Contract (complete)
 **Engine / Render Trace**
   └── `12-render-trace` - Render Trace (complete)
 **Engine / Schema Engine**
-  └── `32-schema-engine` - Schema Engine (planned)
+  └── `32-schema-engine` - Schema Engine (complete)
 **Examples / Connections**
   └── `46-connections-example` - Connections Example (planned)
 **Examples / Pattern Example**
@@ -143,11 +143,11 @@ graph TD
   29_code_runners["29-code-runners"]:::done
   30_doctor["30-doctor"]:::done
   31_init["31-init"]:::done
-  32_schema_engine["32-schema-engine"]:::planned
-  33_update_frontmatter["33-update-frontmatter"]:::planned
-  34_graph["34-graph"]:::planned
-  35_determinism["35-determinism"]:::planned
-  36_frontmatter_query["36-frontmatter-query"]:::planned
+  32_schema_engine["32-schema-engine"]:::done
+  33_update_frontmatter["33-update-frontmatter"]:::done
+  34_graph["34-graph"]:::done
+  35_determinism["35-determinism"]:::done
+  36_frontmatter_query["36-frontmatter-query"]:::done
   37_cr8_bare_checkout["37-cr8-bare-checkout"]:::planned
   38_cr9_doc_corpus_integrity["38-cr9-doc-corpus-integrity"]:::planned
   39_cr_d7_reuse_fidelity["39-cr-d7-reuse-fidelity"]:::planned

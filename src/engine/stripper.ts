@@ -65,7 +65,7 @@ function stripNode(node: ASTNode, env: Record<string, string>, warnings: string[
     case 'date': return ''
     case 'count': return ''
     case 'pipe': return ''
-    case 'graph': return node.raw
+    case 'graph': return ''
     // A leading legacy format-marker line parses as an inert passthrough
     // node with an empty raw (see parser.ts): contributes nothing to output.
     case 'passthrough': return node.raw

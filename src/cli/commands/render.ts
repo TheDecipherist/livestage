@@ -28,6 +28,8 @@ export interface RenderOptions {
   // --var is new, exposed as {{ vars.k }} and mirrored into LIVESTAGE_VAR_<K>.
   args?: string
   varFlags?: string[]
+  // Feature 35 (Determinism): same effect as LIVESTAGE_DETERMINISTIC=1.
+  deterministic?: boolean
 }
 
 function buildSkillContext(options: RenderOptions): {
@@ -188,6 +190,7 @@ export function runRender(filePath: string, options: RenderOptions = {}): Render
     },
   }
   if (options.passthrough) execOpts.passthrough = true
+  if (options.deterministic) execOpts.deterministic = true
   const result = execute(ast, execOpts)
 
   const output = postProcessOutput(result.output, options)

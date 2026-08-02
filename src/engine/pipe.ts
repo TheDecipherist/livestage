@@ -1,4 +1,7 @@
-const BUILTINS = new Set(['grep', 'sort', 'head', 'tail', 'wc', 'uniq'])
+// Kept in sync by hand with parser/parser.ts's own BUILTINS set, which
+// classifies a pipe stage as builtin vs shell at parse time (see that
+// file's comment for why the list can't just be imported from here).
+const BUILTINS = new Set(['grep', 'sort', 'head', 'tail', 'wc', 'uniq', 'count-by'])
 const MAX_GREP_PATTERN_LENGTH = 200
 const REDOS_SUSPECT = /(\([^)]*[+*][^)]*\)[+*]|\(\?[^)]*\)[+*][+*]|\.\*.*\.\*)/
 
@@ -38,6 +41,7 @@ export function runBuiltin(command: string, lines: string[]): string[] {
       return [String(lines.length)]  // default: -l (line count)
     }
     case 'uniq': return lines.filter((l, i) => i === 0 || l !== lines[i - 1])
+    case 'count-by': return runCountBy(parts.slice(1), lines)
     default: throw new Error(`Unknown built-in command: "${cmd}"`)
   }
 }
@@ -73,6 +77,26 @@ function runGrep(args: string[], lines: string[]): string[] {
     throw new Error(`grep: invalid pattern: ${pattern}`)
   }
   return lines.filter(l => negate ? !re.test(l) : re.test(l))
+}
+
+// count-by <field>: aggregates tab-separated rows by a named column,
+// reading the column index from a header row (lines[0]), the same
+// header-row convention @list's frontmatter query mode (feature 36) emits
+// when fields= is given. Output rows are "value\tcount", most common first.
+function runCountBy(args: string[], lines: string[]): string[] {
+  const field = args[0]
+  if (!field || lines.length === 0) return []
+  const header = (lines[0] ?? '').split('\t').map(c => c.trim())
+  const idx = header.indexOf(field)
+  if (idx === -1) return []
+  const counts = new Map<string, number>()
+  for (const line of lines.slice(1)) {
+    const cell = (line.split('\t')[idx] ?? '').trim()
+    counts.set(cell, (counts.get(cell) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([value, count]) => `${value}\t${count}`)
 }
 
 function runSort(flags: string[], lines: string[]): string[] {

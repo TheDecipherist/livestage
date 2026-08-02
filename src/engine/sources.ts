@@ -7,7 +7,8 @@ import { checkDataPath } from './security/filesystem.js'
 import { checkShellCommand } from './security/shell.js'
 import { expandPattern } from './security/path-expand.js'
 import { interpolatePathSoft } from './engine-include.js'
-import { globToRegex, walkDir, listJson, listCsv, readEnvFile } from './sources-file-utils.js'
+import { globToRegex, walkDir, listJson, listCsv, readEnvFile, hasGlobChars, resolveGlobTargets, whereMatches } from './sources-file-utils.js'
+import { parseFrontmatterRow } from './frontmatter-utils.js'
 
 /**
  * Resolve and security-check a data-op path. Returns the absolute path if
@@ -42,7 +43,76 @@ export function resolveDataPath(path: string, ctx: EngineContext, directive: str
   return full
 }
 
+// `field != []` / `field == []` compares by reference in real JS and would
+// be vacuously true/false always; rewritten to a length check so the
+// emptiness predicate feature 36's own business rule 1 documents
+// (`known_issues != []`) actually filters correctly. Scoped to the
+// frontmatter query path only, whereMatches' generic JSON/CSV where= eval
+// (feature 17) is untouched.
+function preprocessArrayEmptiness(expr: string): string {
+  return expr
+    .replace(/([A-Za-z_][A-Za-z0-9_.]*)\s*!=\s*\[\s*\]/g, '$1.length > 0')
+    .replace(/([A-Za-z_][A-Za-z0-9_.]*)\s*==\s*\[\s*\]/g, '$1.length === 0')
+}
+
+function frontmatterRowToTabLine(row: Record<string, unknown>, fields: string[]): string {
+  return fields.map(f => {
+    const v = row[f]
+    return Array.isArray(v) ? v.join(', ') : String(v ?? '')
+  }).join('\t')
+}
+
+// Business rule 6: nested-array frontmatter (an object per list item, e.g.
+// `satisfies_contracts[0].status`) is deliberately out of scope for `where=`
+// (parseFrontmatterRow only captures flat top-level fields, feature 36's
+// donor scope). Without this check a query like that would silently
+// evaluate against a mangled flattened row and return a wrong-but-plausible
+// answer instead of failing loudly, so it is detected and refused up front.
+const NESTED_ARRAY_RE = /[A-Za-z_][A-Za-z0-9_]*\s*\[\s*\d+\s*\]\s*\./
+
+// F-FM-QUERY (feature 36): @list over a glob with where=/fields= queries
+// each matched file's frontmatter instead of listing directory entries.
+// where= filters; fields= projects a header row + tab rows shaped for
+// `| @render table`. Neither present falls through to the plain listing
+// below (this path is opt-in, not a replacement for @list's existing
+// directory/JSON/CSV behavior).
+function executeFrontmatterQuery(pathGlob: string, args: Record<string, string>, ctx: EngineContext): string[] {
+  const files = resolveGlobTargets(pathGlob, p => resolveDataPath(p, ctx, '@list'))
+  const rawWhere = args['where']
+  if (rawWhere && NESTED_ARRAY_RE.test(rawWhere)) {
+    ctx.warnings.push(`@list where=: nested-array frontmatter queries are not supported ("${rawWhere}"); walk it with a @code block instead`)
+    return []
+  }
+  const whereExpr = rawWhere ? preprocessArrayEmptiness(rawWhere) : null
+  const fieldsSpec = args['fields']
+  const fields = fieldsSpec ? fieldsSpec.split(',').map(f => f.trim()) : null
+
+  const matched: string[] = []
+  const rows: Record<string, unknown>[] = []
+  for (const file of files) {
+    let content: string
+    try { content = readFileSync(file, 'utf8') } catch { continue }
+    const row = parseFrontmatterRow(content)
+    if (row === null) continue
+    if (whereExpr && !whereMatches(row, whereExpr)) continue
+    matched.push(file)
+    rows.push(row)
+  }
+
+  if (!fields) return matched
+
+  const lines = [fields.join('\t')]
+  for (const row of rows) lines.push(frontmatterRowToTabLine(row, fields))
+  return lines
+}
+
 export function executeList(node: ListNode, ctx: EngineContext): string[] {
+  const whereExpr = node.args['where']
+  const fieldsSpec = node.args['fields']
+  if (hasGlobChars(node.path) && (whereExpr || fieldsSpec)) {
+    return executeFrontmatterQuery(node.path, node.args, ctx)
+  }
+
   const full = resolveDataPath(node.path, ctx, '@list')
   if (!full) return []
   const ext = node.path.toLowerCase()
@@ -228,7 +298,7 @@ export function executeDate(node: DateNode, ctx?: EngineContext): string[] {
   if (type === 'created') {
     throw new Error('@date: type="created" is not supported — file creation time is not reliably available across platforms')
   }
-  let date = new Date()
+  let date = ctx?.determinism?.now ?? new Date()
   if (type === 'modified' && filePath && ctx) {
     const abs = resolveDataPath(filePath, ctx, '@date file=')
     if (abs) {

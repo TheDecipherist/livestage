@@ -124,7 +124,7 @@ export function evalExpr(expr: string, ctx: EngineContext): string {
   }
 
   const dateFmtMatch = trimmed.match(/^date\s+format="([^"]*)"$/)
-  if (dateFmtMatch) return formatDate(new Date(), dateFmtMatch[1] ?? 'ISO')
+  if (dateFmtMatch) return formatDate(ctx.determinism?.now ?? new Date(), dateFmtMatch[1] ?? 'ISO')
 
   const envObj: Record<string, string> = { ...ctx.env, ...ctx.envFiles }
   // Shared jailed file helpers (./file-access.js) - identical surface + jail to
@@ -169,13 +169,14 @@ export function evalExpr(expr: string, ctx: EngineContext): string {
     allowed,
     // Mirrors conditions.ts buildSandbox builtins so {{ }} in markdown body
     // and @if conditions resolve the same surface.
-    now_iso: () => new Date().toISOString(),
-    now_ms: () => Date.now(),
+    now_iso: () => (ctx.determinism?.now ?? new Date()).toISOString(),
+    now_ms: () => (ctx.determinism?.now ?? new Date()).getTime(),
     parse_iso_ms: (s: unknown) => {
       const t = new Date(String(s ?? '')).getTime()
       return Number.isNaN(t) ? 0 : t
     },
     uuid_v4: () => {
+      if (ctx.determinism) return ctx.determinism.nextUuid()
       const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
       if (c?.randomUUID) return c.randomUUID()
       const hex = () => Math.floor(Math.random() * 16).toString(16)

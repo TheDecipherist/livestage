@@ -59,6 +59,17 @@ describe('runDoctor', () => {
     expect(check?.healthy).toBe(false)
   })
 
+  it('fails an intentionally malformed schema file (feature 32, CR-adjacent)', () => {
+    runInit({ client: 'claude-code', homeDir, cwd })
+    mkdirSync(join(cwd, '.livestage', 'schemas'), { recursive: true })
+    writeFileSync(join(cwd, '.livestage', 'schemas', 'broken.json'), 'not valid json')
+    const health = runDoctor({ cwd, homeDir })
+    expect(health.healthy).toBe(false)
+    const check = health.checks.find(c => c.name === 'schemas')
+    expect(check?.healthy).toBe(false)
+    expect(check?.detail).toContain('broken.json')
+  })
+
   it('checks a nested project structure, not just the top level', () => {
     runInit({ client: 'claude-code', homeDir, cwd })
     mkdirSync(join(cwd, 'sub'), { recursive: true })

@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { runInNewContext } from 'node:vm'
 
@@ -46,6 +46,35 @@ export function walkDir(dir: string, rel: string, matchRe: RegExp | null, typeFi
 
 export function whereMatches(row: Record<string, unknown>, expr: string): boolean {
   try { return Boolean(runInNewContext(expr, { ...row }, { timeout: 500 })) } catch { return false }
+}
+
+export function hasGlobChars(s: string): boolean {
+  return /[*?[]/.test(s)
+}
+
+// Shared by @assert (target=) and @list's frontmatter query mode
+// (feature 36): resolves a single glob string (e.g. "docs/*.stage",
+// "README.md") to absolute file paths. `resolveBase` does the actual
+// path-jail security check (each caller's own directive name in warnings),
+// dependency-injected so this file never needs to import sources.ts's
+// resolveDataPath and create an import cycle (sources.ts already imports
+// from this file).
+export function resolveGlobTargets(
+  target: string,
+  resolveBase: (path: string) => string | null,
+): string[] {
+  if (!hasGlobChars(target)) {
+    const full = resolveBase(target)
+    return full && existsSync(full) ? [full] : []
+  }
+  const firstGlobIdx = target.search(/[*?[]/)
+  const slashBefore = target.lastIndexOf('/', firstGlobIdx)
+  const baseDir = slashBefore >= 0 ? target.slice(0, slashBefore) : '.'
+  const pattern = slashBefore >= 0 ? target.slice(slashBefore + 1) : target
+  const fullBase = resolveBase(baseDir)
+  if (!fullBase) return []
+  const matchRe = globToRegex(pattern)
+  return walkDir(fullBase, '', matchRe, 'files', 0, -1).map(rel => join(fullBase, rel))
 }
 
 function rowToTabLine(row: Record<string, unknown>, columns: string[] | null, collapse: boolean): string {

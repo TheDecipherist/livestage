@@ -23,7 +23,7 @@ const FIXTURES: Record<string, string> = {
   define: '@define foo\nbody\n@define-end',
   env: '@env X /',
   foreach: '@foreach x in @list ./ /\nbody\n@foreach-end',
-  graph: '@graph plan.md /',
+  graph: '@graph target="*.md" /',
   hash: '@hash path="package.json" /',
   if: '@if true\nbody\n@if-end',
   import: '@import ./x.md /',

@@ -1,1 +1,1 @@
-{"lastCommand":"cd /home/tim_carter81/projects/livestage\ngit add -A\ngit comm","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.mdd/.startup.md"}
+{"lastCommand":"cd /home/tim_carter81/projects/livestage\ngit diff -- '*.ts' ","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.mdd/jobs/wave-livestage-wave-5/MANIFEST.md"}

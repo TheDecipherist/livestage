@@ -50,6 +50,20 @@ describe('@code', () => {
     expect(result.output).toContain('3')
   })
 
+  it('mock= serves the fixture and never spawns the runner, even for an ungranted language (feature 35)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ls-code-mock-'))
+    try {
+      writeFileSync(join(dir, 'fixture.txt'), 'from the fixture\n')
+      const ast = parse('@code language="python" mock="fixture.txt" label="r"\nraise SystemExit(1)\n@code-end\n{{ r._exit }}')
+      const result = execute(ast, { ctx: { cwd: dir, docDir: dir, security: granted([]) } })
+      expect(result.output).toContain('from the fixture')
+      expect(result.output).toContain('0')
+      expect(result.warnings).toHaveLength(0)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('interpolate=false (default) leaves {{ }} inside the body untouched', () => {
     const ast = parse('@set x = "hello" /\n@code language="javascript"\nconsole.log("{{ x }}")\n@code-end')
     const result = execute(ast, { ctx: { security: granted(['javascript']) } })

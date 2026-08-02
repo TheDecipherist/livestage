@@ -139,6 +139,13 @@ export interface EngineContext {
   // passing an empty array in makeContext's overrides; render() itself
   // never reads this field.
   assertResults?: AssertResult[]
+  // Frozen clock + seeded UUID source for LIVESTAGE_DETERMINISTIC=1 renders
+  // (feature 35). null means "not deterministic", the default: every call
+  // site falls back to real Date/crypto.randomUUID. Computed once per
+  // execute() call from ctx.env, never mutated mid-render, so every {{ }}
+  // and @date resolution in one render sees the same frozen `now` and the
+  // same seeded uuid sequence a second identical render would produce.
+  determinism: import('./determinism.js').DeterminismState | null
 }
 
 export interface ChosenTransition {
@@ -181,6 +188,7 @@ export function makeContext(overrides?: Partial<EngineContext>): EngineContext {
     traceConfig: null,
     chosenTransition: null,
     shellInline: null,
+    determinism: null,
   }
   if (!overrides) return base
   const { warnings, resolutionStack, completedSet, localConnectionNames, glossary, constraints, events, callstack, ...rest } = overrides
