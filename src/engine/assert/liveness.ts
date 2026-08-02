@@ -3,6 +3,7 @@
 // absent-args fallback guard. All three are purely structural (AST-based),
 // no filesystem execution, consistent with "validate never runs anything".
 import type { ASTNode, AssertNode, ConditionalBranch } from 'livestage/parser'
+import type { CodeSecurityConfig } from '../security/config.js'
 
 export interface LivenessIssue {
   message: string
@@ -101,4 +102,20 @@ export function checkArgsWithoutFallback(nodes: ASTNode[]): LivenessIssue | null
     message: '{{ args }}/{{ argN }} is dereferenced with no @if guard anywhere in the document; a passive (hook) render with no --args will render this literally empty with no fallback',
     line: firstLine,
   }
+}
+
+// Shared rule with feature 29 (Code Runners): a document using an ungranted
+// @code language fails validate, the same way it fails at render runtime.
+export function checkUngrantedCodeLanguages(nodes: ASTNode[], codeConfig: CodeSecurityConfig): LivenessIssue[] {
+  const issues: LivenessIssue[] = []
+  walk(nodes, n => {
+    if (n.type !== 'code') return
+    if (!codeConfig.languages.includes(n.language)) {
+      issues.push({
+        message: `@code language "${n.language}" is not granted (policy code.languages: [${codeConfig.languages.join(', ')}])`,
+        line: n.line,
+      })
+    }
+  })
+  return issues
 }

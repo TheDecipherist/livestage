@@ -12,7 +12,7 @@ wave: livestage-wave-1
 depends_on: []
 tags: [contract, identity, rebrand, ci-scan, donor-isolation]
 known_issues:
-  - "src/cli/commands/init.ts and src/cli/templates/claude-section.ts carry donor identity strings; out of wave-1 scope, owned by feature 31 (Init, wave 6)"
+  - "RESOLVED in wave 4 (feature 31, Init): src/cli/commands/init.ts and src/cli/templates/claude-section.ts no longer carry donor identity strings. The scan is now zero hits across src/ and dist/ with no exceptions. This closure also fixed a real bug the donor identity strings were masking: init.ts's PreToolUse hook registration installed a completely different, wrong hook (donor content-sniffing of .md files) that had nothing to do with the actual hook this project built (src/hook/pretooluse.ts, feature 11); see 31-init.md's known_issues for the full finding."
 ---
 
 # CR-1: Standalone Identity
@@ -58,15 +58,13 @@ Scans), not by a directive or CLI verb of its own.
 
 ## Acceptance Criteria
 
-- [!] Grep-based scan across `src/`, `dist/`, shipped docs, CLI output
-      strings, and error messages finds zero donor identity hits. As of this
-      build: zero hits outside `src/cli/commands/init.ts` and
-      `src/cli/templates/claude-section.ts` (and their `dist/` build output),
-      see Known Issues. `src/engine/stdlib.md` (shipped to `dist/`, auto
-      loaded into every render) carried a donor header and was cleaned; test
-      fixtures under `tests/` (out of this criterion's documented scope, but
-      raised directly by the user) were swept too, down to the same two
-      files.
+- [x] Grep-based scan across `src/`, `dist/`, shipped docs, CLI output
+      strings, and error messages finds zero donor identity hits. Fully
+      clean as of wave 4 (feature 31, Init): `src/cli/commands/init.ts` and
+      `src/cli/templates/claude-section.ts` were the last two files,
+      resolved. Test fixtures under `tests/` are clean too (the sole
+      remaining string match is `.not.toContain('markdownai')`, a negative
+      assertion, not a mention).
 - [x] Scan is case-insensitive (`grep -i` used throughout verification).
 - [x] Scan explicitly excludes `MDs/livestage-spec.md`.
 
@@ -76,7 +74,4 @@ None (this SPEC has no dependencies; it is a foundational contract).
 
 ## Known Issues
 
-- `src/cli/commands/init.ts` and `src/cli/templates/claude-section.ts` carry
-  donor identity strings throughout (a hardcoded MCP-tool instruction block
-  for a server this build does not ship, among others). Not a wave-1
-  COMPONENT; owned by feature 31 (Init, wave 6).
+RESOLVED in wave 4, feature 31 (Init). See frontmatter `known_issues` above.

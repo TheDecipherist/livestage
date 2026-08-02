@@ -1,5 +1,5 @@
 import type { ASTNode } from 'livestage/parser'
-import type { FilesystemSecurityConfig, ShellSecurityConfig, HttpSecurityConfig, DbSecurityConfig, EventSecurityConfig } from './security/config.js'
+import type { FilesystemSecurityConfig, ShellSecurityConfig, HttpSecurityConfig, DbSecurityConfig, EventSecurityConfig, CodeSecurityConfig } from './security/config.js'
 import type { TraceConfig } from './trace/config.js'
 import type { AssertResult } from './assert/operators.js'
 
@@ -55,6 +55,7 @@ export interface SecurityConfig {
   httpConfig?: HttpSecurityConfig
   dbConfig?: DbSecurityConfig
   eventConfig?: EventSecurityConfig
+  codeConfig?: CodeSecurityConfig
 }
 
 export interface MCPContext {

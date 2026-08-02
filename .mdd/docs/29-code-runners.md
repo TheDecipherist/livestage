@@ -4,20 +4,34 @@ title: Code Runners
 type: COMPONENT
 path: Engine / Code Runners
 source_files: [src/parser/directives/code.ts, src/engine/code-runners.ts]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-4
 depends_on: [10-security-policy-core, 18-compute-directives]
 tags: [code, runners, sandboxed-execution, temp-script, granted-languages]
-known_issues: []
+known_issues:
+  - "No code security config section existed at all before this wave: SecurityJsonConfig had shell/http/db/filesystem/event but no code field, even though CR-5's own doc (feature 06, wave 1) already documented its shape. Added CodeSecurityConfig ({ languages, timeout, runners }), defaulting to languages: [] (off in every profile, business rule 4), threaded through loadSecurityConfig, EngineContext.security.codeConfig, and render.ts's buildSecurityConfig."
+  - "The always-block carve-out is architectural, not a policy exception: @code never constructs a shell string at all (spawnSync(runnerCmd, [scriptPath], ...), argv-array form, shell:false implicitly), so it never reaches checkShellCommand or the SHELL_ALWAYS_BLOCK pattern list in the first place. A user's @query \"node -e ...\" still hits that immutable block because @query always builds a shell string. Live-verified: both behaviors hold simultaneously against the same granted policy."
+  - "The validate-time ungranted-language check (business rule 4, shared with feature 27) did not exist: validate.ts had no security-config awareness at all before this wave. Added checkUngrantedCodeLanguages (liveness.ts) and wired loadSecurityConfig into validate.ts."
+  - "@code could not be used as a pipe source at all (executeSource's switch had no 'code' case, would throw); found while verifying the wave-4 demo-state's '@render table shows its rows'. Added: only the self-closed src= form works as a pipe source (source | sink is one-line syntax; a multi-line @code...@code-end block cannot be followed by a pipe on a later line). A trailing empty line from the script's own trailing newline is dropped so it doesn't become a spurious blank table row. tests/unit/engine/code-runners.test.ts::can be used as a pipe source."
 satisfies_contracts:
   - from: 10-security-policy-core
-    function: enforcePolicy
+    function: checkDataPath
     when: always
-    status: pending
-    verified_at: ""
+    status: done
+    verified_at: "tests/unit/engine/code-runners.test.ts::src= resolves through the same data-jail check every source directive uses (checkDataPath)"
+  - from: 10-security-policy-core
+    function: checkShellCommand
+    when: always
+    status: done
+    verified_at: "tests/unit/engine/code-runners.test.ts::the always-block carve-out: an engine-built invocation runs even though a literal node -e @query stays blocked"
+  - from: 10-security-policy-core
+    function: checkWritePath
+    when: "filesystem.write_enabled is true"
+    status: done
+    verified_at: "src/engine/code-runners.ts:65"
 ---
 
 # Code Runners
@@ -79,17 +93,22 @@ _duration: number, [label]?: <parsed JSON if stdout is JSON> }`.
 
 ## Acceptance Criteria
 
-- [ ] A granted Python `@code` block emits JSON that binds under `label`, and
-      `{{ label.total }}` resolves correctly (Wave 4 demo-state, line
-      615-617).
-- [ ] Removing `python` from the policy fails the doc at `validate` time and
-      at `render` runtime (line 617-618).
-- [ ] Named acceptance test: an engine-built runner invocation passes while
-      `@query "node -e ..."` is refused, proving the carve-out is precise
-      (line 622-624).
-- [ ] `LIVESTAGE_CONTEXT` and stdin correctly deliver args/vars/doc path into
-      a granted script.
-- [ ] `interpolate=true` correctly expands `{{ }}` inside the script body;
+- [x] A granted Python `@code` block emits JSON that binds under `label`, and
+      `{{ label.total }}` resolves correctly, and its rows pipe into
+      `@render type="table"`. Live-verified with a real Python subprocess
+      (Wave 4 demo-state, both the label-binding and the table-render
+      halves); JS-runner equivalents in
+      `tests/unit/engine/code-runners.test.ts`.
+- [x] Removing `python` from the policy fails the doc at `validate` time and
+      at `render` runtime. Live-verified both paths.
+- [x] Named acceptance test: an engine-built runner invocation passes while
+      `@query "node -e ..."` is refused. Live-verified and
+      `code-runners.test.ts::the always-block carve-out`.
+- [x] `LIVESTAGE_CONTEXT` correctly delivers args/vars/doc into a granted
+      script: `code-runners.test.ts::LIVESTAGE_CONTEXT delivers
+      args/vars/doc`. Delivered via env var and stdin (both, per the spec's
+      "Context in via LIVESTAGE_CONTEXT and stdin").
+- [x] `interpolate=true` correctly expands `{{ }}` inside the script body;
       the default (`interpolate=false`) does not.
 
 ## Dependencies
@@ -99,4 +118,6 @@ _duration: number, [label]?: <parsed JSON if stdout is JSON> }`.
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: the new `code` security config
+section, the architectural (not policy-based) carve-out, and the new
+validate-time grant check.

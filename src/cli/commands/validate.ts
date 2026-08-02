@@ -2,8 +2,8 @@ import { readFileSync, existsSync } from 'node:fs'
 import { resolve, relative, dirname, isAbsolute } from 'node:path'
 import { parse, ParseError } from 'livestage/parser'
 import type { ASTNode, ConditionalBranch, ImportNode } from 'livestage/parser'
-import { checkFilePath, checkAbsolutePath } from 'livestage/engine'
-import { checkInertDoc, checkSuspiciousRegex, checkArgsWithoutFallback } from '../../engine/assert/liveness.js'
+import { checkFilePath, checkAbsolutePath, loadSecurityConfig } from 'livestage/engine'
+import { checkInertDoc, checkSuspiciousRegex, checkArgsWithoutFallback, checkUngrantedCodeLanguages } from '../../engine/assert/liveness.js'
 
 export interface ValidateOptions {
   env?: string
@@ -50,6 +50,11 @@ export function runValidate(filePath: string, options: ValidateOptions = {}): Va
       }
       const argsIssue = checkArgsWithoutFallback(ast.nodes)
       if (argsIssue) errors.push(`args: no fallback guard (${resolved}:${argsIssue.line}), ${argsIssue.message}`)
+
+      const codeConfig = loadSecurityConfig(undefined, options.cwd).code
+      for (const issue of checkUngrantedCodeLanguages(ast.nodes, codeConfig)) {
+        errors.push(`@code: ungranted language (${resolved}:${issue.line}), ${issue.message}`)
+      }
     }
   } catch (err) {
     errors.push(err instanceof ParseError ? err.message : String(err))

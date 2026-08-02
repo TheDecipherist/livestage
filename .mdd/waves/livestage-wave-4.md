@@ -3,7 +3,7 @@ id: livestage-wave-4
 title: Code + Doctor
 initiative: livestage
 initiative_version: 1
-status: planned
+status: complete
 depends_on: [livestage-wave-3]
 demo_state: "A .stage doc runs a Python block that emits JSON; {{ analysis.total }} renders and @render table shows its rows; with python removed from the policy, validate fails the doc at authoring time and render fails at runtime; doctor prints one healthy line, --json validates against its schema, --rules-for answers for a fixture file."
 content_hash: 59afb31e22e0

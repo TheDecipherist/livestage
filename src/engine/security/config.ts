@@ -67,6 +67,12 @@ export interface FilesystemSecurityConfig {
   user_masking_patterns: string[]
 }
 
+export interface CodeSecurityConfig {
+  languages: string[]                    // e.g. ["python", "javascript"], empty = @code entirely off
+  timeout: number                        // ms
+  runners: Record<string, string>        // language -> command, extends/overrides the built-in map
+}
+
 export interface EventTransportConfig {
   type: 'http' | 'file' | 'db'
   url?: string
@@ -90,6 +96,7 @@ export interface SecurityJsonConfig {
   db: DbSecurityConfig
   filesystem: FilesystemSecurityConfig
   event: EventSecurityConfig
+  code: CodeSecurityConfig
 }
 
 export function defaultSecurityConfig(): SecurityJsonConfig {
@@ -168,6 +175,13 @@ export function defaultSecurityConfig(): SecurityJsonConfig {
       max_value_length: 500,
       onError: 'silence',
     },
+    // OFF in every profile until the project policy explicitly grants
+    // languages (CR-5 business rule 4, feature 29).
+    code: {
+      languages: [],
+      timeout: 30_000,
+      runners: {},
+    },
   }
 }
 
@@ -189,6 +203,7 @@ export function loadSecurityConfig(filePath?: string, cwd?: string): SecurityJso
       db: (typeof loaded['db'] === 'object' && loaded['db'] !== null && !Array.isArray(loaded['db']) ? loaded['db'] as DbSecurityConfig : {}),
       filesystem: { ...defaults.filesystem, ...(typeof loaded['filesystem'] === 'object' && loaded['filesystem'] !== null && !Array.isArray(loaded['filesystem']) ? loaded['filesystem'] as Partial<FilesystemSecurityConfig> : {}) },
       event: { ...defaults.event, ...(typeof loaded['event'] === 'object' && loaded['event'] !== null && !Array.isArray(loaded['event']) ? loaded['event'] as Partial<EventSecurityConfig> : {}) },
+      code: { ...defaults.code, ...(typeof loaded['code'] === 'object' && loaded['code'] !== null && !Array.isArray(loaded['code']) ? loaded['code'] as Partial<CodeSecurityConfig> : {}) },
     }
   } catch (err) {
     process.stderr.write(`[livestage] security config parse error (${path}): ${String(err)}\n`)

@@ -26,7 +26,7 @@ const V1_CLOSE_TAGS = new Set(['end', 'endif', 'endswitch'])
 // @define: body is the macro template; single-word lines were incorrectly
 // consumed as bare flags before body mode started.
 // @data: unchanged (was already in the set).
-const VERBATIM_BODY_DIRECTIVES = new Set(['data', 'define'])
+const VERBATIM_BODY_DIRECTIVES = new Set(['data', 'define', 'code'])
 
 // Block directives that get their body recursively parsed into ASTNodes.
 const RECURSIVE_BODY_DIRECTIVES = new Set([

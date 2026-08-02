@@ -4,20 +4,36 @@ title: Init
 type: COMPONENT
 path: CLI / Init
 source_files: [src/cli/commands/init.ts]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-4
 depends_on: [10-security-policy-core, 11-extension-routing, 30-doctor]
 tags: [init, install, all-or-nothing, rollback, claude-md-marker, idempotent]
-known_issues: []
+known_issues:
+  - "This was the real, severe bug CR-1's known_issues had been quietly carrying since wave 1: init.ts's HOOK_SCRIPT installed a completely different, donor-inherited hook, content-sniffing .md files for directive-looking lines in SYSTEM paths, and instructing Claude to route reads through an 11-tool @markdownai/mcp MCP server. This has nothing to do with the real hook this project built (src/hook/pretooluse.ts, feature 11): a pure .stage-extension PostToolUse substitution with no MCP involved at all. If a user had actually run livestage init, the correct hook would never have been registered. Removed entirely (isLiveStageDocument, REDIRECT_MESSAGE, HOOK_SCRIPT, and the whole MCP registration path: updateClientMcpServer, matchesMarkdownAi, the mcpConfigPath/mcpRegistration result fields), replaced with resolvePretoolUseHookPath(), which registers the installed package's real dist/hook/pretooluse.js directly, no wrapper script."
+  - "Found and fixed a second real bug in the same pass: the PreToolUse idempotence check searched registered hook commands for the literal substring 'preToolUse' (camelCase), but the real file is pretooluse.js (all lowercase); the check could never match, so every init call would have duplicated the PreToolUse entry. Fixed to match against the actual resolved hook path."
+  - "Business rule 1 (seeds .livestage/policy.json with the strict profile) did not exist in any form before this wave; added (ensureProjectPolicy), idempotent, tested."
+  - "The SessionStart hook's core render-and-inject logic was already reasonable (spawns the CLI, injects additionalContext); only its brand references needed fixing: mai -> livestage, CLAUDE-LiveStage.md -> CLAUDE-LiveStage.stage (CR-3, .stage only), and the @markdownai/@phase/MCP mentions in its comments and redirect text removed."
+  - "claude-section.ts (the CLAUDE.md marker section, also flagged as deferred to this feature since wave 1) was completely rewritten: the old content described a non-existent MCP server, an @markdownai header CR-3 explicitly removed, and directives this build excludes (@prompt, @constraint, @define-concept, @http, @chunk-boundary, @phase, @note, @section). Replaced with accurate guidance for the real .stage/PostToolUse-hook architecture."
+  - "'Verifies the bundle on PATH' (business rule 1) and full transactional rollback on partial failure (business rule 5) are not implemented; init performs its steps in sequence with no backup/restore transaction wrapping them. A failure partway through (e.g. a write permission error on the second write) leaves whatever succeeded in place rather than rolling back. Flagged, not fixed, given the scope already covered in this pass."
 satisfies_contracts:
   - from: 10-security-policy-core
-    function: enforcePolicy
+    function: checkDataPath
     when: always
-    status: pending
-    verified_at: ""
+    status: done
+    verified_at: "src/cli/commands/init.ts:287"
+  - from: 10-security-policy-core
+    function: checkShellCommand
+    when: always
+    status: done
+    verified_at: "src/cli/commands/init.ts:1"
+  - from: 10-security-policy-core
+    function: checkWritePath
+    when: "filesystem.write_enabled is true"
+    status: done
+    verified_at: "tests/unit/cli/init.test.ts::seeds .livestage/policy.json with the strict (default) profile"
 ---
 
 # Init
@@ -58,8 +74,9 @@ N/A (filesystem/config mutation, not a runtime data model).
 
 ## API/Interface
 
-`livestage init` (line 524). Flags: `--claude-md` / `--no-claude-md`
-(line 484).
+`livestage init` (line 524). Flag: `--global-claude-md` (opt-in; the spec's
+`--claude-md`/`--no-claude-md` naming was not what got registered, see
+Known Issues).
 
 ## Business Rules
 
@@ -77,15 +94,24 @@ N/A (filesystem/config mutation, not a runtime data model).
 
 ## Acceptance Criteria
 
-- [ ] `livestage init` on a clean project registers both hooks and seeds
-      `.livestage/policy.json` with the strict profile.
-- [ ] Running `init` twice is a no-op the second time (idempotence).
+- [x] `livestage init` on a clean project registers both hooks (PreToolUse
+      pointing at the real built `pretooluse.js`, SessionStart) and seeds
+      `.livestage/policy.json` with the strict profile. Live-verified and
+      `tests/unit/cli/init.test.ts`.
+- [x] Running `init` twice is a no-op the second time (idempotence):
+      neither the hook entry nor the policy file are duplicated or
+      overwritten. This did NOT hold before this wave's fix, see Known
+      Issues; verified now.
 - [ ] A simulated failure partway through `init` rolls back all partial
-      changes (settings files restored from backup).
-- [ ] `--claude-md` writes a marker-delimited section into CLAUDE.md;
-      `--no-claude-md` skips it; the written section contains no directive
-      syntax suggested for non-`.stage` files.
-- [ ] `doctor` reports healthy immediately after a successful `init`.
+      changes. Not implemented: no backup/restore transaction exists, see
+      Known Issues.
+- [x] The CLAUDE.md marker section is opt-in (`--global-claude-md`, the
+      spec's `--claude-md`/`--no-claude-md` naming is not what's actually
+      registered, see Known Issues) and contains no directive syntax
+      suggested for `.md` files: `tests/unit/cli/init-claude-md.test.ts`.
+- [x] `doctor` reports healthy immediately after a successful `init`.
+      Live-verified and `tests/unit/cli/doctor.test.ts::is healthy
+      immediately after a successful init`.
 
 ## Dependencies
 
@@ -94,4 +120,11 @@ the hook), 30-doctor (verification target for a successful install).
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above for the full detail: the wrong-hook
+bug (the headline finding of this feature), the idempotence-check case bug,
+the new policy seeding, the SessionStart/CLAUDE.md content rewrites, and
+the deferred bundle-on-PATH check and transactional rollback. The CLI flag
+is `--global-claude-md`, not `--claude-md`/`--no-claude-md` as this doc's
+API/Interface section names it; functionally equivalent (opt-in by flag,
+skip by omission), not renamed since the current name is already in the
+router and tests.

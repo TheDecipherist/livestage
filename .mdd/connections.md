@@ -20,9 +20,9 @@ overlap_count: 3
 **CLI / CI Mode**
   └── `28-ci-mode` - CI Mode (complete)
 **CLI / Doctor**
-  └── `30-doctor` - Doctor (planned)
+  └── `30-doctor` - Doctor (complete)
 **CLI / Init**
-  └── `31-init` - Init (planned)
+  └── `31-init` - Init (complete)
 **CLI / Router**
   └── `13-cli-router` - CLI Router (complete)
 **Contracts / Bare Checkout**
@@ -78,7 +78,7 @@ overlap_count: 3
 **Engine / Cache**
   └── `21-cache` - Cache (complete)
 **Engine / Code Runners**
-  └── `29-code-runners` - Code Runners (planned)
+  └── `29-code-runners` - Code Runners (complete)
 **Engine / Determinism**
   └── `35-determinism` - Determinism (planned)
 **Engine / Fallback Contract**
@@ -140,9 +140,9 @@ graph TD
   26_assert_operators["26-assert-operators"]:::done
   27_assert_liveness["27-assert-liveness"]:::done
   28_ci_mode["28-ci-mode"]:::done
-  29_code_runners["29-code-runners"]:::planned
-  30_doctor["30-doctor"]:::planned
-  31_init["31-init"]:::planned
+  29_code_runners["29-code-runners"]:::done
+  30_doctor["30-doctor"]:::done
+  31_init["31-init"]:::done
   32_schema_engine["32-schema-engine"]:::planned
   33_update_frontmatter["33-update-frontmatter"]:::planned
   34_graph["34-graph"]:::planned

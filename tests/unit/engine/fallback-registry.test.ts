@@ -15,6 +15,7 @@ import { strip } from '../../../src/engine/stripper.js'
 const FIXTURES: Record<string, string> = {
   assert: '@assert operator="file-exists" target="package.json" /',
   call: '@call foo /',
+  code: '@code language="javascript"\nconsole.log(1)\n@code-end',
   check: '@check command="true" /',
   count: '@count ./ /',
   data: '@data r\n  a = 1\n@data-end',

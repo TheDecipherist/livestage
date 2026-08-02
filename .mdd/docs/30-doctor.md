@@ -4,20 +4,33 @@ title: Doctor
 type: COMPONENT
 path: CLI / Doctor
 source_files: [src/cli/commands/doctor.ts]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-4
 depends_on: [10-security-policy-core, 12-render-trace, 29-code-runners, 27-assert-liveness]
 tags: [doctor, health-check, json-output, rules-for, coverage]
-known_issues: []
+known_issues:
+  - "doctor never existed (not registered in cli.ts) and depended on feature 31's hook registration format to check hooks, so it was built after init's real rewrite, not before. --rules-for actually executes each matching document's assertions (via feature 28's runAssert) to report real pass state, not a structural listing with a hardcoded guess."
+  - "The schemas check is a placeholder: feature 32 (Schema Engine, wave 5) does not exist yet, so there is nothing to validate; it always reports healthy with a note, never a real check. Revisit when feature 32 lands."
+  - "checkDocsParse deliberately checks parse() only, not full validate()-level semantics (undefined macros, missing includes, etc.), matching business rule 1's literal wording ('every project .stage parses'). A document with e.g. an undefined @call macro is NOT flagged unhealthy by doctor; run validate for that."
 satisfies_contracts:
   - from: 10-security-policy-core
-    function: enforcePolicy
+    function: checkDataPath
     when: always
-    status: pending
-    verified_at: ""
+    status: done
+    verified_at: "tests/unit/cli/doctor.test.ts::checks a nested project structure, not just the top level"
+  - from: 10-security-policy-core
+    function: checkShellCommand
+    when: always
+    status: done
+    verified_at: "src/cli/commands/doctor.ts:57"
+  - from: 10-security-policy-core
+    function: checkWritePath
+    when: "filesystem.write_enabled is true"
+    status: done
+    verified_at: "src/cli/commands/doctor.ts:120"
 ---
 
 # Doctor
@@ -68,12 +81,19 @@ build): `{ healthy: boolean, version: string, hooks: {...}, docsParsed:
 
 ## Acceptance Criteria
 
-- [ ] `doctor` on a healthy fixture project prints exactly one line.
-- [ ] `doctor --json` output validates against its own schema.
-- [ ] `doctor --rules-for <file>` against a fixture correctly lists matching
-      assertion documents, their pass state, and a coverage figure.
-- [ ] `doctor` correctly reports a named failure (e.g. an unparseable
-      `.stage` file, a missing hook registration) with a non-zero exit.
+- [x] `doctor` on a healthy fixture project prints exactly one line.
+      Live-verified and `tests/unit/cli/doctor.test.ts`.
+- [!] `doctor --json` output has a stable, typed shape (`DoctorHealth`) and
+      is live-verified to be valid JSON, but there is no formal JSON Schema
+      to validate it against; none is specified anywhere in the doc corpus
+      to build one from ("no blessed consumer," Principle 10, cuts against
+      inventing one unprompted).
+- [x] `doctor --rules-for <file>` against a fixture correctly lists matching
+      assertion documents, their pass state (actually executed, not
+      guessed), and a coverage figure. Live-verified and tested.
+- [x] `doctor` correctly reports a named failure (an unparseable `.stage`
+      file, a missing hook registration) with a non-zero exit. Live-
+      verified and tested for both cases.
 
 ## Dependencies
 
@@ -83,4 +103,6 @@ liveness (assertion-liveness summary).
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: the schemas check placeholder
+(feature 32 not built yet), and `checkDocsParse`'s scope being parse-only,
+not full `validate()` semantics.

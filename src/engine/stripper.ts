@@ -96,6 +96,7 @@ function stripNode(node: ASTNode, env: Record<string, string>, warnings: string[
     case 'template':
     case 'data':
     case 'assert':
+    case 'code':
       return ''
     default:
       throw new Error(`stripNode: unhandled AST node type "${(node as ASTNode).type}"`)
