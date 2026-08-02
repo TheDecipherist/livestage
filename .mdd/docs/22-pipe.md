@@ -14,7 +14,16 @@ tags: [pipe, unix-style, grep, sort, head, tail, uniq, wc, cross-platform]
 known_issues:
   - "source_files was missing src/engine/shell.ts (runShell), the non-built-in pipe-stage shell executor dispatched from engine.ts's 'shell' pipe stage case; it was misattributed to feature 18 (Compute Directives) instead. Corrected here and cross-referenced in 18's known_issues."
   - "Business rule 2 (non-built-in shell utilities in a pipe stage are stripped with a WARN on Windows) had zero implementation and zero test coverage before this wave: process.platform was never checked anywhere in src/. Implemented in engine.ts's pipe 'shell' case (checked before runShell is called) and tested with process.platform spoofed via Object.defineProperty; tests/unit/engine/pipe-shell-stage.test.ts (3 tests)."
-  - "Found and fixed a real, silently-broken bug: runBuiltin/isBuiltin split the pipe-stage command on plain whitespace (command.trim().split(/\\s+/)), so a quoted grep pattern (grep \"foo bar\", or even just grep \"foo\" out of authoring habit) kept the literal quote characters as part of the pattern/token, silently matching nothing with no error or warning. Replaced with a shell-style tokenizer (tokenize() in pipe.ts) that strips matching single/double quotes and keeps a quoted span as one token. Known remaining limitation: the tokenizer resolves to plain strings, so it cannot distinguish a quoted \"-i\" (meant as a literal grep pattern) from a bare -i flag; both are still treated as the flag. tests/unit/engine/pipe.test.ts (3 new tests) and tests/unit/engine/pipe-shell-stage.test.ts."
+  - "Found and fixed a real, silently-broken bug: runBuiltin/isBuiltin split the pipe-stage command on plain whitespace (command.trim().split(/\\s+/)), so a quoted grep pattern (grep \"foo bar\", or even just grep \"foo\" out of authoring habit) kept the literal quote characters as part of the pattern/token, silently matching nothing with no error or warning. Replaced with a shell-style tokenizer (tokenize() in pipe.ts) that strips matching single/double quotes and keeps a quoted span as one token. tests/unit/engine/pipe.test.ts (3 new tests) and tests/unit/engine/pipe-shell-stage.test.ts."
+  - "RESOLVED (2026-08-02, post-initiative known_issues sweep): the
+    quoted-flag-lookalike limitation above is fixed. tokenize() now
+    returns { text, quoted } per token instead of a bare string, and
+    runGrep only treats an UNQUOTED token as a -i/-v/-iv flag; a quoted
+    \"-i\" is always the two-character literal pattern. Other builtins
+    (sort/head/tail/wc/uniq/count-by) never inspected quoted-ness, so they
+    keep working against plain token text unchanged (runBuiltin unwraps to
+    .map(t => t.text) before dispatching to them). tests/unit/engine/pipe.test.ts's
+    three new grep-quoting tests."
 ---
 
 # Pipe
@@ -86,5 +95,5 @@ results).
 
 See the frontmatter `known_issues` above: the missing `src/engine/shell.ts`
 source file, the unimplemented Windows-stripping rule (now built), and the
-quoted-pattern tokenizer bug (fixed, with one documented remaining
-limitation around quoted flag-looking patterns like `grep "-i"`).
+quoted-pattern tokenizer bug (fixed), including the quoted-flag-lookalike
+limitation (`grep "-i"`) that was documented as remaining, now also fixed.

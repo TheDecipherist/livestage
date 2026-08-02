@@ -42,14 +42,13 @@ known_issues:
     convention @query/@list already use; the HTTP example (a single
     struct, not tabular rows) does use {{ label.field }} dot-access for its
     plain bullet-list summary, which IS a supported path."
-  - "@code has no visible=/silent= suppression the way source directives
-    (@list/@read/@query/...) do, so its own raw stdout renders inline
-    before any {{ label.field }} summary that follows it, a minor cosmetic
-    duplication visible in the HTTP example's output (the raw JSON line,
-    then the bullet-list restating the same fields). Not fixed: adding
-    visible=/silent= to @code is a small, real feature gap but out of
-    scope for a worked-examples feature to introduce silently; flagged
-    here as a candidate follow-up, not implemented."
+  - "RESOLVED (2026-08-02, post-initiative known_issues sweep): @code now
+    supports visible=/silent=, the same convention every source directive
+    already had (feature 29's known_issues has the implementation). This
+    example's check.stage now passes visible=\"false\" on its @code call,
+    so the raw JSON line no longer duplicates the {{ label.field }} bullet
+    summary below it; live-verified, tests/e2e/reach-via-code.test.ts still
+    passes unchanged since it only asserted on the summary fields."
   - "Directory names (examples/database/, examples/http-health/) match the
     spec's own inferred defaults exactly, confirmed during this wave's
     build; no rename was needed."

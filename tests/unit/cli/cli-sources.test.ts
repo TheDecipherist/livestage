@@ -50,6 +50,39 @@ describe('@read source directive /', () => {
     expect(result.output).toContain('Banana')
     expect(result.output).not.toContain('price')
   })
+
+  it('@read column= against a JSON file warns instead of silently ignoring the option /', () => {
+    const jsonFile = join(TMP, 'mismatch.json')
+    writeFileSync(jsonFile, JSON.stringify({ name: 'demo' }))
+    const file = write('read-mismatch-json.md', `\n@read ./mismatch.json column="foo" /\n`)
+    const result = runRender(file)
+    expect(result.warnings.some(w => w.includes('column=') && w.includes('JSON'))).toBe(true)
+  })
+
+  it('@read path= against a CSV file warns instead of silently ignoring the option /', () => {
+    const csvFile = join(TMP, 'mismatch.csv')
+    writeFileSync(csvFile, 'name,price\nApple,1.5\n')
+    const file = write('read-mismatch-csv.md', `\n@read ./mismatch.csv path="name" /\n`)
+    const result = runRender(file)
+    expect(result.warnings.some(w => w.includes('path=') && w.includes('CSV'))).toBe(true)
+  })
+
+  it('@read column= against a plain text file warns and falls back to a raw read /', () => {
+    const txtFile = join(TMP, 'mismatch.txt')
+    writeFileSync(txtFile, 'plain text\n')
+    const file = write('read-mismatch-txt.md', `\n@read ./mismatch.txt column="foo" /\n`)
+    const result = runRender(file)
+    expect(result.warnings.some(w => w.includes('column=') && w.includes('neither'))).toBe(true)
+    expect(result.output).toContain('plain text')
+  })
+
+  it('@read with no structured option against a plain text file stays silent /', () => {
+    const txtFile = join(TMP, 'clean.txt')
+    writeFileSync(txtFile, 'plain text\n')
+    const file = write('read-clean-txt.md', `\n@read ./clean.txt /\n`)
+    const result = runRender(file)
+    expect(result.warnings).toHaveLength(0)
+  })
 })
 
 describe('@tree, @date, @count utility directives /', () => {

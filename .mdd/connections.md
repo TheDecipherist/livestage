@@ -2,7 +2,7 @@
 generated: 2026-08-02
 doc_count: 47
 connection_count: 79
-overlap_count: 7
+overlap_count: 8
 ---
 
 # MDD Connections
@@ -248,6 +248,7 @@ Files referenced by 2+ docs:
 - `package.json` - 07-package-skeleton, 41-bundle
 - `src/cli/cli.ts` - 13-cli-router, 41-bundle
 - `src/engine/engine-include.ts` - 19-composition-directives, 41-bundle
+- `src/engine/engine.ts` - 29-code-runners, 35-determinism
 - `src/engine/frontmatter-utils.ts` - 33-update-frontmatter, 36-frontmatter-query
 - `src/engine/sources.ts` - 17-source-directives, 36-frontmatter-query
 - `src/hook/pretooluse.ts` - 11-extension-routing, 41-bundle

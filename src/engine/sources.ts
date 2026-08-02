@@ -129,13 +129,40 @@ export function executeList(node: ListNode, ctx: EngineContext): string[] {
   return walkDir(full, '', matchRe, typeFilter, 0, maxDepth).map(r => `${base}/${r}`)
 }
 
+// Structured-access options only mean something for their own file type:
+// path=/mode=/collapse= are JSON options, column=/skip= are CSV-only,
+// columns=/where= apply to both. A mismatched option (found live: @read
+// with column= against a JSON file, or path= against a CSV) used to fall
+// through to a raw-content read with no warning, silently ignoring the
+// attribute the caller wrote, rather than either honoring it or saying so.
+const JSON_ONLY_OPTIONS = ['path', 'mode', 'collapse']
+const CSV_ONLY_OPTIONS = ['column', 'skip']
+const STRUCTURED_OPTIONS = [...JSON_ONLY_OPTIONS, ...CSV_ONLY_OPTIONS, 'columns', 'where']
+
+function warnUnusedOption(ctx: EngineContext, path: string, node: ReadNode, options: string[], fileKind: string): void {
+  const givenOption = options.find(opt => node.args[opt] !== undefined)
+  if (givenOption) {
+    ctx.warnings.push(`@read: "${givenOption}=" does not apply to a ${fileKind} file (${path}); the option is ignored`)
+  }
+}
+
 export function executeRead(node: ReadNode, ctx: EngineContext): string[] {
   const full = resolveDataPath(node.path, ctx, '@read')
   if (!full) return []
   const ext = node.path.toLowerCase()
-  if (ext.endsWith('.json')) return listJson(full, node.args)
-  if (ext.endsWith('.csv')) return listCsv(full, node.args)
+  if (ext.endsWith('.json')) {
+    warnUnusedOption(ctx, node.path, node, CSV_ONLY_OPTIONS, 'JSON')
+    return listJson(full, node.args)
+  }
+  if (ext.endsWith('.csv')) {
+    warnUnusedOption(ctx, node.path, node, JSON_ONLY_OPTIONS, 'CSV')
+    return listCsv(full, node.args)
+  }
   if (ext.endsWith('.env')) return readEnvFile(full, node.args)
+  const givenOption = STRUCTURED_OPTIONS.find(opt => node.args[opt] !== undefined)
+  if (givenOption) {
+    ctx.warnings.push(`@read: "${givenOption}=" only applies to .json/.csv files, ${node.path} is neither; falling back to a raw content read, the option is ignored`)
+  }
   try {
     return readFileSync(full, 'utf8').split('\n').filter(l => l !== '')
   } catch { return [] }

@@ -6,7 +6,7 @@ path: Directives / Sources
 source_files: [src/parser/directives/list.ts, src/parser/directives/read.ts, src/parser/directives/read-frontmatter.ts, src/parser/directives/tree.ts, src/parser/directives/count.ts, src/parser/directives/date.ts, src/parser/directives/env.ts, src/engine/sources.ts, src/engine/read-ops.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [09-grammar-parser, 11-extension-routing, 10-security-policy-core]
@@ -72,10 +72,16 @@ schema validation of frontmatter reads is owned by feature 32).
 
 ## Business Rules
 
-1. `@read`'s access option is expected to match the file format; in the
-   current implementation a mismatched option (e.g. `column=` against JSON)
-   silently falls through to a raw-content read instead of erroring, see
-   Known Issues.
+1. `@read`'s access option is expected to match the file format. RESOLVED
+   (2026-08-02, post-initiative known_issues sweep): a mismatched option
+   (e.g. `column=` against JSON, `path=` against CSV, any structured option
+   against a plain file) now pushes a named warning identifying the option
+   and the actual file kind, rather than silently falling through with no
+   signal at all. Still not a hard error, matching this directive's
+   established degrade-with-a-warning contract rather than a crash; the
+   read itself still completes (raw content for a non-structured file, the
+   correctly-typed structured read when the file DOES match one of the two
+   supported kinds, just the extra option ignored). See Known Issues.
 2. `@read-frontmatter`'s seeded form reads exactly one top-level field per
    call; arrays are comma-joined (line 335).
 3. `@list`'s `where` filters structured rows only in the seed; frontmatter-
@@ -95,11 +101,12 @@ schema validation of frontmatter reads is owned by feature 32).
       `tests/unit/cli/cli-sources.test.ts` (14), `tests/unit/engine/source-
       data-root.test.ts` (17), `source-label-multiline.test.ts` (6), `read-
       frontmatter.test.ts` (8).
-- [!] `@read` against a wrongly-matched access option (e.g. `column=` on a
-      non-CSV file) does NOT produce a parse error; it silently falls
-      through to a raw-content read. Real gap in the donor code, not
-      introduced this wave; not fixed here (would need new validation logic
-      plus tests, out of scope for this pass), see Known Issues.
+- [x] `@read` against a wrongly-matched access option (e.g. `column=` on a
+      non-CSV file) warns, naming the option and the actual file kind,
+      instead of silently falling through with no signal. Live-verified;
+      tests/unit/cli/cli-sources.test.ts's three mismatch tests plus one
+      proving a clean (no mismatched option) read against a plain file
+      stays silent.
 - [x] A `@list`/`@read`/`@query` call outside the granted filesystem/shell
       policy is blocked: `checkDataPath` via `source-data-root.test.ts`,
       `checkShellCommand` via `query-policy.test.ts`.
@@ -118,11 +125,9 @@ schema validation of frontmatter reads is owned by feature 32).
 
 ## Known Issues
 
-- `@read`'s access options (`path=`, `column=`+`where=`, `key=`) are not
-  cross-validated against the file's actual format; a mismatched option
-  (e.g. `column=` against a JSON file) silently falls through to a raw-
-  content read instead of erroring. Donor behavior, not introduced this
-  wave; not fixed here.
+- RESOLVED (2026-08-02): `@read`'s access options are now cross-validated
+  against the file's actual format (`warnUnusedOption` in `sources.ts`);
+  a mismatched option warns by name instead of silently falling through.
 - `@read file.env key=...` (documented as reading `.env` files, masked) is
   implemented (`readEnvFile` in `sources.ts`) but unreachable: `.env*`/
   `*.env` sits in the immutable `FILESYSTEM_ALWAYS_BLOCK_PATTERNS` list, so

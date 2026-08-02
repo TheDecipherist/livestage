@@ -6,7 +6,7 @@ path: CLI / Router
 source_files: [src/cli/cli.ts, src/cli/index.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [07-package-skeleton]
@@ -14,8 +14,9 @@ tags: [cli, verb-router, exit-codes, flat-verbs, namespaces]
 known_issues:
   - "The doc's source_files listed only index.ts (the library barrel export); cli.ts (the actual bin entry and router, program.command(...) registrations) is the real router and is added above."
   - "Namespace restructuring done for what exists today: parser ast|directives|imports|macros (was flat parse/list-macros/list-imports; parser directives is new, lists the registry). engine trace already existed (feature 12). security and cache namespaces already existed."
-  - "Deferred, not built (all depend on features from later waves that do not exist yet): parser check (no clear existing implementation to route to, would need real design), engine eval (ambiguous whether this is meant to be distinct from the existing flat eval verb, or the same thing namespaced, spec text does not disambiguate), renderer preview --format (no existing renderer-preview implementation), doctor flat verb (feature 30, wave 4). render's --args/--var landed in wave 2 (feature 23); --timeout/--deterministic remain deferred to feature 35 (Determinism, wave 5). watch's exit-code contract (watch runs until interrupted, not practical to assert against in an automated test without a long-running process harness, spot-checked manually instead: the verb exists and accepts a file argument)."
+  - "Deferred, not built (all depend on features from later waves that do not exist yet at the time): parser check (no clear existing implementation to route to, would need real design), engine eval (ambiguous whether this is meant to be distinct from the existing flat eval verb, or the same thing namespaced, spec text does not disambiguate), renderer preview --format (no existing renderer-preview implementation). watch's exit-code contract (watch runs until interrupted, not practical to assert against in an automated test without a long-running process harness, spot-checked manually instead: the verb exists and accepts a file argument). STILL OPEN as of the post-initiative known_issues sweep (2026-08-02); see task tracking for a real fix."
   - "assert (flagged here as deferred to feature 26) was built and registered in wave 3, feature 28 (CI Mode): assert <file|glob>, plus glob support added to validate."
+  - "RESOLVED (2026-08-02): doctor flat verb landed in wave 4 (feature 30), and --deterministic on render landed in wave 5 (feature 35); both were still listed as deferred here, another instance of a doc never being revisited once its cited dependency actually shipped. --timeout on render remains genuinely unbuilt. The acceptance criteria and API table below are corrected to match."
   - "cache's subcommand is named show, not status as the doc's table has it (cache show|clear, pre-existing from Wave 0, not renamed since it already has test coverage under that name)."
 ---
 
@@ -90,9 +91,11 @@ N/A.
       live (spawning the real built binary, not just library calls) for
       `render`, `validate`, `eval`, `strip`, `watch` (existence + argument
       only), `init`, `security`, `parser ast|directives|imports|macros`,
-      `engine trace`, `cache`: `tests/unit/cli/cli-router.test.ts`. `assert`
-      and `doctor` do not exist yet (waves 3, 4); `renderer preview` and
-      `parser check` were never implemented (see Known Issues).
+      `engine trace`, `cache`, `assert` (feature 28, wave 3), `doctor`
+      (feature 30, wave 4): `tests/unit/cli/cli-router.test.ts`,
+      `tests/unit/cli/assert.test.ts`, `tests/unit/cli/doctor.test.ts`.
+      `renderer preview` and `parser check` still do not exist (see Known
+      Issues).
 - [x] `--env <file>` correctly loads dotenv values that `@env` then reads.
       Pre-existing, covered by `tests/unit/cli/cli-validate.test.ts`'s
       `loadEnvFile` tests.
@@ -107,4 +110,7 @@ N/A.
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: `assert`/`doctor`/`--deterministic`
+are now correctly reflected as shipped; `parser check`, `engine eval`
+(namespaced), `renderer preview --format`, and `render --timeout` remain
+genuinely unbuilt.

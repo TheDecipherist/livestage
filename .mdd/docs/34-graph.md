@@ -12,17 +12,19 @@ wave: livestage-wave-5
 depends_on: [32-schema-engine, 20-render-formats]
 tags: [graph, dependency-tree, cycle-detection, mermaid, broken-edges]
 known_issues:
-  - "Relation fields (depends_on etc.) are read raw via readFrontmatterField,
-    not passed through feature 32's schema validation before edge-building.
-    Business rule 1 as originally drafted assumed schema-validated relation
-    values; that validation happens only at write time via
-    @update-frontmatter's schema gate (feature 33), never at graph-build
-    read time. A relation field with a malformed value on disk (hand-edited,
-    or written before a schema existed) still produces an edge; @graph has
-    no schema of its own to check it against, and feature 32's schemas are
-    per-class field validators, not edge-shape validators. Documented as a
-    read-side gap rather than fixed, since closing it would mean inventing a
-    new schema concept (edge/relation shape) out of scope for this wave."
+  - "PARTIALLY RESOLVED (2026-08-02, post-initiative known_issues sweep):
+    every OTHER scalar frontmatter field on a graphed doc (status, etc.) is
+    now checked against its declared class's schema when @graph builds the
+    node set, warning (not blocking, reads must stay pure) on a violation.
+    tests/unit/engine/graph-schema.test.ts. What remains genuinely unfixed:
+    the relation field itself (depends_on etc.) is still read raw via
+    readFrontmatterField with no validation, because the schema vocabulary
+    (src/engine/schema/loader.ts's SchemaField) has no array/list type at
+    all, only string/number/boolean with an optional enum. Validating a
+    relation field's shape would mean inventing a new schema concept (a
+    list-of-ids field type, or a separate edge-shape validator) that
+    doesn't exist anywhere in F-SCHEMA yet; scoped out of this fix as a
+    schema-engine-level gap, not a graph-level one."
   - "The donor's `@graph` mechanism was a fenced ```mai-graph code block with
     manually-written `A --> B` edge text, unrelated to this feature's native
     frontmatter-edge model and carrying the excluded donor brand name in its

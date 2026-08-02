@@ -317,7 +317,19 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
       ctx.assertResults?.push(result)
       return formatAssertResult(result)
     }
-    case 'code': return executeCode(node, ctx)
+    case 'code': {
+      const stdout = executeCode(node, ctx)
+      // visible="false" or silent="true" suppresses inline output, same
+      // convention as @list/@read/@query/etc: label= already captured the
+      // structured result, so the raw stdout dump would just duplicate it
+      // in the rendered output (found live building the http-health
+      // example, feature 47, where {{ label.field }} prose repeated the
+      // same JSON @code had already printed inline).
+      const visible = node.args['visible']
+      const silent = node.args['silent']
+      if (visible === 'false' || silent === 'true') return ''
+      return stdout
+    }
     default: throw new Error(`walkNode: unhandled AST node type "${(node as { type: string }).type}"`)
   }
 }

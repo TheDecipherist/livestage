@@ -25,7 +25,7 @@ That is the whole grant: `code.languages` includes `javascript`, nothing else.
 
 ## Result
 
-@code language="javascript" src="check-health.js" label="health" /
+@code language="javascript" src="check-health.js" label="health" visible="false" /
 
 - Status: {{ health.status }}
 - OK: {{ health.ok }}

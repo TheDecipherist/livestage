@@ -113,4 +113,23 @@ describe('@code', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it('visible="false" suppresses the inline stdout render but label= still captures it', () => {
+    const ast = parse('@code language="javascript" label="r" visible="false"\nconsole.log("hidden")\n@code-end\n{{ r._stdout }}')
+    const result = execute(ast, { ctx: { security: granted(['javascript']) } })
+    expect(result.output.trim()).not.toContain('hidden\n')
+    expect(result.output).toContain('hidden')
+  })
+
+  it('silent="true" has the same suppression effect as visible="false"', () => {
+    const ast = parse('@code language="javascript" silent="true"\nconsole.log("hidden")\n@code-end\nAfter.')
+    const result = execute(ast, { ctx: { security: granted(['javascript']) } })
+    expect(result.output.trim()).toBe('After.')
+  })
+
+  it('without visible=/silent=, stdout renders inline as before (default unchanged)', () => {
+    const ast = parse('@code language="javascript"\nconsole.log("shown")\n@code-end')
+    const result = execute(ast, { ctx: { security: granted(['javascript']) } })
+    expect(result.output.trim()).toBe('shown')
+  })
 })

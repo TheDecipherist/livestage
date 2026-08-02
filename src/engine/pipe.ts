@@ -10,38 +10,47 @@ const REDOS_SUSPECT = /(\([^)]*[+*][^)]*\)[+*]|\(\?[^)]*\)[+*][+*]|\.\*.*\.\*)/
 // any quoted pattern (the natural way to write one containing a space, or
 // just out of habit) silently matched nothing with no error. Tokenizes
 // shell-style: single/double-quoted spans are one token with the quotes
-// stripped, unquoted runs split on whitespace.
-function tokenize(command: string): string[] {
-  const tokens: string[] = []
+// stripped, unquoted runs split on whitespace. Each token remembers whether
+// it was quoted, so a caller (runGrep) can tell a literal, user-quoted
+// pattern like grep "-i" apart from the bare flag grep -i: both tokenize to
+// the same text, only the quoting says which one was meant.
+interface Token {
+  text: string
+  quoted: boolean
+}
+
+function tokenize(command: string): Token[] {
+  const tokens: Token[] = []
   const re = /'([^']*)'|"([^"]*)"|(\S+)/g
   let m: RegExpExecArray | null
   while ((m = re.exec(command)) !== null) {
-    tokens.push(m[1] ?? m[2] ?? m[3] ?? '')
+    const quoted = m[1] !== undefined || m[2] !== undefined
+    tokens.push({ text: m[1] ?? m[2] ?? m[3] ?? '', quoted })
   }
   return tokens
 }
 
 export function isBuiltin(command: string): boolean {
-  const cmd = tokenize(command)[0] ?? ''
+  const cmd = tokenize(command)[0]?.text ?? ''
   return BUILTINS.has(cmd)
 }
 
 export function runBuiltin(command: string, lines: string[]): string[] {
   const parts = tokenize(command)
-  const cmd = parts[0] ?? ''
+  const cmd = parts[0]?.text ?? ''
+  const argTexts = parts.slice(1).map(t => t.text)
   switch (cmd) {
     case 'grep': return runGrep(parts.slice(1), lines)
-    case 'sort': return runSort(parts.slice(1), lines)
-    case 'head': return lines.slice(0, parseCount(parts.slice(1), 10))
-    case 'tail': return lines.slice(-parseCount(parts.slice(1), 10))
+    case 'sort': return runSort(argTexts, lines)
+    case 'head': return lines.slice(0, parseCount(argTexts, 10))
+    case 'tail': return lines.slice(-parseCount(argTexts, 10))
     case 'wc': {
-      const flags = parts.slice(1)
-      if (flags.includes('-w')) return [String(lines.join('\n').split(/\s+/).filter(Boolean).length)]
-      if (flags.includes('-c')) return [String(lines.join('\n').length)]
+      if (argTexts.includes('-w')) return [String(lines.join('\n').split(/\s+/).filter(Boolean).length)]
+      if (argTexts.includes('-c')) return [String(lines.join('\n').length)]
       return [String(lines.length)]  // default: -l (line count)
     }
     case 'uniq': return lines.filter((l, i) => i === 0 || l !== lines[i - 1])
-    case 'count-by': return runCountBy(parts.slice(1), lines)
+    case 'count-by': return runCountBy(argTexts, lines)
     default: throw new Error(`Unknown built-in command: "${cmd}"`)
   }
 }
@@ -57,15 +66,21 @@ function parseN(raw: string | undefined, def: number): number {
   return isNaN(n) ? def : n
 }
 
-function runGrep(args: string[], lines: string[]): string[] {
+function runGrep(args: Token[], lines: string[]): string[] {
   let caseInsensitive = false
   let negate = false
   const patternParts: string[] = []
   for (const arg of args) {
-    if (arg === '-i') caseInsensitive = true
-    else if (arg === '-v') negate = true
-    else if (arg === '-iv' || arg === '-vi') { caseInsensitive = true; negate = true }
-    else patternParts.push(arg)
+    // A quoted token is always a literal pattern fragment, never a flag,
+    // even when its text happens to look like one: grep "-i" searches for
+    // the two-character string "-i", grep -i (unquoted) sets the flag.
+    // Before this, both tokenized to the same "-i" string with no way to
+    // tell them apart, so a quoted "-i" pattern was silently treated as
+    // the case-insensitive flag instead of what the user typed.
+    if (!arg.quoted && arg.text === '-i') caseInsensitive = true
+    else if (!arg.quoted && arg.text === '-v') negate = true
+    else if (!arg.quoted && (arg.text === '-iv' || arg.text === '-vi')) { caseInsensitive = true; negate = true }
+    else patternParts.push(arg.text)
   }
   const pattern = patternParts.join(' ')
   if (pattern.length > MAX_GREP_PATTERN_LENGTH) throw new Error(`grep: pattern too long (max ${MAX_GREP_PATTERN_LENGTH} chars)`)

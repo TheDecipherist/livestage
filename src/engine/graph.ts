@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 import type { GraphNode } from 'livestage/parser'
 import type { EngineContext } from './context.js'
 import { resolveAssertTargets } from './assert/operators.js'
-import { readFrontmatterField } from './frontmatter-utils.js'
+import { readFrontmatterField, parseFrontmatterRow } from './frontmatter-utils.js'
+import { loadSchema } from './schema/loader.js'
+import { validateFieldValue } from './schema/validate.js'
 
 interface GraphEdge {
   from: string
@@ -41,6 +43,29 @@ function buildGraph(node: GraphNode, ctx: EngineContext): GraphResult {
     const id = readFrontmatterField(content, node.idField)
     if (!id) continue
     idToFile.set(id, file)
+
+    // Schema check (feature 32, F-SCHEMA): relation fields (depends_on etc.)
+    // are list-shaped, and the schema vocabulary has no array type, so the
+    // relation field itself stays structurally unconstrained; every OTHER
+    // scalar field the doc's declared class constrains still gets checked,
+    // the same warn-not-block pattern @read-frontmatter uses. Previously
+    // nothing at all validated a graphed doc against its own schema.
+    const docClass = readFrontmatterField(content, 'class')
+    if (docClass) {
+      const { schema, error } = loadSchema(docClass, ctx.cwd)
+      if (error) {
+        ctx.warnings.push(`@graph: schema error for class "${docClass}": ${error}`)
+      } else if (schema) {
+        const row = parseFrontmatterRow(content)
+        for (const field of Object.keys(schema.fields)) {
+          const fieldValue = row?.[field]
+          if (typeof fieldValue !== 'string') continue
+          const result = validateFieldValue(schema, field, fieldValue)
+          if (!result.valid) ctx.warnings.push(`@graph: ${file} does not conform to its declared schema, ${result.error}`)
+        }
+      }
+    }
+
     const relationRaw = readFrontmatterField(content, node.relation)
     if (!relationRaw) continue
     for (const target of splitListField(relationRaw)) {

@@ -17,7 +17,20 @@ known_issues:
   - "Business rule 1 (seeds .livestage/policy.json with the strict profile) did not exist in any form before this wave; added (ensureProjectPolicy), idempotent, tested."
   - "The SessionStart hook's core render-and-inject logic was already reasonable (spawns the CLI, injects additionalContext); only its brand references needed fixing: mai -> livestage, CLAUDE-LiveStage.md -> CLAUDE-LiveStage.stage (CR-3, .stage only), and the @markdownai/@phase/MCP mentions in its comments and redirect text removed."
   - "claude-section.ts (the CLAUDE.md marker section, also flagged as deferred to this feature since wave 1) was completely rewritten: the old content described a non-existent MCP server, an @markdownai header CR-3 explicitly removed, and directives this build excludes (@prompt, @constraint, @define-concept, @http, @chunk-boundary, @phase, @note, @section). Replaced with accurate guidance for the real .stage/PostToolUse-hook architecture."
-  - "'Verifies the bundle on PATH' (business rule 1) and full transactional rollback on partial failure (business rule 5) are not implemented; init performs its steps in sequence with no backup/restore transaction wrapping them. A failure partway through (e.g. a write permission error on the second write) leaves whatever succeeded in place rather than rolling back. Flagged, not fixed, given the scope already covered in this pass."
+  - "RESOLVED (2026-08-02, post-initiative known_issues sweep): both are now
+    implemented. Transactional rollback: each write records an undo action
+    (restore prior content, or delete if the file did not exist before)
+    onto a shared stack before it happens; runInit() wraps the whole write
+    sequence in try/catch and runs every recorded undo in reverse order on
+    any failure, so a partial failure (a malformed existing settings.json,
+    a permission error) leaves the filesystem exactly as it was before
+    init started. Bundle-on-PATH: a courtesy check (spawnSync('livestage',
+    ['--version'], ...) with a 3s timeout) runs after a successful
+    install and surfaces a warning in the result message if it fails;
+    never blocks init itself, matching the SessionStart hook's own
+    already-graceful runtime handling of the same failure.
+    tests/unit/cli/init.test.ts's two rollback tests plus the PATH-report
+    test."
 satisfies_contracts:
   - from: 10-security-policy-core
     function: checkDataPath
@@ -102,9 +115,12 @@ Known Issues).
       neither the hook entry nor the policy file are duplicated or
       overwritten. This did NOT hold before this wave's fix, see Known
       Issues; verified now.
-- [ ] A simulated failure partway through `init` rolls back all partial
-      changes. Not implemented: no backup/restore transaction exists, see
-      Known Issues.
+- [x] A simulated failure partway through `init` rolls back all partial
+      changes. Live-verified with a malformed pre-existing settings.json
+      (fails on the second write, after the session-start hook file
+      already succeeded): the hook file is deleted (or restored to its
+      prior content, if one existed) and the project policy is never
+      reached; tests/unit/cli/init.test.ts's rollback describe block.
 - [x] The CLAUDE.md marker section is opt-in (`--global-claude-md`, the
       spec's `--claude-md`/`--no-claude-md` naming is not what's actually
       registered, see Known Issues) and contains no directive syntax
@@ -123,7 +139,7 @@ the hook), 30-doctor (verification target for a successful install).
 See the frontmatter `known_issues` above for the full detail: the wrong-hook
 bug (the headline finding of this feature), the idempotence-check case bug,
 the new policy seeding, the SessionStart/CLAUDE.md content rewrites, and
-the deferred bundle-on-PATH check and transactional rollback. The CLI flag
+the bundle-on-PATH check and transactional rollback (now resolved). The CLI flag
 is `--global-claude-md`, not `--claude-md`/`--no-claude-md` as this doc's
 API/Interface section names it; functionally equivalent (opt-in by flag,
 skip by omission), not renamed since the current name is already in the

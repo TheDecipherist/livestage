@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { runInit } from '../../../src/cli/commands/init.js'
 
 // Wave 4, feature 31 (Init): a real, working replacement for the previous
@@ -79,5 +79,65 @@ describe('runInit', () => {
     const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as { hooks: { PreToolUse: Array<{ matcher: string }> } }
     expect(settings.hooks.PreToolUse.some(e => e.matcher === 'Bash')).toBe(true)
     expect(settings.hooks.PreToolUse.some(e => e.matcher === 'Read')).toBe(true)
+  })
+
+  it('reports whether "livestage" resolves on PATH after a successful install', () => {
+    const result = runInit({ client: 'claude-code', homeDir, cwd: projectDir })
+    expect(result.success).toBe(true)
+    expect(typeof result.pathVerified).toBe('boolean')
+    if (!result.pathVerified) expect(result.message).toContain('not resolvable on PATH')
+  })
+})
+
+// Transactional rollback (business rule 5): a failure partway through
+// init's write sequence must leave the filesystem exactly as it was
+// before init started, not a half-installed state.
+describe('runInit rollback on partial failure', () => {
+  let homeDir: string
+  let projectDir: string
+
+  beforeEach(() => {
+    homeDir = mkdtempSync(join(tmpdir(), 'ls-init-rollback-home-'))
+    projectDir = mkdtempSync(join(tmpdir(), 'ls-init-rollback-proj-'))
+  })
+
+  afterEach(() => {
+    rmSync(homeDir, { recursive: true, force: true })
+    rmSync(projectDir, { recursive: true, force: true })
+  })
+
+  it('a malformed existing settings.json fails the whole init and rolls back the session-start hook file it had already written', () => {
+    const settingsPath = join(homeDir, '.claude', 'settings.json')
+    mkdirSync(join(homeDir, '.claude'), { recursive: true })
+    writeFileSync(settingsPath, '{ not valid json', 'utf8')
+
+    const result = runInit({ client: 'claude-code', homeDir, cwd: projectDir })
+
+    expect(result.success).toBe(false)
+    expect(result.message).toContain('rolled back')
+    // The session-start hook file was written before the settings.json
+    // write failed; it must not survive the rollback.
+    expect(existsSync(join(homeDir, '.livestage', 'hooks', 'sessionStart.mjs'))).toBe(false)
+    // The malformed settings.json is untouched, not partially overwritten.
+    expect(readFileSync(settingsPath, 'utf8')).toBe('{ not valid json')
+    // The project policy was never reached (settings.json failed first).
+    expect(existsSync(join(projectDir, '.livestage', 'policy.json'))).toBe(false)
+  })
+
+  it('a pre-existing session-start hook file is restored to its original content on rollback, not deleted', () => {
+    const settingsPath = join(homeDir, '.claude', 'settings.json')
+    mkdirSync(join(homeDir, '.claude'), { recursive: true })
+    writeFileSync(settingsPath, '{ not valid json', 'utf8')
+    const hookPath = join(homeDir, '.livestage', 'hooks', 'sessionStart.mjs')
+    mkdirSync(dirname(hookPath), { recursive: true })
+    writeFileSync(hookPath, '// a pre-existing, unrelated file', 'utf8')
+
+    runInit({ client: 'claude-code', homeDir, cwd: projectDir })
+
+    // ensureSessionStartHookFile only overwrites when the file doesn't
+    // already look like the real hook script, so this file (unrelated
+    // content) DOES get overwritten and then must be rolled back to its
+    // original content, not left as the new hook script or deleted.
+    expect(readFileSync(hookPath, 'utf8')).toBe('// a pre-existing, unrelated file')
   })
 })
