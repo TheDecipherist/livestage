@@ -33,6 +33,7 @@ function skill(args: string) {
       args,
       argsList: args.trim() ? args.trim().split(/\s+/) : [],
       namedArgs: {} as Record<string, string>,
+      vars: {} as Record<string, string>,
       sessionId: '',
       effort: '',
       skillDir: '',

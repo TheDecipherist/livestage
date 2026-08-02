@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { readFileSync, mkdtempSync, writeFileSync, rmSync, existsSync, mkdirSync } from 'node:fs'
+import { readFileSync, mkdtempSync, writeFileSync, rmSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -65,6 +65,21 @@ describe('handlePostToolUse', () => {
     handlePostToolUse({ tool_name: 'Read', tool_input: { file_path: file } })
     const cacheDir = join(dir, '.livestage', 'cache')
     expect(existsSync(cacheDir)).toBe(true)
+  })
+
+  it('the render cache artifact is masked even though the returned substitution is not', () => {
+    const file = join(dir, 'secretval.stage')
+    writeFileSync(file, '@date /\nsk_live_abcdefghijklmnopqrstuvwx\n')
+    const result = handlePostToolUse({ tool_name: 'Read', tool_input: { file_path: file } })
+    // The substitution Claude actually receives shows the real value.
+    expect(result.hookSpecificOutput?.updatedToolOutput.content).toContain('sk_live_abcdefghijklmnopqrstuvwx')
+    // The on-disk cache artifact, which cache.ts's own show/clear cannot
+    // see or manage, must not carry it in plaintext.
+    const cacheDir = join(dir, '.livestage', 'cache')
+    const [entry] = readdirSync(cacheDir)
+    const cached = readFileSync(join(cacheDir, entry!), 'utf8')
+    expect(cached).not.toContain('sk_live_abcdefghijklmnopqrstuvwx')
+    expect(cached).toContain('***MASKED***')
   })
 
   it('fails open to the raw file content when the file does not exist', () => {

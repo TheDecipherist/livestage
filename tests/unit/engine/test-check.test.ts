@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, rmSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse } from 'livestage/parser'
 import { execute } from '../../../src/engine/engine.js'
+import { defaultSecurityConfig } from '../../../src/engine/security/config.js'
 
 describe('@test and @check', () => {
   let projectDir: string
@@ -197,6 +198,26 @@ exit={{ c_exit }}
       )
       // Should pick typecheck=true → exit 0.
       expect(result.output).toContain('exit=0')
+    })
+
+    it('auto-detected npm run <script> succeeds against the real shipped strict profile with no extra grants', () => {
+      writeFileSync(join(projectDir, 'package.json'), JSON.stringify({
+        name: 'tmp', scripts: { test: 'true' },
+      }), 'utf8')
+      const docContent = `@test label=t /\nexit={{ t_exit }}\n`
+      writeFileSync(join(projectDir, 'main.md'), docContent, 'utf8')
+      const before = readdirSync(projectDir).filter(n => n !== '.livestage').sort()
+      const result = render(
+        docContent,
+        { allowShell: true, shellConfig: defaultSecurityConfig().shell },
+      )
+      expect(result.output).toContain('exit=0')
+      // checkDataPath / checkWritePath: the only filesystem touch this
+      // directive makes is a fixed, non-interpolated read of package.json
+      // (detectCommand); no other path is read or written. (.livestage/ is
+      // the spec-sanctioned render trace, not a purity violation, see
+      // source-directives-purity.test.ts.)
+      expect(readdirSync(projectDir).filter(n => n !== '.livestage').sort()).toEqual(before)
     })
   })
 })

@@ -29,6 +29,7 @@ describe('@include {{ }} dynamic path expressions', () => {
           args,
           argsList: args.trim() ? args.trim().split(/\s+/) : [],
           namedArgs: {},
+          vars: {},
           sessionId: '',
           effort: '',
           skillDir: '',
@@ -92,7 +93,7 @@ describe('@include {{ }} dynamic path expressions', () => {
         cwd: projectDir,
         docDir: projectDir,
         env: { APP_ENV: 'prod' },
-        skillContext: { args: '', argsList: [], namedArgs: {}, sessionId: '', effort: '', skillDir: '' },
+        skillContext: { args: '', argsList: [], namedArgs: {}, vars: {}, sessionId: '', effort: '', skillDir: '' },
         security: { allowShell: false, allowHttp: false, allowDb: false, jailRoot: null, sourceJail: projectDir, allowedSourcePaths: [] },
       },
     })

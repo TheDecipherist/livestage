@@ -123,6 +123,12 @@ export function defaultSecurityConfig(): SecurityJsonConfig {
         // read-only (they execute the test suite, exit code is the signal)
         // and standard in any JS/TS project.
         'npx vitest*', 'npx jest*', 'npx playwright*',
+        // @test/@check auto-detection (exec-ops.ts's detectCommand) always
+        // shells out via `npm run <script>` regardless of the project's
+        // actual package manager, so the npm forms below are load-bearing
+        // even in a pnpm/yarn project, not just an npm one.
+        'npm test*', 'npm run test*',
+        'npm run typecheck*', 'npm run lint*', 'npm run build*',
         'pnpm test*', 'pnpm run test*', 'pnpm vitest*', 'pnpm exec vitest*',
         'pnpm typecheck*', 'pnpm run typecheck*',
         'pnpm lint*', 'pnpm run lint*',

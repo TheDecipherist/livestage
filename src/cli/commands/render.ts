@@ -4,6 +4,7 @@ import { parse } from 'livestage/parser'
 import { execute, loadSecurityConfig, checkFilePath, checkAbsolutePath } from 'livestage/engine'
 import type { SecurityConfig } from 'livestage/engine'
 import { loadEnvFile } from '../env-loader.js'
+import { buildArgsContext, argsEnvMirror } from '../../engine/args.js'
 
 export interface RenderOptions {
   env?: string
@@ -22,24 +23,34 @@ export interface RenderOptions {
   skillDir?: string              // ${CLAUDE_SKILL_DIR}
   skillSessionId?: string        // ${CLAUDE_SESSION_ID}
   skillEffort?: string           // ${CLAUDE_EFFORT}
+  // F-ARGS (feature 23): --args is an alias source for the same args/argsList
+  // as --skill-args (either populates {{ args }}/{{ arg0 }}..{{ arg3 }});
+  // --var is new, exposed as {{ vars.k }} and mirrored into LIVESTAGE_VAR_<K>.
+  args?: string
+  varFlags?: string[]
 }
 
 function buildSkillContext(options: RenderOptions): {
-  args: string; argsList: string[]; namedArgs: Record<string, string>; sessionId: string; effort: string; skillDir: string
+  args: string; argsList: string[]; namedArgs: Record<string, string>; vars: Record<string, string>
+  sessionId: string; effort: string; skillDir: string
 } | null {
   const hasAny = options.skillArgs !== undefined
     || options.skillDir !== undefined
     || options.skillSessionId !== undefined
     || options.skillEffort !== undefined
+    || options.args !== undefined
+    || (options.varFlags !== undefined && options.varFlags.length > 0)
   if (!hasAny) return null
-  const rawArgs = options.skillArgs ?? ''
-  const argsList = rawArgs.trim().length > 0
-    ? [...rawArgs.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)].map(m => m[1] ?? m[2] ?? m[3] ?? '')
-    : []
+  const rawArgs = options.args ?? options.skillArgs
+  const argsCtx = buildArgsContext({
+    ...(rawArgs !== undefined ? { args: rawArgs } : {}),
+    ...(options.varFlags !== undefined ? { varFlags: options.varFlags } : {}),
+  })
   return {
-    args: rawArgs,
-    argsList,
+    args: argsCtx.args,
+    argsList: argsCtx.argsList,
     namedArgs: {},
+    vars: argsCtx.vars,
     sessionId: options.skillSessionId ?? '',
     effort: options.skillEffort ?? '',
     skillDir: options.skillDir ?? '',
@@ -162,6 +173,9 @@ export function runRender(filePath: string, options: RenderOptions = {}): Render
   const envFiles = options.env ? loadEnvFile(options.env) : {}
   const security = buildSecurityConfig(options, resolved)
   const skillContext = buildSkillContext(options)
+  if (skillContext) {
+    Object.assign(envFiles, argsEnvMirror({ args: skillContext.args, argsList: skillContext.argsList, vars: skillContext.vars }))
+  }
   const execOpts: Parameters<typeof execute>[1] = {
     filePath: resolved,
     ctx: {

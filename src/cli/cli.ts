@@ -39,7 +39,9 @@ universalOptions(
     .option('--skill-dir <path>', 'skill directory ($CLAUDE_SKILL_DIR)')
     .option('--skill-session-id <id>', 'Claude Code session id ($CLAUDE_SESSION_ID)')
     .option('--skill-effort <level>', 'Claude effort level ($CLAUDE_EFFORT): low|medium|high|xhigh|max')
-).action((file: string, opts: Record<string, string | boolean | undefined>) => {
+    .option('--args <string>', 'raw argument string, exposed as {{ args }} / {{ arg0 }}..{{ arg3 }}')
+    .option('--var <k=v>', 'a named value, exposed as {{ vars.k }} (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
+).action((file: string, opts: Record<string, string | string[] | boolean | undefined>) => {
   const renderOpts: Parameters<typeof runRender>[1] = {
     ...opts,
     passthrough: Boolean(opts['passthrough']),
@@ -50,6 +52,8 @@ universalOptions(
   if (typeof opts['skillDir'] === 'string') renderOpts.skillDir = opts['skillDir']
   if (typeof opts['skillSessionId'] === 'string') renderOpts.skillSessionId = opts['skillSessionId']
   if (typeof opts['skillEffort'] === 'string') renderOpts.skillEffort = opts['skillEffort']
+  if (typeof opts['args'] === 'string') renderOpts.args = opts['args']
+  if (Array.isArray(opts['var']) && opts['var'].length > 0) renderOpts.varFlags = opts['var']
   const result = runRender(file, renderOpts)
   for (const warn of result.warnings) {
     if (!opts['silent']) process.stderr.write(`WARN: ${warn}\n`)
@@ -208,11 +212,12 @@ universalOptions(cache
   .option('--session', 'show session cache only')
   .option('--persist', 'show persist cache only')
   .option('--expired', 'show only expired entries'))
-  .action((_file: string | undefined, opts: Record<string, boolean | undefined>) => {
+  .action((_file: string | undefined, opts: Record<string, string | boolean | undefined>) => {
     const mode = opts['session'] ? 'session' as const : opts['persist'] ? 'persist' as const : undefined
     const showOpts: Parameters<typeof runCacheShow>[0] = {}
     if (mode !== undefined) showOpts.mode = mode
     if (opts['expired']) showOpts.expired = true
+    if (opts['cwd']) showOpts.cwd = String(opts['cwd'])
     const result = runCacheShow(showOpts)
     if (result.entries.length === 0) {
       process.stdout.write('No cache entries\n')
@@ -236,6 +241,7 @@ universalOptions(cache
       persist: Boolean(opts['persist']),
     }
     if (opts['directive']) clearOpts.directive = String(opts['directive'])
+    if (opts['cwd']) clearOpts.cwd = String(opts['cwd'])
     const result = runCacheClear(clearOpts)
     const parts = []
     if (result.cleared.session) parts.push('session')

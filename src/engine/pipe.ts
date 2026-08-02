@@ -2,13 +2,29 @@ const BUILTINS = new Set(['grep', 'sort', 'head', 'tail', 'wc', 'uniq'])
 const MAX_GREP_PATTERN_LENGTH = 200
 const REDOS_SUSPECT = /(\([^)]*[+*][^)]*\)[+*]|\(\?[^)]*\)[+*][+*]|\.\*.*\.\*)/
 
+// A plain `split(/\s+/)` leaves matching quotes in place ('grep "a b"' would
+// filter on the literal string '"a' followed by a separate token 'b"'), so
+// any quoted pattern (the natural way to write one containing a space, or
+// just out of habit) silently matched nothing with no error. Tokenizes
+// shell-style: single/double-quoted spans are one token with the quotes
+// stripped, unquoted runs split on whitespace.
+function tokenize(command: string): string[] {
+  const tokens: string[] = []
+  const re = /'([^']*)'|"([^"]*)"|(\S+)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(command)) !== null) {
+    tokens.push(m[1] ?? m[2] ?? m[3] ?? '')
+  }
+  return tokens
+}
+
 export function isBuiltin(command: string): boolean {
-  const cmd = command.trim().split(/\s+/)[0] ?? ''
+  const cmd = tokenize(command)[0] ?? ''
   return BUILTINS.has(cmd)
 }
 
 export function runBuiltin(command: string, lines: string[]): string[] {
-  const parts = command.trim().split(/\s+/)
+  const parts = tokenize(command)
   const cmd = parts[0] ?? ''
   switch (cmd) {
     case 'grep': return runGrep(parts.slice(1), lines)

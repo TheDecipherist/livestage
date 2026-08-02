@@ -144,7 +144,7 @@ export function evalExpr(expr: string, ctx: EngineContext): string {
   // {{ info.frameworks.mdd.layout.directories.features }}). Spread AFTER
   // envObj so struct entries shadow same-name string entries from envFiles.
   const safeData: Record<string, unknown> = {}
-  const RESERVED = new Set(['env', 'file', 'ARGUMENTS', 'args', 'argsList', 'arg0', 'arg1', 'arg2', 'arg3', 'CLAUDE_SESSION_ID', 'CLAUDE_EFFORT', 'CLAUDE_SKILL_DIR', 'allowed'])
+  const RESERVED = new Set(['env', 'file', 'ARGUMENTS', 'args', 'argsList', 'arg0', 'arg1', 'arg2', 'arg3', 'vars', 'CLAUDE_SESSION_ID', 'CLAUDE_EFFORT', 'CLAUDE_SKILL_DIR', 'allowed'])
   for (const [k, v] of Object.entries(ctx.data ?? {})) {
     if (/^[A-Z_][A-Z0-9_]*$/i.test(k) && !RESERVED.has(k)) safeData[k] = v
   }
@@ -162,6 +162,7 @@ export function evalExpr(expr: string, ctx: EngineContext): string {
     arg1: argsList[1] ?? '',
     arg2: argsList[2] ?? '',
     arg3: argsList[3] ?? '',
+    vars: skill?.vars ?? {},
     CLAUDE_SESSION_ID: skill?.sessionId ?? '',
     CLAUDE_EFFORT: skill?.effort ?? '',
     CLAUDE_SKILL_DIR: skill?.skillDir ?? '',

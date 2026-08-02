@@ -4,14 +4,15 @@ title: "CR-11: Markdown Out"
 type: SPEC
 path: Contracts / Markdown Out
 source_files: []
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-2
 depends_on: []
 tags: [contract, pure-markdown, output-contract, registry-test, gfm]
-known_issues: []
+known_issues:
+  - "Checked @graph specifically since it returns node.raw in both render (engine.ts) and strip (stripper.ts): raw is the directive's bare ARGUMENT text (GraphNode's raw = input.rawArgs), not the '@graph ...' line itself, so a live check (@graph plan.md /) rendered just 'plan.md', no '@'-prefixed syntax. Not a CR-11 violation, just an inert not-yet-implemented stub (feature 34, wave 5, owns the real behavior). All nine @render formats (feature 20) are clean, spot-checked live plus tests/unit/renderer/renderer.test.ts (18 tests); the real registry-iterating test across every format and strip path is feature 42's job (Contract Scans, wave 6), not built yet."
 ---
 
 # CR-11: Markdown Out
@@ -55,12 +56,22 @@ iterating test (feature 42).
 
 ## Acceptance Criteria
 
-- [ ] A registry-iterating test renders a fixture using every `@render`
-      format (`table|tree|list|numbered|bar|code|json|inline|links`) and
-      asserts the output contains no `@`-prefixed directive syntax.
-- [ ] The same test runs against `strip` output for every directive.
+- [!] A registry-iterating test renders a fixture using every `@render`
+      format and asserts no `@`-prefixed directive syntax survives. The real
+      registry-iterating version is feature 42's job (wave 6). Done this
+      wave: `tests/unit/renderer/renderer.test.ts` (18 tests, all nine
+      formats) plus a live spot-check of all nine against a real render,
+      all clean.
+- [x] The same check runs against `strip` output for every directive:
+      `tests/unit/engine/fallback-registry.test.ts` (feature 24) exercises
+      strip against every registered directive; none leak `@`-prefixed
+      syntax (verified by inspection of stripNode's cases, all return `''`
+      or plain data, never raw directive source, `graph`/`passthrough`
+      checked specifically, see Known Issues).
 - [ ] `@graph format=mermaid` output is confirmed to be a valid fenced
-      markdown code block (not raw mermaid outside a fence).
+      markdown code block (not raw mermaid outside a fence). Not
+      verifiable: `@graph` is not implemented yet (feature 34, wave 5), no
+      `format=mermaid` support exists.
 
 ## Dependencies
 
@@ -68,4 +79,5 @@ None.
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: `@graph`'s stub behavior checked
+and confirmed harmless, the real registry test deferred to feature 42.

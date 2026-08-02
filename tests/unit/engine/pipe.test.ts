@@ -96,6 +96,20 @@ describe('runBuiltin — grep', () => {
   it('throws on invalid regex', () => {
     expect(() => runBuiltin('grep [invalid', lines)).toThrow(/invalid pattern/)
   })
+
+  it('a double-quoted pattern is stripped of its quotes before matching (the quotes must not become part of the pattern)', () => {
+    expect(runBuiltin('grep "foo"', lines)).toEqual(['foo bar'])
+  })
+
+  it('a single-quoted pattern with an embedded space is one token', () => {
+    expect(runBuiltin("grep 'foo bar'", lines)).toEqual(['foo bar'])
+  })
+
+  // Known limitation, not fixed here: tokenize() strips quotes before
+  // runGrep sees the tokens, so it cannot distinguish a quoted "-i" (meant
+  // as a literal pattern) from a bare -i flag; both are treated as the
+  // flag. Fixing this would need the tokenizer to preserve quoted-ness
+  // per token, not just resolve strings.
 })
 
 describe('runBuiltin — wc', () => {

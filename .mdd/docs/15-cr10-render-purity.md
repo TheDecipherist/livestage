@@ -4,14 +4,15 @@ title: "CR-10: Render Purity"
 type: SPEC
 path: Contracts / Render Purity
 source_files: []
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-2
 depends_on: []
 tags: [contract, purity, filesystem-snapshot, harness, no-side-effects]
-known_issues: []
+known_issues:
+  - "Partially verified this wave: the tests/purity/ before/after harness that wraps EVERY integration test is explicitly owned by feature 42 (Contract Scans, wave 6) per this doc's own Implementation Notes, and does not exist yet. What's verifiable now: a targeted snapshot test (tests/unit/engine/source-directives-purity.test.ts, feature 17) proves every wave-2 read-side directive (@list/@read/@read-frontmatter/@tree/@count/@date/@env) produces zero filesystem mutations, EXCLUDING .livestage/trace/ which is read as spec-sanctioned infrastructure (spec line 45, 'the only cross-invocation artifact'), not corpus content. That exclusion is this session's interpretation, not confirmed against the spec author; feature 42 should confirm or overturn it when it builds the real harness."
 ---
 
 # CR-10: Render Purity
@@ -55,12 +56,19 @@ harness (feature 42).
 
 ## Acceptance Criteria
 
-- [ ] A filesystem snapshot taken before and after rendering a large fixture
+- [!] A filesystem snapshot taken before and after rendering a large fixture
       corpus (including docs using every read-side directive) is identical
-      except for explicit `@update-frontmatter` targets.
+      except for explicit `@update-frontmatter` targets. Narrower version
+      done this wave: `source-directives-purity.test.ts` covers wave-2's
+      seven read-side directives against one fixture directory, not a large
+      corpus. `@update-frontmatter` itself does not exist yet (feature 33,
+      wave 5), so there is nothing to except yet.
 - [ ] A deliberately broken directive that writes a stray file fails the
-      harness (proving the harness actually catches violations).
-- [ ] Every integration test in `tests/integration/` runs inside the harness.
+      harness (proving the harness actually catches violations). Not built;
+      no corpus-wide harness exists to break yet, feature 42.
+- [ ] Every integration test in `tests/integration/` runs inside the
+      harness. Neither `tests/integration/` nor the harness exist yet;
+      feature 42, wave 6.
 
 ## Dependencies
 
@@ -68,4 +76,5 @@ None.
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: only partially verifiable this
+wave, the corpus-wide harness is feature 42's job (wave 6).
