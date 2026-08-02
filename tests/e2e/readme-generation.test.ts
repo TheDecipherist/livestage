@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { getAvailableDirectives } from 'livestage/parser'
 
@@ -18,16 +19,51 @@ function renderReadme(): string {
   return execFileSync('node', [cliEntry, 'render', 'README.stage'], { cwd: repoRoot, encoding: 'utf8' })
 }
 
+// The doc-owner-per-directive mapping is a fixed, known set (each directive
+// belongs to exactly one owning doc's API/Interface, per the project's own
+// build docs); "pipe" is the one registry entry with no owning doc of its
+// own (a grammar-internal parse module for the `|` operator, not a
+// directive anyone writes as literal "@pipe" syntax).
+const EXPECTED_DIRECTIVE_DOCS = [
+  '17-source-directives', '18-compute-directives', '19-composition-directives',
+  '20-render-formats', '22-pipe', '26-assert-operators', '27-assert-liveness',
+  '29-code-runners', '33-update-frontmatter', '34-graph', '36-frontmatter-query',
+]
+
 describe('README.stage renders README.md content live from the project itself', () => {
-  it('every registered directive appears in the generated output (registry-vs-docs coverage guard)', () => {
+  it('the discovery query returns exactly the doc set that covers every registered directive', () => {
+    // Runs the EXACT query line from README.stage (extracted, not
+    // hand-copied, so this can't silently drift from the real filter)
+    // standalone, and asserts the precise doc-id set it returns. A softer
+    // "does @name appear anywhere in the rendered output" check was tried
+    // first and proved vacuous: even with a doc's path deliberately broken
+    // so the query excludes it, OTHER docs' cross-referencing prose (e.g.
+    // "ungranted @code language" in 27-assert-liveness) still mentioned the
+    // directive's name, masking the gap. This checks the query's own
+    // correctness directly, not a string search over unrelated prose.
+    const source = readFileSync(join(repoRoot, 'README.stage'), 'utf8')
+    const queryLine = source.split('\n').find(l => l.startsWith('@foreach docid in @list'))
+    expect(queryLine, 'could not find the discovery query line in README.stage').toBeDefined()
+    const listCall = queryLine!.replace(/^@foreach docid in /, '')
+
+    const dir = mkdtempSync(join(tmpdir(), 'ls-readme-query-'))
+    try {
+      writeFileSync(join(dir, 'query.stage'), `${listCall} | @render type="list" /\n`)
+      execFileSync('cp', ['-r', join(repoRoot, '.mdd'), dir])
+      const out = execFileSync('node', [cliEntry, 'render', 'query.stage'], { cwd: dir, encoding: 'utf8' })
+      // "id" is the fields= header row, real README.stage skips it via
+      // `@if docid != "id"` inside the @foreach body; filtered the same
+      // way here since this test pipes straight to @render instead.
+      const foundIds = out.split('\n').map(l => l.replace(/^- /, '').trim()).filter(v => v && v !== 'id').sort()
+      expect(foundIds).toEqual([...EXPECTED_DIRECTIVE_DOCS].sort())
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('every registered directive appears in the generated output (loose sanity check)', () => {
     const out = renderReadme()
     const registered = getAvailableDirectives().map(d => d.name)
-    // "pipe" is a grammar-internal registry entry (the `|` pipe operator's
-    // own parse module), not a directive anyone writes as literal "@pipe"
-    // syntax; 22-pipe.md (which documents pipe syntax) is still included in
-    // the directive reference via the same discovery query as everything
-    // else, it just never contains the string "@pipe" because that syntax
-    // doesn't exist.
     const missing = registered.filter(name => name !== 'pipe' && !out.includes(`@${name}`))
     expect(missing).toEqual([])
   })
@@ -37,10 +73,10 @@ describe('README.stage renders README.md content live from the project itself', 
   // content, and a naive strip-backticks-then-regex approach kept
   // concatenating separate legitimate inline code spans into new
   // accidentally-directive-shaped text, testing the check's own regex
-  // robustness more than the implementation). The coverage guard above
-  // (every directive name present) and the real-value checks below (actual
-  // git output, actual package.json fields, actual file source) already
-  // give non-vacuous proof the render executed correctly end to end.
+  // robustness more than the implementation). The doc-set check above is
+  // the real, non-vacuous coverage guard; the loose check and the
+  // real-value checks below give additional non-vacuous proof the render
+  // executed correctly end to end.
 
   it('package.json name and version are read live, not hardcoded', () => {
     const out = renderReadme()
