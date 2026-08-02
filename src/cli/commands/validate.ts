@@ -3,6 +3,7 @@ import { resolve, relative, dirname, isAbsolute } from 'node:path'
 import { parse, ParseError } from 'livestage/parser'
 import type { ASTNode, ConditionalBranch, ImportNode } from 'livestage/parser'
 import { checkFilePath, checkAbsolutePath } from 'livestage/engine'
+import { checkInertDoc, checkSuspiciousRegex, checkArgsWithoutFallback } from '../../engine/assert/liveness.js'
 
 export interface ValidateOptions {
   env?: string
@@ -41,6 +42,14 @@ export function runValidate(filePath: string, options: ValidateOptions = {}): Va
     } else {
       const defines = collectDefines(ast.nodes, dirname(resolved), new Set(), warnings, options.cwd ?? process.cwd())
       checkNodes(ast.nodes, defines, errors, warnings, resolved)
+
+      const inert = checkInertDoc(ast.nodes)
+      if (inert) errors.push(`@assert: inert document (${resolved}:${inert.line}), ${inert.message}`)
+      for (const issue of checkSuspiciousRegex(ast.nodes)) {
+        warnings.push(`@assert: suspicious pattern (${resolved}:${issue.line}), ${issue.message}`)
+      }
+      const argsIssue = checkArgsWithoutFallback(ast.nodes)
+      if (argsIssue) errors.push(`args: no fallback guard (${resolved}:${argsIssue.line}), ${argsIssue.message}`)
     }
   } catch (err) {
     errors.push(err instanceof ParseError ? err.message : String(err))

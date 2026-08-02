@@ -2,13 +2,27 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { runInNewContext } from 'node:vm'
 
+// `**` as its own path segment means "zero or more directories, including
+// none" (the standard glob convention: `**/*.ts` matches both `a.ts` and
+// `sub/a.ts`). A prior version treated `**` as a plain inline `.*` via
+// blind string replacement, which required a literal `/` before the match
+// and so silently excluded top-level files, e.g. `**/*.ts` matched
+// `sub/a.ts` but not `a.ts` itself. Segment-aware now: split on `/` first,
+// convert each segment on its own, then splice `**` back in as an optional
+// `(?:.*/)?` (mid-pattern) or `.*` (standalone/trailing) group.
 export function globToRegex(pattern: string): RegExp {
-  const re = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '\x00')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\x00/g, '.*')
-    .replace(/\?/g, '[^/]')
+  const GLOBSTAR = '\x00'
+  const segments = pattern.split('/').map(seg => {
+    if (seg === '**') return GLOBSTAR
+    return seg
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*/g, '[^/]*')
+      .replace(/\?/g, '[^/]')
+  })
+  let re = segments.join('/')
+  re = re.replace(new RegExp(`(^|/)${GLOBSTAR}/`, 'g'), '$1(?:.*/)?')
+  re = re.replace(new RegExp(`/${GLOBSTAR}$`), '/.*')
+  re = re.replace(new RegExp(`^${GLOBSTAR}$`), '.*')
   return new RegExp(`^${re}$`)
 }
 

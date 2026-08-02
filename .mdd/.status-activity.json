@@ -1,1 +1,1 @@
-{"lastCommand":"cd /home/tim_carter81/projects/livestage\ngit checkout main\ng","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.mdd/.startup.md"}
+{"lastCommand":"cd /home/tim_carter81/projects/livestage\ngit commit -m \"$(ca","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.mdd/.startup.md"}

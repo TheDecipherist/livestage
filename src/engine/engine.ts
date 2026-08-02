@@ -19,6 +19,8 @@ import { executeForeach, executeSet, setIterEngine } from './iter-ops.js'
 import { resolveInterpolations } from './engine-interpolate.js'
 import { FatalError, versionIsNewer, loadStdlib, executeImport, executeInclude } from './engine-include.js'
 import { executeTemplate, executeData } from './engine-template.js'
+import { evaluateAssert } from './assert/operators.js'
+import { formatAssertResult } from './assert/results.js'
 import { parseTraceConfig } from './trace/config.js'
 import { emitRecord } from './trace/emit.js'
 import { extractArgs } from './trace/span.js'
@@ -301,6 +303,11 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
     case 'hash': return executeHash(node, ctx)
     case 'foreach': return executeForeach(node, ctx)
     case 'set': return executeSet(node, ctx)
+    case 'assert': {
+      const result = evaluateAssert(node, ctx)
+      ctx.assertResults?.push(result)
+      return formatAssertResult(result)
+    }
     default: throw new Error(`walkNode: unhandled AST node type "${(node as { type: string }).type}"`)
   }
 }

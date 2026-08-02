@@ -3,7 +3,7 @@ id: livestage-wave-3
 title: Verification
 initiative: livestage
 initiative_version: 1
-status: planned
+status: complete
 depends_on: [livestage-wave-2]
 demo_state: "An assertion doc against a fixture tree goes green; deleting the target files flips contains-class assertions to FAIL (not vacuous green); validate refuses an all-inert doc, warns on a double-escaped regex, and fails a document containing @phase as an unknown directive; livestage assert exits 1 in a CI fixture repo with only the bundle present."
 content_hash: 94069ef7157f

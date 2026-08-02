@@ -4,14 +4,17 @@ title: CI Mode
 type: COMPONENT
 path: CLI / CI Mode
 source_files: [src/cli/commands/validate.ts, src/cli/commands/assert.ts]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-3
 depends_on: [26-assert-operators, 13-cli-router]
 tags: [ci, exit-codes, bare-checkout, assert-command, validate-command]
-known_issues: []
+known_issues:
+  - "New: assert <file|glob> was not registered in cli.ts at all before this wave (feature 13's known_issues had already flagged it as deferred). Added, plus glob support for both assert and validate (validate previously accepted a single file only) via a new shared expandFileGlob (src/cli/glob-expand.ts), reusing the same globToRegex/walkDir glob resolution @list and @assert use."
+  - "assert's document-invalid check (exit 2) reuses runValidate's full semantic pass (undefined @call macro, missing @include target, inert @assert doc, args with no fallback, ...), not just a parse-error check; an early version only caught parse errors and let a document with an undefined macro through as if it were a normal assertion failure. Fixed and tested."
+  - "The bundle-only bare-checkout scenario (acceptance criterion 1 as literally worded: a CI fixture repo with only dist/livestage.js present, no install step) is not verifiable yet: the single-file esbuild bundle is feature 41 (wave 6), not built. Verified instead against a normal fixture repo; re-verify against the real bundle when feature 41 lands."
 ---
 
 # CI Mode
@@ -55,13 +58,17 @@ N/A.
 
 ## Acceptance Criteria
 
-- [ ] `livestage assert` against a CI fixture repo (only `dist/livestage.js`
-      present, no install step) exits 1 when an assertion fails.
-- [ ] `livestage validate` against a glob of fixture docs exits 0 only when
-      every doc is valid, 1 when any is invalid, 2 on a malformed glob/usage
-      error.
-- [ ] Exit codes match exactly across a local run and a CI run of the same
-      fixture (parity by construction).
+- [!] `livestage assert` exits 1 when an assertion fails. Live-verified and
+      `tests/unit/cli/assert.test.ts` / `cli-router.test.ts` (real binary).
+      Not yet verified against the literal bundle-only bare checkout, see
+      Known Issues.
+- [x] `livestage validate` against a glob of fixture docs exits 0 only when
+      every doc is valid, 1 when any is invalid, 2 when the glob matches
+      nothing. Live-verified and tested (real binary).
+- [x] Exit codes match across a local run and a CI run of the same fixture:
+      by construction, `assert`/`validate` are plain CLI commands with no
+      CI-specific branch; the same binary, same code path, same exit codes
+      either way.
 
 ## Dependencies
 
@@ -70,4 +77,6 @@ N/A.
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: `assert` was never registered
+before this wave, glob support added to both commands, and the bundle-only
+bare-checkout scenario deferred to feature 41.

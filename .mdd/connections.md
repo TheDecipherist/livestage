@@ -18,7 +18,7 @@ overlap_count: 3
 **Build / Seed Script**
   └── `01-seed-script` - Seed Script (complete)
 **CLI / CI Mode**
-  └── `28-ci-mode` - CI Mode (planned)
+  └── `28-ci-mode` - CI Mode (complete)
 **CLI / Doctor**
   └── `30-doctor` - Doctor (planned)
 **CLI / Init**
@@ -50,11 +50,11 @@ overlap_count: 3
 **Contracts / Standalone Identity**
   └── `02-cr1-standalone-identity` - CR-1: Standalone Identity (complete)
 **Contracts / Suite Baseline**
-  └── `25-cr7-suite-baseline` - CR-7: Suite Baseline (planned)
+  └── `25-cr7-suite-baseline` - CR-7: Suite Baseline (complete)
 **Directives / Assert Liveness**
-  └── `27-assert-liveness` - Assert Liveness (planned)
+  └── `27-assert-liveness` - Assert Liveness (complete)
 **Directives / Assert Operators**
-  └── `26-assert-operators` - Assert Operators (planned)
+  └── `26-assert-operators` - Assert Operators (complete)
 **Directives / Composition**
   └── `19-composition-directives` - Composition Directives (complete)
 **Directives / Compute**
@@ -136,10 +136,10 @@ graph TD
   22_pipe["22-pipe"]:::done
   23_arguments["23-arguments"]:::done
   24_fallback_contract["24-fallback-contract"]:::done
-  25_cr7_suite_baseline["25-cr7-suite-baseline"]:::planned
-  26_assert_operators["26-assert-operators"]:::planned
-  27_assert_liveness["27-assert-liveness"]:::planned
-  28_ci_mode["28-ci-mode"]:::planned
+  25_cr7_suite_baseline["25-cr7-suite-baseline"]:::done
+  26_assert_operators["26-assert-operators"]:::done
+  27_assert_liveness["27-assert-liveness"]:::done
+  28_ci_mode["28-ci-mode"]:::done
   29_code_runners["29-code-runners"]:::planned
   30_doctor["30-doctor"]:::planned
   31_init["31-init"]:::planned
