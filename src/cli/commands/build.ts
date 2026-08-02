@@ -1,0 +1,42 @@
+import { writeFileSync } from 'node:fs'
+import { resolve, relative, isAbsolute } from 'node:path'
+import { checkFilePath, checkAbsolutePath } from 'livestage/engine'
+import { runRender } from './render.js'
+import type { RenderOptions } from './render.js'
+
+export interface BuildOptions extends RenderOptions {
+  output?: string
+}
+
+export interface BuildResult {
+  output: string
+  errors: string[]
+  warnings: string[]
+  exitCode: number
+  outputPath?: string
+}
+
+export function runBuild(filePath: string, options: BuildOptions = {}): BuildResult {
+  const result = runRender(filePath, options)
+  let outputPath: string | undefined
+
+  if (options.output && result.exitCode === 0) {
+    const baseCwd = resolve(options.cwd ?? process.cwd())
+    outputPath = resolve(baseCwd, options.output)
+    if (relative(baseCwd, outputPath).startsWith('..')) {
+      return { ...result, exitCode: 1, errors: [...result.errors, `@build: output path confined — access denied: ${options.output}`] }
+    }
+    const pathCheck = isAbsolute(options.output) ? checkAbsolutePath(options.output) : checkFilePath(options.output, baseCwd)
+    if (pathCheck.level === 'blocked') {
+      return { ...result, exitCode: 1, errors: [...result.errors, `@build: output path blocked — ${pathCheck.reason}: ${options.output}`] }
+    }
+    try {
+      const content = result.output.endsWith('\n') ? result.output : result.output + '\n'
+      writeFileSync(outputPath, content)
+    } catch (err) {
+      return { ...result, exitCode: 1, errors: [...result.errors, `@build: write failed — ${String(err)}`] }
+    }
+  }
+
+  return { ...result, ...(outputPath !== undefined ? { outputPath } : {}) }
+}

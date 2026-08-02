@@ -3,7 +3,7 @@ id: livestage-wave-0
 title: Seed
 initiative: livestage
 initiative_version: 1
-status: planned
+status: complete
 depends_on: []
 demo_state: "Repo compiles; merged suite runs (failures only in excluded areas); CR-1 grep clean or remaining hits enumerated as Wave 1 tasks."
 content_hash: ea2ccc5a8a0f

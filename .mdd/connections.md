@@ -16,7 +16,7 @@ overlap_count: 3
 **Build / Package Skeleton**
   └── `07-package-skeleton` - Package Skeleton (planned)
 **Build / Seed Script**
-  └── `01-seed-script` - Seed Script (planned)
+  └── `01-seed-script` - Seed Script (complete)
 **CLI / CI Mode**
   └── `28-ci-mode` - CI Mode (planned)
 **CLI / Doctor**
@@ -112,7 +112,7 @@ graph TD
   classDef active fill:#ffd700,stroke:#b8860b,color:#000
   classDef done fill:#00e5cc,stroke:#008080,color:#000
   classDef deprecated fill:#f44,stroke:#a00,color:#fff
-  01_seed_script["01-seed-script"]:::planned
+  01_seed_script["01-seed-script"]:::done
   02_cr1_standalone_identity["02-cr1-standalone-identity"]:::planned
   03_cr2_one_package["03-cr2-one-package"]:::planned
   04_cr3_stage_only["04-cr3-stage-only"]:::planned

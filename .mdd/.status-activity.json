@@ -1,1 +1,1 @@
-{"lastCommand":"find . -mindepth 2 -name \".git\" -not -path \"./.git\" -type d ","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.gitignore"}
+{"lastCommand":"cd /home/tim_carter81/projects/livestage\ncat .gitignore\necho","lastTool":"Read","lastTarget":"/home/tim_carter81/projects/livestage/.mdd/initiatives/livestage.md"}
