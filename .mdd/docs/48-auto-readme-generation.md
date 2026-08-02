@@ -6,8 +6,8 @@ path: Docs / README Generation
 source_files: [README.stage, README.md, examples/agent-briefs/codebase-health.stage,
   examples/agent-briefs/change-review.stage, examples/agent-briefs/onboarding-brief.stage,
   examples/agent-briefs/.livestage/policy.json, package.json, .github/workflows/ci.yml]
-status: active
-phase: document
+status: complete
+phase: all
 last_synced: 2026-08-02
 initiative: livestage
 depends_on: [09-grammar-parser, 13-cli-router, 17-source-directives, 20-render-formats, 36-frontmatter-query]

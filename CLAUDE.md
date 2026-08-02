@@ -75,3 +75,10 @@ donor already has is a wave failure.
   append-only and the engine never reads it back.
 - No em dashes anywhere in new source; use a comma or a single hyphen.
 - Never reference the donor codebase outside `MDs/livestage-spec.md`.
+- A test must never mutate a git-tracked file as an uncontrolled side
+  effect of running (found in feature 48: a test called an npm script that
+  regenerated the real, tracked `README.md`, which silently defeated the
+  CI drift-check step that ran after it, since by the time it checked, the
+  test suite had already "fixed" the drift). Write to a scratch path
+  (`.ai_temp/`, an OS tmpdir, or a `-o`/`--out` flag pointed elsewhere)
+  instead, never to the file a later step is meant to verify.
