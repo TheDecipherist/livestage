@@ -14,7 +14,7 @@ import { globToRegex, walkDir, listJson, listCsv, readEnvFile } from './sources-
  * allowed, or null if blocked (with a SECURITY_ALERT warning already pushed).
  * v2.0: jails against dataJail (default: cwd), honors allowedDataPaths.
  */
-function resolveDataPath(path: string, ctx: EngineContext, directive: string): string | null {
+export function resolveDataPath(path: string, ctx: EngineContext, directive: string): string | null {
   const dataJail = ctx.security.dataJail ?? ctx.security.jailRoot ?? ctx.docDir
   if (!dataJail) {
     ctx.warnings.push(`SECURITY_ALERT: ${directive} no data jail configured: ${path}`)

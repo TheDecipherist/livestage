@@ -4,14 +4,17 @@ title: Assert Liveness
 type: COMPONENT
 path: Directives / Assert Liveness
 source_files: [src/engine/assert/liveness.ts]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-3
 depends_on: [26-assert-operators]
 tags: [validate, liveness, inert-doc, regex-lint, args-fallback-rule]
-known_issues: []
+known_issues:
+  - "@code language grant check (business rule 4, acceptance criterion 4) cannot be built or tested: @code does not exist yet (feature 29, wave 4). Deferred to that feature."
+  - "'inert document' is defined structurally, not by proving a target can literally never match anything (that would need real filesystem state, which validate never touches): a document is inert when EVERY @assert in it uses operator=\"absent\", the only operator allowed to pass vacuously, so such a document can always pass without verifying anything positive."
+  - "args-without-fallback is a heuristic, not a control-flow proof: flags a document that interpolates args/argN anywhere AND has no @if condition referencing args anywhere in the document. A document that guards SOME but not all args references still passes (validate does not execute anything, so it cannot know which branch a given interpolation lives in)."
 ---
 
 # Assert Liveness
@@ -59,14 +62,17 @@ without fallback, ungranted `@code` language), exit 2 usage/parse error.
 
 ## Acceptance Criteria
 
-- [ ] `validate` on an all-inert assertion doc (every `@assert` target
-      guaranteed to never match anything meaningful) fails.
-- [ ] `validate` on a doc with a double-escaped regex pattern (e.g.
-      `\\\\d+` where `\\d+` was intended) emits a warning.
-- [ ] `validate` on a doc that dereferences `{{ args }}`/`{{ arg0 }}` without
-      an `@if`/fallback guard fails.
-- [ ] `validate` on a doc using `@code language="ruby"` when `ruby` is not in
-      the policy's granted languages fails.
+- [x] `validate` on an all-inert assertion doc (every `@assert` uses
+      `operator="absent"`) fails. Live-verified and
+      `tests/unit/engine/assert-liveness.test.ts`.
+- [x] `validate` on a doc with a double-escaped regex pattern emits a
+      warning, not an error. Live-verified and tested.
+- [x] `validate` on a doc that dereferences `{{ args }}`/`{{ arg0 }}` without
+      an `@if` guard fails; a doc with a guard passes. Live-verified and
+      tested.
+- [ ] `validate` on a doc using `@code language="ruby"` when `ruby` is not
+      granted fails. Not buildable yet: `@code` does not exist (feature 29,
+      wave 4).
 
 ## Dependencies
 
@@ -74,4 +80,6 @@ without fallback, ungranted `@code` language), exit 2 usage/parse error.
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: the deferred `@code` check, and
+the structural/heuristic definitions used for inert-doc and
+args-without-fallback since neither can execute anything at validate time.

@@ -113,7 +113,7 @@ function applyBudget(output: string, budget: number): string {
   return result
 }
 
-function buildSecurityConfig(options: RenderOptions, resolved: string): SecurityConfig {
+export function buildSecurityConfig(options: RenderOptions, resolved: string): SecurityConfig {
   if (options.securityConfig) return options.securityConfig
   const json = loadSecurityConfig(undefined, options.cwd)
   // CLI default: data ops jail to the document's directory (matches v1.x and the

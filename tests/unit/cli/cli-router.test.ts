@@ -74,6 +74,9 @@ describe('CLI Router: exit-code contract for flat verbs', () => {
     dir = mkdtempSync(join(tmpdir(), 'cli-exitcodes-'))
     writeFileSync(join(dir, 'good.stage'), '# Fine\n')
     writeFileSync(join(dir, 'bad.stage'), '@call undefined_macro_xyz /\n')
+    writeFileSync(join(dir, 'target.txt'), 'hello')
+    writeFileSync(join(dir, 'assert-pass.stage'), '@assert operator="contains" target="target.txt" pattern="hello" /\n')
+    writeFileSync(join(dir, 'assert-fail.stage'), '@assert operator="contains" target="target.txt" pattern="nowhere" /\n')
   })
 
   afterAll(() => { rmSync(dir, { recursive: true, force: true }) })
@@ -101,5 +104,35 @@ describe('CLI Router: exit-code contract for flat verbs', () => {
   it('eval: prints a value on success', () => {
     const r = runCli(['eval', '1 + 1'])
     expect(r.stdout.trim()).toBe('2')
+  })
+
+  it('assert: exit 0 when every assertion in the file passes', () => {
+    const r = runCli(['assert', 'assert-pass.stage'], dir)
+    expect(r.status).toBe(0)
+  })
+
+  it('assert: exit 1 when an assertion fails', () => {
+    const r = runCli(['assert', 'assert-fail.stage'], dir)
+    expect(r.status).toBe(1)
+  })
+
+  it('assert: exit 2 for an invalid document', () => {
+    const r = runCli(['assert', 'bad.stage'], dir)
+    expect(r.status).toBe(2)
+  })
+
+  it('validate: exit 0 for a glob where every match is valid', () => {
+    const r = runCli(['validate', 'assert-*.stage'], dir)
+    expect(r.status).toBe(0)
+  })
+
+  it('validate: exit 1 for a glob where any match is invalid', () => {
+    const r = runCli(['validate', '*.stage'], dir)
+    expect(r.status).toBe(1)
+  })
+
+  it('validate: exit 2 when the glob matches nothing', () => {
+    const r = runCli(['validate', 'nope-*.stage'], dir)
+    expect(r.status).toBe(2)
   })
 })

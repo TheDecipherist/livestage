@@ -252,6 +252,17 @@ export interface DataNode extends ASTNodeBase {
   entries: DataEntry[]
 }
 
+export interface AssertNode extends ASTNodeBase {
+  type: 'assert'
+  operator: string           // file-exists | contains | some-contains | contains-if-present | absent | json-key
+  target: string             // glob resolved relative to the document's data root
+  pattern: string | null     // contains-class operators
+  key: string | null         // json-key
+  equals: string | null      // json-key, optional value check
+  label: string | null
+  args: Record<string, string>
+}
+
 export type ASTNode =
   | IncludeNode
   | ImportNode
@@ -281,6 +292,7 @@ export type ASTNode =
   | PassthroughNode
   | TemplateNode
   | DataNode
+  | AssertNode
 
 export interface ParseResult {
   isLiveStage: boolean

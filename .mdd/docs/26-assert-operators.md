@@ -4,14 +4,17 @@ title: Assert Operators
 type: COMPONENT
 path: Directives / Assert Operators
 source_files: [src/parser/directives/assert.ts, src/engine/assert/operators.ts, src/engine/assert/results.ts]
-status: planned
-phase: idle
-last_synced: 2026-08-01
+status: complete
+phase: all
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-3
 depends_on: [17-source-directives, 18-compute-directives, 19-composition-directives]
 tags: [assert, operators, vacuity, match-count, file-exists, contains, json-key]
-known_issues: []
+known_issues:
+  - "target is a single glob string (e.g. target=\"src/**/*.ts\"), resolved through the same checkDataPath jail every source directive uses (resolveDataPath, exported from sources.ts for reuse). Found and fixed a real, pre-existing bug in the shared globToRegex utility while building target resolution: ** was treated as a plain inline .* via blind string replacement, requiring a literal / immediately before the match, so **/*.ts matched sub/a.ts but silently excluded the top-level a.ts. This affected every existing caller (@list, @count), not just @assert. Fixed to the standard convention (a ** segment matches zero or more directories, including none); tests/unit/engine/glob-to-regex.test.ts."
+  - "json-key's key path supports dot/bracket addressing (a.b[0].c) for JSON targets, but only a top-level field for frontmatter (.md) targets, matching feature 17's read-frontmatter scope limitation (reads ONE top-level field per call). Deeper frontmatter key paths are out of scope."
+  - "@assert renders an inline pass/fail line (formatAssertResult) where the directive sat, and pushes its AssertResult onto ctx.assertResults when the caller opts in by passing an array (undefined by default, render() itself never reads it). This is how feature 28's assert CLI command collects a document's results without re-parsing rendered markdown."
 ---
 
 # Assert Operators
@@ -72,15 +75,18 @@ boolean, vacuous: boolean }` (line 374).
 
 ## Acceptance Criteria
 
-- [ ] An assertion doc against a fixture tree goes green for each operator
-      against a matching fixture.
-- [ ] Deleting the target files flips `contains`/`some-contains`/
-      `file-exists`/`json-key` to FAIL, never a vacuous pass.
-- [ ] `absent` against a target with zero matches passes and is flagged
+- [x] An assertion doc against a fixture tree goes green for each operator
+      against a matching fixture. Live-verified for all six operators;
+      `tests/unit/engine/assert-operators.test.ts` (23 tests).
+- [x] Deleting the target files flips `contains`/`some-contains`/
+      `file-exists`/`json-key` to FAIL, never a vacuous pass:
+      `assert-operators.test.ts::deleting the target file flips a passing
+      assertion to FAIL`.
+- [x] `absent` against a target with zero matches passes and is flagged
       `vacuous: true`.
-- [ ] `contains-if-present` against a missing target passes without a
+- [x] `contains-if-present` against a missing target passes without a
       `vacuous` flag.
-- [ ] Every result object matches the `{ operator, target, matches, passed,
+- [x] Every result object matches the `{ operator, target, matches, passed,
       vacuous }` shape.
 
 ## Dependencies
@@ -90,4 +96,6 @@ reads), 19-composition-directives (interpolation inside assert attributes).
 
 ## Known Issues
 
-None.
+See the frontmatter `known_issues` above: the `globToRegex` fix (shared,
+affects `@list`/`@count` too), `json-key`'s frontmatter scope limit, and
+the `ctx.assertResults` collection mechanism for feature 28.

@@ -13,6 +13,7 @@ import { strip } from '../../../src/engine/stripper.js'
 // case would fail this test with "unhandled AST node type", not silently
 // pass.
 const FIXTURES: Record<string, string> = {
+  assert: '@assert operator="file-exists" target="package.json" /',
   call: '@call foo /',
   check: '@check command="true" /',
   count: '@count ./ /',

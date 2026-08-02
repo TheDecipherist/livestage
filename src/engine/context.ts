@@ -1,6 +1,7 @@
 import type { ASTNode } from 'livestage/parser'
 import type { FilesystemSecurityConfig, ShellSecurityConfig, HttpSecurityConfig, DbSecurityConfig, EventSecurityConfig } from './security/config.js'
 import type { TraceConfig } from './trace/config.js'
+import type { AssertResult } from './assert/operators.js'
 
 export interface EventMeta {
   datetime: string
@@ -130,6 +131,13 @@ export interface EngineContext {
    * is `null` (intercept).
    */
   shellInline: 'passthrough' | null
+  // Populated by the engine's 'assert' case as each @assert node executes,
+  // so a caller (the `assert` CLI command, feature 28) can aggregate a
+  // document's assertion results into an exit code without re-parsing
+  // rendered markdown. Absent (undefined) unless the caller opts in by
+  // passing an empty array in makeContext's overrides; render() itself
+  // never reads this field.
+  assertResults?: AssertResult[]
 }
 
 export interface ChosenTransition {

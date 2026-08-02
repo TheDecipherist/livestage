@@ -15,6 +15,8 @@ import { runListMacros } from './commands/list-macros.js'
 import { runListImports } from './commands/list-imports.js'
 import { runWatch } from './commands/watch.js'
 import { runEngineTrace } from './commands/engine-trace.js'
+import { runAssert } from './commands/assert.js'
+import { expandFileGlob } from './glob-expand.js'
 import { registerSecurity } from './cli-register-security.js'
 import { getAvailableDirectives } from 'livestage/parser'
 
@@ -72,18 +74,48 @@ universalOptions(
 
 universalOptions(
   program
-    .command('validate <file>')
-    .description('parse and validate a LiveStage document')
-).action((file: string, opts: Record<string, string | boolean | undefined>) => {
-  const result = runValidate(file, opts)
-  for (const err of result.errors) process.stderr.write(`ERROR: ${err}\n`)
-  for (const warn of result.warnings) {
-    if (!opts['silent']) process.stderr.write(`WARN: ${warn}\n`)
+    .command('validate <file|glob>')
+    .description('parse and validate one or more LiveStage documents')
+).action((pattern: string, opts: Record<string, string | boolean | undefined>) => {
+  const cwd = typeof opts['cwd'] === 'string' ? opts['cwd'] : process.cwd()
+  const files = expandFileGlob(pattern, cwd)
+  if (files.length === 0) {
+    process.stderr.write(`ERROR: no files matched: ${pattern}\n`)
+    process.exit(2)
   }
-  if (result.exitCode === 0) {
-    if (!opts['silent']) process.stdout.write(`✓ ${file}: no errors\n`)
+  let anyInvalid = false
+  for (const file of files) {
+    const result = runValidate(file, opts)
+    for (const err of result.errors) process.stderr.write(`ERROR: ${file}: ${err}\n`)
+    for (const warn of result.warnings) {
+      if (!opts['silent']) process.stderr.write(`WARN: ${file}: ${warn}\n`)
+    }
+    if (result.exitCode === 0) {
+      if (!opts['silent']) process.stdout.write(`✓ ${file}: no errors\n`)
+    } else {
+      anyInvalid = true
+    }
   }
-  process.exit(result.exitCode)
+  process.exit(anyInvalid ? 1 : 0)
+})
+
+universalOptions(
+  program
+    .command('assert <file|glob>')
+    .description('run @assert directives in one or more documents as a CI gate')
+).action((pattern: string, opts: Record<string, string | boolean | undefined>) => {
+  const cwd = typeof opts['cwd'] === 'string' ? opts['cwd'] : process.cwd()
+  const run = runAssert(pattern, { cwd, silent: Boolean(opts['silent']) })
+  for (const file of run.files) {
+    for (const err of file.errors) process.stderr.write(`ERROR: ${file.file}: ${err}\n`)
+    for (const result of file.results) {
+      const mark = result.passed ? '✓' : '✗'
+      if (!opts['silent'] || !result.passed) {
+        process.stdout.write(`${mark} ${file.file}: ${result.operator} ${result.target} (${result.matches} matches)\n`)
+      }
+    }
+  }
+  process.exit(run.exitCode)
 })
 
 const parser = program.command('parser').description('inspect the .stage grammar (ast, directives, imports, macros)')
