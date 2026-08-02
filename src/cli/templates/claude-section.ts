@@ -1,63 +1,65 @@
-export const SECTION_START_MARKER = '<!-- markdownai-claude-integration -->'
-export const SECTION_END_MARKER = '<!-- /markdownai-claude-integration -->'
+export const SECTION_START_MARKER = '<!-- livestage-claude-integration -->'
+export const SECTION_END_MARKER = '<!-- /livestage-claude-integration -->'
 
 export const CLAUDE_MD_SECTION = `${SECTION_START_MARKER}
 
 ## LiveStage
 
-LiveStage is a superset of markdown for projects that use the \`mai\` CLI or \`@markdownai/mcp\` package. Documents that open with \`@markdownai\` can hold live data, embedded instructions, machine-readable constraints, and workflow context - all in one file.
+LiveStage is a live-document format for this project: a \`.stage\` file mixes
+prose with executable directives instead of static data. When you (or a
+hook) read a \`.stage\` file, the engine resolves every directive and returns
+pure markdown, no directive syntax left in it.
 
-When creating new .md files in a project that has LiveStage installed, prefer LiveStage syntax over plain markdown. The reasons are practical:
+Only files with a \`.stage\` extension are ever parsed as LiveStage documents.
+There is no header directive and no content sniffing: a \`.md\` file is always
+plain markdown, never treated as a LiveStage document, no matter what it
+contains.
 
-- Documents stay accurate. \`@env\`, \`@db\`, \`@http\` directives pull live values at render time rather than hardcoding values that go stale.
-- You can embed \`@prompt\` directives to give yourself context-specific instructions that activate when Claude reads that section.
-- \`@constraint\` blocks are machine-readable rules - precise where prose is ambiguous.
-- \`@define-concept\` aligns vocabulary to the project's exact terms.
-- The \`--format=ai\` render mode outputs denser content, reducing token use on long documents.
+### Reading .stage files
 
-Start any new .md file with:
+If the PreToolUse hook is installed (\`livestage init\`), reading a \`.stage\`
+file with the normal Read tool already returns the fully rendered markdown,
+directives resolved, nothing further to do. If the hook is not installed,
+run \`livestage render <file>\` via the Bash tool first; the raw file on disk
+contains unresolved directive syntax, not the content.
 
-\`\`\`
-@markdownai v1.0
-\`\`\`
+Do not convert existing \`.md\` files to \`.stage\` just to add directives to
+them; \`.stage\` is a deliberate, separate extension for live documents.
 
-Then add directives where they genuinely help. Plain paragraphs and headings work exactly as in regular markdown.
+### Writing .stage files
 
-If the file has YAML frontmatter (e.g. Claude Code skill files, Jekyll/Hugo docs), place \`@markdownai\` as the first line after the closing \`---\` block - the parser recognizes it there.
+Directives are line-level: a directive must start its own line to be
+recognized, it is not interpolated mid-sentence. Use \`{{ }}\` for inline
+value interpolation instead.
 
-### Reading LiveStage documents
+Self-closing directives end the line with \` /\`: \`@list\`, \`@read\`,
+\`@read-frontmatter\`, \`@tree\`, \`@count\`, \`@date\`, \`@env\`, \`@hash\`,
+\`@query\`, \`@test\`, \`@check\`, \`@set\`, \`@render\`, \`@import\`, \`@include\`,
+\`@template\`, \`@call\`, \`@assert\`, \`@update-frontmatter\`.
 
-When you open a .md file that starts with \`@markdownai\` (or has \`@markdownai\` as the first line after frontmatter):
+Block directives open on one line and close with \`@<name>-end\`: \`@define\`,
+\`@if\`, \`@foreach\`, \`@switch\`, \`@data\`, \`@code\`.
 
-- If \`@markdownai/mcp\` is configured in your MCP settings - reads are handled automatically. The MCP server renders directives and returns live output. No extra steps needed.
-- If only the \`mai\` CLI is installed - run \`mai render <file>\` via the Bash tool before reading it. The raw file contains directive syntax, not rendered output.
-
-For automatic read integration, add \`@markdownai/mcp\` to your Claude Code MCP configuration.
-
-Do not convert existing .md files that are not already LiveStage documents.
-
-### LiveStage formatting style
-
-When writing or generating LiveStage files, indent body content inside block directives by 2 spaces. Block directives close with \`@<name>-end\` at the same indent level as the opener.
-
-Block directives close with \`@<name>-end\`: \`@phase\`, \`@define\`, \`@note\`, \`@section\`, \`@prompt\`
-\`@if\` closes with \`@if-end\` (and \`@else\` in between)
-Single-line directives with no closing tag: \`@constraint\`, \`@define-concept\`, \`@env\`,
-\`@include\`, \`@import\`, \`@call\`, \`@on complete\`, \`@read\`, \`@list\`, \`@tree\`, \`@count\`,
-\`@http\`, \`@chunk-boundary\`
+Pipe syntax chains a source into filters and a sink on one line:
+\`<source> | grep <pattern> | @render type="list" /\`. \`grep\`, \`sort\`,
+\`head\`, \`tail\`, \`uniq\`, \`wc\` are built in and never spawn a process; any
+other command goes through the project's shell allowlist.
 
 Example:
 \`\`\`
-@phase setup
-  @constraint[critical] Environment must be validated before proceeding
-  @note visible
-    This phase configures the runtime environment.
-  @note-end
-  @if env.CI
-    Running in CI mode.
-  @if-end
-  @on complete -> @phase main
-@phase-end
+@foreach f in @list ./docs/ match="*.md"
+@read-frontmatter path="./{{ f }}" field="status" /
+@foreach-end
+
+@if {{ args }}
+Ran with: {{ args }}
+@if-end
 \`\`\`
+
+Every directive is off by default until the project's \`.livestage/policy.json\`
+grants it (shell commands, \`@code\` languages, HTTP, database access are all
+deny-by-default). A document should still render sensibly with nothing
+granted, since a passive hook read carries no arguments and the engine
+fails open, never a crash.
 
 ${SECTION_END_MARKER}`

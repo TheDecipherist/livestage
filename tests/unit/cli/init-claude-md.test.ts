@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { runInitClaudeMd, stripClaudeMdSection } from '../../../src/cli/commands/init.js'
 import { CLAUDE_MD_SECTION, SECTION_START_MARKER, SECTION_END_MARKER } from '../../../src/cli/templates/claude-section.js'
 
-const TMP = join(tmpdir(), 'markdownai-claude-md-test')
+const TMP = join(tmpdir(), 'livestage-claude-md-test')
 const FAKE_CLAUDE_DIR = join(TMP, '.claude')
 const FAKE_CLAUDE_MD = join(FAKE_CLAUDE_DIR, 'CLAUDE.md')
 
@@ -136,9 +136,9 @@ describe('CLAUDE_MD_SECTION', () => {
     expect(CLAUDE_MD_SECTION).toContain(SECTION_END_MARKER)
   })
 
-  it('contains the MCP fallback read guidance', () => {
-    expect(CLAUDE_MD_SECTION).toContain('mai render')
-    expect(CLAUDE_MD_SECTION).toContain('@markdownai/mcp')
+  it('contains the manual-render fallback guidance for when the hook is not installed', () => {
+    expect(CLAUDE_MD_SECTION).toContain('livestage render')
+    expect(CLAUDE_MD_SECTION).toContain('PreToolUse hook')
   })
 
   it('does not contain em dashes', () => {
@@ -149,5 +149,16 @@ describe('CLAUDE_MD_SECTION', () => {
     const startIdx = CLAUDE_MD_SECTION.indexOf(SECTION_START_MARKER)
     const endIdx = CLAUDE_MD_SECTION.indexOf(SECTION_END_MARKER)
     expect(startIdx).toBeLessThan(endIdx)
+  })
+
+  it('never suggests writing directives into a .md file (business rule 3, feature 31)', () => {
+    expect(CLAUDE_MD_SECTION).not.toMatch(/directives?[^.]*\bin(to)?\s+(a\s+|your\s+)?\.md\b/i)
+    expect(CLAUDE_MD_SECTION).toContain('.stage')
+  })
+
+  it('does not reference the excluded MCP subsystem or donor brand', () => {
+    expect(CLAUDE_MD_SECTION).not.toContain('markdownai')
+    expect(CLAUDE_MD_SECTION).not.toContain('MCP')
+    expect(CLAUDE_MD_SECTION).not.toContain(' mai ')
   })
 })

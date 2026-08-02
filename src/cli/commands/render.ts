@@ -137,6 +137,7 @@ export function buildSecurityConfig(options: RenderOptions, resolved: string): S
     jailRoot: dirname(resolved),
     filesystemConfig,
     shellConfig: json.shell,
+    codeConfig: json.code,
   }
 }
 

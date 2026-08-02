@@ -252,6 +252,17 @@ export interface DataNode extends ASTNodeBase {
   entries: DataEntry[]
 }
 
+export interface CodeNode extends ASTNodeBase {
+  type: 'code'
+  language: string          // explicit language=, or inferred from src's extension; parse() throws if neither resolves
+  src: string | null        // external script file, mutually exclusive with an inline body
+  body: string | null       // inline script text (block form), verbatim, never parsed as directives
+  label: string | null
+  timeout: number | null    // ms override of policy's code.timeout
+  interpolate: boolean      // default false: {{ }} inside the body is opt-in
+  args: Record<string, string>
+}
+
 export interface AssertNode extends ASTNodeBase {
   type: 'assert'
   operator: string           // file-exists | contains | some-contains | contains-if-present | absent | json-key
@@ -293,6 +304,7 @@ export type ASTNode =
   | TemplateNode
   | DataNode
   | AssertNode
+  | CodeNode
 
 export interface ParseResult {
   isLiveStage: boolean

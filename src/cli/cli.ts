@@ -16,6 +16,7 @@ import { runListImports } from './commands/list-imports.js'
 import { runWatch } from './commands/watch.js'
 import { runEngineTrace } from './commands/engine-trace.js'
 import { runAssert } from './commands/assert.js'
+import { runDoctor, runDoctorRulesFor } from './commands/doctor.js'
 import { expandFileGlob } from './glob-expand.js'
 import { registerSecurity } from './cli-register-security.js'
 import { getAvailableDirectives } from 'livestage/parser'
@@ -116,6 +117,45 @@ universalOptions(
     }
   }
   process.exit(run.exitCode)
+})
+
+universalOptions(
+  program
+    .command('doctor')
+    .description('check project health: hooks, policy, .stage parse, trace, assertion liveness')
+    .option('--json', 'emit machine-readable health as JSON')
+    .option('--rules-for <file>', 'list assertion documents whose targets match this file')
+    .option('--home-dir <path>', 'override the home directory used to locate the hook registration (testing only)')
+).action((opts: Record<string, string | boolean | undefined>) => {
+  const cwd = typeof opts['cwd'] === 'string' ? opts['cwd'] : process.cwd()
+  const homeDir = typeof opts['homeDir'] === 'string' ? opts['homeDir'] : undefined
+  const doctorOpts: Parameters<typeof runDoctor>[0] = { cwd, ...(homeDir !== undefined ? { homeDir } : {}) }
+
+  if (opts['rulesFor']) {
+    const result = runDoctorRulesFor(String(opts['rulesFor']), doctorOpts)
+    if (opts['json']) {
+      process.stdout.write(JSON.stringify(result, null, 2) + '\n')
+    } else {
+      process.stdout.write(`${result.file}: ${result.matches.length} assertion(s), coverage ${(result.coverage * 100).toFixed(0)}%\n`)
+      for (const m of result.matches) {
+        process.stdout.write(`  ${m.passed ? '✓' : '✗'} ${m.file}: ${m.operator} ${m.target}\n`)
+      }
+    }
+    process.exit(0)
+  }
+
+  const health = runDoctor(doctorOpts)
+  if (opts['json']) {
+    process.stdout.write(JSON.stringify(health, null, 2) + '\n')
+  } else if (health.healthy) {
+    process.stdout.write(`livestage ${health.version}: healthy (${health.checks.length} checks passed)\n`)
+  } else {
+    process.stdout.write(`livestage ${health.version}: UNHEALTHY\n`)
+    for (const check of health.checks) {
+      if (!check.healthy) process.stdout.write(`  ✗ ${check.name}: ${check.detail}\n`)
+    }
+  }
+  process.exit(health.healthy ? 0 : 1)
 })
 
 const parser = program.command('parser').description('inspect the .stage grammar (ast, directives, imports, macros)')

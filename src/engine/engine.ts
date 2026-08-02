@@ -21,6 +21,7 @@ import { FatalError, versionIsNewer, loadStdlib, executeImport, executeInclude }
 import { executeTemplate, executeData } from './engine-template.js'
 import { evaluateAssert } from './assert/operators.js'
 import { formatAssertResult } from './assert/results.js'
+import { executeCode } from './code-runners.js'
 import { parseTraceConfig } from './trace/config.js'
 import { emitRecord } from './trace/emit.js'
 import { extractArgs } from './trace/span.js'
@@ -308,6 +309,7 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
       ctx.assertResults?.push(result)
       return formatAssertResult(result)
     }
+    case 'code': return executeCode(node, ctx)
     default: throw new Error(`walkNode: unhandled AST node type "${(node as { type: string }).type}"`)
   }
 }
@@ -482,6 +484,18 @@ function executeSource(node: ASTNode, ctx: EngineContext): string[] {
     case 'hash': {
       const out = executeHash(node as import('livestage/parser').HashNode, ctx)
       return out === '' ? [] : [out]
+    }
+    case 'code': {
+      // Piped like @query: the script's own stdout, split into lines. A
+      // script that wants tabular @render output prints tab-separated rows
+      // itself, the same convention @query already assumes. Drop a single
+      // trailing empty line (console.log/print's own trailing newline),
+      // not an intentional blank row.
+      const out = executeCode(node as import('livestage/parser').CodeNode, ctx)
+      if (out === '') return []
+      const lines = out.split('\n')
+      if (lines[lines.length - 1] === '') lines.pop()
+      return lines
     }
     default: throw new Error(`"@${node.type}" cannot be used as a pipe source`)
   }
