@@ -4,8 +4,8 @@ title: "CR-2: One Package"
 type: SPEC
 path: Contracts / One Package
 source_files: []
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
@@ -50,11 +50,12 @@ N/A. Satisfied by feature 42's scan.
 
 ## Acceptance Criteria
 
-- [ ] Scan finds exactly one `package.json` that declares dependencies/scripts
+- [x] Scan finds exactly one `package.json` that declares dependencies/scripts
       for the shipped package (fixture `package.json`s under `tests/` are not
-      the publishable unit and are excluded from the count).
-- [ ] No `workspaces` field, `pnpm-workspace.yaml`, `lerna.json`, or
-      equivalent exists.
+      the publishable unit and are excluded from the count). Verified: only
+      `./package.json` exists outside `node_modules/`.
+- [x] No `workspaces` field, `pnpm-workspace.yaml`, `lerna.json`, or
+      equivalent exists. Verified.
 
 ## Dependencies
 

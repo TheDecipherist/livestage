@@ -35,8 +35,7 @@ describe('@foreach', () => {
     writeFileSync(join(projectDir, 'docs/b.md'), '---\nid: b\n---\nB', 'utf8')
     writeFileSync(join(projectDir, 'docs/c.md'), '---\nid: c\n---\nC', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@foreach doc in @list ./docs/ match="*.md"
+      `@foreach doc in @list ./docs/ match="*.md"
 - {{ doc }}
 @foreach-end
 `,
@@ -50,8 +49,7 @@ describe('@foreach', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nid: x\ndepends_on:\n  - 01-foo\n  - 02-bar\n  - 03-baz\n---\nbody', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@foreach dep in @read-frontmatter path="doc.md" field="depends_on"
+      `@foreach dep in @read-frontmatter path="doc.md" field="depends_on"
 * {{ dep }}
 @foreach-end
 `,
@@ -66,8 +64,7 @@ describe('@foreach', () => {
     writeFileSync(join(projectDir, 'docs/01-a.md'), '---\nid: 01-a\nstatus: complete\n---\nA', 'utf8')
     writeFileSync(join(projectDir, 'docs/02-b.md'), '---\nid: 02-b\nstatus: draft\n---\nB', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@foreach doc in @list ./docs/ match="*.md"
+      `@foreach doc in @list ./docs/ match="*.md"
 @read-frontmatter path="{{ doc }}" field="status" label=s /
 {{ doc }} → {{ s }}
 @foreach-end
@@ -80,8 +77,7 @@ describe('@foreach', () => {
   it('empty source produces no body output', () => {
     mkdirSync(join(projectDir, 'empty'), { recursive: true })
     const result = render(
-      `@markdownai v1.0
-before
+      `before
 @foreach x in @list ./empty/ match="*.md"
 body for {{ x }}
 @foreach-end
@@ -99,8 +95,7 @@ after
     writeFileSync(join(projectDir, 'docs/02.md'), '---\nstatus: draft\n---\n', 'utf8')
     writeFileSync(join(projectDir, 'docs/03.md'), '---\nstatus: complete\n---\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@foreach doc in @list ./docs/ match="*.md"
+      `@foreach doc in @list ./docs/ match="*.md"
 @read-frontmatter path="{{ doc }}" field="status" label=s /
 @if {{ s }} == "complete"
 - {{ doc }} (done)
@@ -115,8 +110,7 @@ after
 
   it('iterates over a labeled variable', () => {
     const result = render(
-      `@markdownai v1.0
-@date format="YYYY-MM-DD" label=today /
+      `@date format="YYYY-MM-DD" label=today /
 @foreach d in {{ today }}
 got: {{ d }}
 @foreach-end
@@ -127,8 +121,7 @@ got: {{ d }}
 
   it('iterates a literal comma list', () => {
     const result = render(
-      `@markdownai v1.0
-@foreach color in red, green, blue
+      `@foreach color in red, green, blue
 + {{ color }}
 @foreach-end
 `,
@@ -140,8 +133,7 @@ got: {{ d }}
 
   it('restores outer binding after iteration ends', () => {
     const result = render(
-      `@markdownai v1.0
-@set x = "outer" /
+      `@set x = "outer" /
 before: {{ x }}
 @foreach x in red, green
 inner: {{ x }}
@@ -157,8 +149,7 @@ after: {{ x }}
 
   it('nested @foreach works', () => {
     const result = render(
-      `@markdownai v1.0
-@foreach outer in a, b
+      `@foreach outer in a, b
 @foreach inner in 1, 2
 ({{ outer }},{{ inner }})
 @foreach-end

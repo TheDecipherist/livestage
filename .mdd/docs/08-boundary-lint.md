@@ -4,14 +4,16 @@ title: Boundary Lint
 type: COMPONENT
 path: Build / Boundary Lint
 source_files: [eslint.config.js]
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [07-package-skeleton]
 tags: [module-boundaries, lint, eslint, import-rules, architecture-enforcement]
-known_issues: []
+known_issues:
+  - "Found and fixed a real bug while verifying: ESLint flat config does not merge `rules` values across matching blocks for the same key (later block wins), so an earlier per-concern split silently dropped the parser-must-not-import-renderer rule for parser files. Consolidated into one block per module."
+  - "The positive requirement (hook must call the same code path as cli render) is verified by a test (feature 11 settled the mechanism as a subprocess spawn of the built cli.js, not a static import, so the test asserts the spawn target rather than checking for an ES import): tests/unit/hook/pretooluse.test.ts, 'boundary: hook calls the same code path as cli render'."
 ---
 
 # Boundary Lint
@@ -56,13 +58,17 @@ N/A. A lint rule set, invoked via `npm run lint` / CI, no runtime interface.
 
 ## Acceptance Criteria
 
-- [ ] A fixture violation (e.g. an import from `src/parser` into
-      `src/renderer`) fails lint.
-- [ ] A fixture violation where `src/hook/pretooluse.ts` reimplements render
-      logic instead of importing the `cli render` path fails lint (or is
-      caught by a targeted test if the import-restriction plugin cannot
-      express "must call," only "must not import elsewhere").
-- [ ] `npm run lint` is green on the seeded, correctly-structured repo.
+- [x] A fixture violation (e.g. an import from `src/parser` into
+      `src/renderer`) fails lint. Verified live with a throwaway fixture file
+      (created, linted, removed).
+- [x] A fixture violation where the hook reimplements render logic instead
+      of calling the `cli render` path fails a targeted test. Feature 11
+      rebuilt `src/hook/pretooluse.ts` (the donor's content-sniffing
+      `hook.ts` is deleted); `tests/unit/hook/pretooluse.test.ts` asserts it
+      spawns the built `cli.js render` entry and does not import `execute`
+      directly.
+- [x] `npm run lint` is green on the seeded, correctly-structured repo.
+      Verified.
 
 ## Dependencies
 

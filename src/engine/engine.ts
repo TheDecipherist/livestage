@@ -20,7 +20,7 @@ import { resolveInterpolations } from './engine-interpolate.js'
 import { FatalError, versionIsNewer, loadStdlib, executeImport, executeInclude } from './engine-include.js'
 import { executeTemplate, executeData } from './engine-template.js'
 import { parseTraceConfig } from './trace/config.js'
-import { emitSpan } from './trace/emit.js'
+import { emitRecord } from './trace/emit.js'
 import { extractArgs } from './trace/span.js'
 import { applyMasking } from './security/masking.js'
 import { expandPatterns } from './security/path-expand.js'
@@ -149,12 +149,19 @@ function expandAllowList(raw: string[] | undefined, ctx: EngineContext): string[
 
 export function execute(ast: ParseResult, options?: EngineOptions): EngineResult {
   if (!ast.isLiveStage && !options?.passthrough) {
-    return { output: '', errors: ['Not a LiveStage document (missing @markdownai header)'], warnings: [], events: [], chosenTransition: null, data: {}, envFiles: {} }
+    return { output: '', errors: ['Not a LiveStage document'], warnings: [], events: [], chosenTransition: null, data: {}, envFiles: {} }
   }
   const base = makeContext(options?.ctx)
   if (!base.runId) base.runId = crypto.randomUUID()
   if (!base.gitMeta) base.gitMeta = resolveGitMeta(base.cwd)
-  if (!base.traceConfig) base.traceConfig = parseTraceConfig(process.env['LIVESTAGE_TRACE'])
+  // Distinct from `!base.traceConfig`: a caller can explicitly pass
+  // `ctx: { traceConfig: null }` to force tracing off, which must not be
+  // clobbered by the env-var-derived default (tracing is on by default, so
+  // "unset" and "explicitly disabled" are both `null` post-merge and have
+  // to be told apart before the merge).
+  if (options?.ctx?.traceConfig === undefined) {
+    base.traceConfig = parseTraceConfig(process.env['LIVESTAGE_TRACE'], base.cwd)
+  }
   loadStdlib(base)
   const mainFile = options?.filePath ? resolve(options.filePath) : null
   if (mainFile) {
@@ -170,12 +177,20 @@ export function execute(ast: ParseResult, options?: EngineOptions): EngineResult
   resolveJailRoots(base, mainFile)
   const errors: string[] = []
   const parts: string[] = []
+  const renderStartedAt = Date.now()
+  let directiveCount = 0
 
   if (ast.version && versionIsNewer(ast.version, LIVESTAGE_VERSION)) {
-    base.warnings.push(`Document requires @markdownai v${ast.version} but installed version is v${LIVESTAGE_VERSION}`)
+    base.warnings.push(`Document requires livestage v${ast.version} but installed version is v${LIVESTAGE_VERSION}`)
   }
 
   for (const node of ast.nodes) {
+    // The leading legacy format-marker line (parser.ts) is an inert,
+    // empty-raw passthrough, not an executed directive; every other
+    // non-markdown node, including a genuinely unknown directive attempt,
+    // counts.
+    const isInertMarker = node.type === 'passthrough' && node.raw === ''
+    if (node.type !== 'markdown' && !isInertMarker) directiveCount++
     try {
       const out = walkNode(node, base)
       if (out !== '' || (node.type === 'markdown' && node.text.trim() === '')) parts.push(out)
@@ -189,6 +204,17 @@ export function execute(ast: ParseResult, options?: EngineOptions): EngineResult
   }
   const joined = parts.join('\n').trimStart()
   const output = base.consumer === 'ai' ? injectAiPrefixes(joined, base) : joined
+  if (base.traceConfig) {
+    emitRecord({
+      t: 'render',
+      render_id: base.runId,
+      doc: base.docDir,
+      ms: Date.now() - renderStartedAt,
+      directives: directiveCount,
+      degraded: false,
+      exit: errors.length > 0 ? 1 : 0,
+    }, base.traceConfig)
+  }
   return { output, errors, warnings: base.warnings, events: base.events, chosenTransition: base.chosenTransition, data: base.data, envFiles: base.envFiles }
 }
 
@@ -225,11 +251,10 @@ function walkNodes(nodes: ASTNode[], ctx: EngineContext): string[] {
 
 function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
   switch (node.type) {
-    // A leading `@markdownai` marker line parses as an inert passthrough
-    // node (no header directive exists), but it isn't real document
-    // content: it contributes nothing to output, same as the retired
-    // header node used to.
-    case 'passthrough': return node.raw.trimStart().startsWith('@markdownai') ? '' : node.raw
+    // A leading legacy format-marker line (no header directive exists) parses
+    // as an inert passthrough node with an empty raw (see parser.ts): it
+    // contributes nothing to output, same as the retired header node used to.
+    case 'passthrough': return node.raw
     case 'graph': return node.raw
     case 'markdown': return resolveInterpolations(node.text, node.interpolations, ctx, node.shellInlines)
     case 'env': return resolveEnv(node.name, node.fallback, ctx)
@@ -293,9 +318,10 @@ function walkNode(node: ASTNode, ctx: EngineContext): string {
   }
   const isStructural = node.type === 'markdown'
   const base = {
+    t: 'directive' as const,
     id,
     runId: ctx.runId,
-    ast: isStructural ? node.type as 'markdown' : 'markdownai' as const,
+    ast: isStructural ? node.type as 'markdown' : 'directive' as const,
     ...(isStructural ? {} : { directive: node.type }),
     document: ctx.docDir,
     line: (nodeRecord['line'] as number | undefined) ?? 0,
@@ -306,16 +332,16 @@ function walkNode(node: ASTNode, ctx: EngineContext): string {
     sessionId: ctx.mcp?.sessionId ?? null,
   }
 
-  emitSpan({ ...base, status: 'start', timestamp: startedAt, startedAt }, ctx.traceConfig)
+  emitRecord({ ...base, status: 'start', timestamp: startedAt, startedAt }, ctx.traceConfig)
 
   try {
     const output = walkNodeCore(node, ctx)
     const endedAt = Date.now()
-    emitSpan({ ...base, status: 'end', timestamp: endedAt, startedAt, endedAt, duration: endedAt - startedAt, outputSize: Buffer.byteLength(output) }, ctx.traceConfig)
+    emitRecord({ ...base, status: 'end', timestamp: endedAt, startedAt, endedAt, duration: endedAt - startedAt, outputSize: Buffer.byteLength(output) }, ctx.traceConfig)
     return output
   } catch (err) {
     const endedAt = Date.now()
-    emitSpan({ ...base, status: 'error', timestamp: endedAt, startedAt, endedAt, duration: endedAt - startedAt, error: String(err) }, ctx.traceConfig)
+    emitRecord({ ...base, status: 'error', timestamp: endedAt, startedAt, endedAt, duration: endedAt - startedAt, error: String(err) }, ctx.traceConfig)
     throw err
   }
 }

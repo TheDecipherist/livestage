@@ -72,7 +72,7 @@ describe('write directives (Wave 3)', () => {
       writeFileSync(join(projectDir, 'doc.md'),
         '---\nid: 01-test\nstatus: draft\ntitle: Test\n---\n\nBody content.\n', 'utf8')
       render(
-        `@markdownai v1.0\n@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
+        `@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
         { cwd: projectDir, filesystemConfig: makeFsConfig({ write_enabled: true }) },
       )
       const after = readFileSync(join(projectDir, 'doc.md'), 'utf8')
@@ -85,7 +85,7 @@ describe('write directives (Wave 3)', () => {
       const original = '---\nid: 01-test\nstatus: complete\n---\n\nBody.\n'
       writeFileSync(join(projectDir, 'doc.md'), original, 'utf8')
       render(
-        `@markdownai v1.0\n@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
+        `@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
         { cwd: projectDir, filesystemConfig: makeFsConfig({ write_enabled: true }) },
       )
       expect(readFileSync(join(projectDir, 'doc.md'), 'utf8')).toBe(original)
@@ -95,7 +95,7 @@ describe('write directives (Wave 3)', () => {
       writeFileSync(join(projectDir, 'doc.md'),
         '---\nid: 01-test\ntitle: Test\n---\n\nBody.\n', 'utf8')
       render(
-        `@markdownai v1.0\n@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
+        `@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
         { cwd: projectDir, filesystemConfig: makeFsConfig({ write_enabled: true }) },
       )
       const after = readFileSync(join(projectDir, 'doc.md'), 'utf8')
@@ -107,7 +107,7 @@ describe('write directives (Wave 3)', () => {
     it('refuses to write a file with no frontmatter block', () => {
       writeFileSync(join(projectDir, 'doc.md'), 'No frontmatter here.\n', 'utf8')
       const result = render(
-        `@markdownai v1.0\n@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
+        `@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
         { cwd: projectDir, filesystemConfig: makeFsConfig({ write_enabled: true }) },
       )
       expect(readFileSync(join(projectDir, 'doc.md'), 'utf8')).toBe('No frontmatter here.\n')
@@ -118,7 +118,7 @@ describe('write directives (Wave 3)', () => {
       writeFileSync(join(projectDir, '.env'),
         '---\nSECRET: abc\n---\n', 'utf8')
       const result = render(
-        `@markdownai v1.0\n@update-frontmatter path=".env" field="SECRET" value="xyz" /\n`,
+        `@update-frontmatter path=".env" field="SECRET" value="xyz" /\n`,
         { cwd: projectDir, filesystemConfig: makeFsConfig({ write_enabled: true }) },
       )
       expect(readFileSync(join(projectDir, '.env'), 'utf8')).toContain('SECRET: abc')
@@ -129,7 +129,7 @@ describe('write directives (Wave 3)', () => {
       writeFileSync(join(projectDir, 'doc.md'),
         '---\nstatus: draft\n---\n', 'utf8')
       const result = render(
-        `@markdownai v1.0\n@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
+        `@update-frontmatter path="doc.md" field="status" value="complete" /\n`,
         { cwd: projectDir, filesystemConfig: makeFsConfig({ write_enabled: false }) },
       )
       expect(readFileSync(join(projectDir, 'doc.md'), 'utf8')).toContain('status: draft')

@@ -37,36 +37,36 @@ describe('@template security', () => {
 
   describe('path confinement (parse-time)', () => {
     it('rejects absolute paths at parse time', () => {
-      expect(() => parse('@markdownai v1.0\n@template /etc/passwd /'))
+      expect(() => parse('@template /etc/passwd /'))
         .toThrow(ParseError)
     })
 
     it('rejects .. traversal at parse time', () => {
-      expect(() => parse('@markdownai v1.0\n@template ../../outside.md /'))
+      expect(() => parse('@template ../../outside.md /'))
         .toThrow(ParseError)
     })
   })
 
   describe('circular reference detection', () => {
     it('captures a circular-reference fatal when a partial references itself', () => {
-      write('a.md', '@markdownai v1.0\n@template ./a.md /')
-      const r = render('@markdownai v1.0\n@template ./a.md /')
+      write('a.md', '@template ./a.md /')
+      const r = render('@template ./a.md /')
       expect(r.errors.some(e => e.includes('Circular reference'))).toBe(true)
     })
 
     it('captures a circular-reference fatal when a chain creates a cycle', () => {
-      write('a.md', '@markdownai v1.0\n@template ./b.md /')
-      write('b.md', '@markdownai v1.0\n@template ./a.md /')
-      const r = render('@markdownai v1.0\n@template ./a.md /')
+      write('a.md', '@template ./b.md /')
+      write('b.md', '@template ./a.md /')
+      const r = render('@template ./a.md /')
       expect(r.errors.some(e => e.includes('Circular reference'))).toBe(true)
     })
   })
 
   describe('diamond inclusion', () => {
     it('renders the same partial twice when called from two independent sites', () => {
-      write('shared.md', '@markdownai v1.0\n[{{ data }}]')
+      write('shared.md', '[{{ data }}]')
       const r = render(
-        '@markdownai v1.0\n@set a = "first" /\n@set b = "second" /\n@template ./shared.md data=a /\n@template ./shared.md data=b /',
+        '@set a = "first" /\n@set b = "second" /\n@template ./shared.md data=a /\n@template ./shared.md data=b /',
       )
       expect(r.output).toContain('[first]')
       expect(r.output).toContain('[second]')

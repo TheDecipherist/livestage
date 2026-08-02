@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { execute } from '../../../src/engine/engine.js'
 import { parse } from 'livestage/parser'
+import type { ParseResult } from 'livestage/parser'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-const DOC = '@markdownai\n'
+const DOC = ''
 
 function run(source: string, opts?: object) {
   const ast = parse(source)
@@ -27,17 +31,25 @@ function noSecurityCtx() {
 }
 
 // ---------------------------------------------------------------------------
-// Off by default
+// On by default (the one cross-invocation artifact CR-4 permits): a daily
+// JSONL file under .livestage/trace/, not stderr, and not opt-in.
 // ---------------------------------------------------------------------------
 
-describe('engine tracing — disabled by default', () => {
+describe('engine tracing - on by default (file sink)', () => {
+  let dir: string
+
   beforeEach(() => {
     delete process.env['LIVESTAGE_TRACE']
+    dir = mkdtempSync(join(tmpdir(), 'trace-default-'))
   })
 
-  it('produces no trace output when LIVESTAGE_TRACE is not set', () => {
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('produces no trace output on stderr when LIVESTAGE_TRACE is not set (file sink, not stderr)', () => {
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
-    run(`${DOC}@env FOO fallback="bar" /`, noSecurityCtx())
+    run(`${DOC}@env FOO fallback="bar" /`, { ctx: { ...noSecurityCtx().ctx, cwd: dir } })
     const traceWrites = stderrSpy.mock.calls.filter(args =>
       typeof args[0] === 'string' && args[0].includes('"status"')
     )
@@ -45,9 +57,101 @@ describe('engine tracing — disabled by default', () => {
     stderrSpy.mockRestore()
   })
 
-  it('has zero ctx.traceConfig overhead — executes without errors when disabled', () => {
-    const result = run(`${DOC}@env FOO fallback="bar" /`, noSecurityCtx())
+  it('writes a dated JSONL file under .livestage/trace/ when unset', async () => {
+    run(`${DOC}@env FOO fallback="bar" /`, { ctx: { ...noSecurityCtx().ctx, cwd: dir } })
+    await new Promise(r => setTimeout(r, 50))
+    const date = new Date().toISOString().slice(0, 10)
+    const tracePath = join(dir, '.livestage', 'trace', `${date}.jsonl`)
+    expect(existsSync(tracePath)).toBe(true)
+    const lines = readFileSync(tracePath, 'utf8').trim().split('\n')
+    expect(lines.length).toBeGreaterThan(0)
+    expect(() => JSON.parse(lines[0]!)).not.toThrow()
+  })
+
+  it('executes without errors with the default tracing on', () => {
+    const result = run(`${DOC}@env FOO fallback="bar" /`, { ctx: { ...noSecurityCtx().ctx, cwd: dir } })
     expect(result.errors).toHaveLength(0)
+  })
+
+  it('an explicit ctx.traceConfig: null override is not clobbered by the default', async () => {
+    const result = run(`${DOC}@env FOO fallback="bar" /`, { ctx: { ...noSecurityCtx().ctx, cwd: dir, traceConfig: null } })
+    expect(result.errors).toHaveLength(0)
+    await new Promise(r => setTimeout(r, 50))
+    const date = new Date().toISOString().slice(0, 10)
+    expect(existsSync(join(dir, '.livestage', 'trace', `${date}.jsonl`))).toBe(false)
+  })
+
+  it('LIVESTAGE_TRACE=off disables tracing entirely', async () => {
+    process.env['LIVESTAGE_TRACE'] = 'off'
+    run(`${DOC}@env FOO fallback="bar" /`, { ctx: { ...noSecurityCtx().ctx, cwd: dir } })
+    await new Promise(r => setTimeout(r, 50))
+    const date = new Date().toISOString().slice(0, 10)
+    expect(existsSync(join(dir, '.livestage', 'trace', `${date}.jsonl`))).toBe(false)
+    delete process.env['LIVESTAGE_TRACE']
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Render-level summary record: one per execute() call, distinct from the
+// per-directive spans.
+// ---------------------------------------------------------------------------
+
+describe('engine tracing - render summary record', () => {
+  beforeEach(() => {
+    process.env['LIVESTAGE_TRACE'] = 'stderr'
+  })
+
+  afterEach(() => {
+    delete process.env['LIVESTAGE_TRACE']
+    vi.restoreAllMocks()
+  })
+
+  it('emits exactly one render record matching the doc schema, after the directive spans', () => {
+    const writes: string[] = []
+    vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
+      if (typeof chunk === 'string') writes.push(chunk)
+      return true
+    })
+    run(`${DOC}@env A fallback="1" /\n@env B fallback="2" /`, noSecurityCtx())
+    const records = writes.flatMap(w => w.split('\n').filter(Boolean)).map(l => JSON.parse(l))
+    const renderRecords = records.filter((r: Record<string, unknown>) => r['t'] === 'render')
+    expect(renderRecords).toHaveLength(1)
+    const rr = renderRecords[0] as Record<string, unknown>
+    expect(typeof rr['render_id']).toBe('string')
+    expect(typeof rr['doc']).toBe('string')
+    expect(typeof rr['ms']).toBe('number')
+    expect(rr['directives']).toBe(2)
+    expect(rr['degraded']).toBe(false)
+    expect(rr['exit']).toBe(0)
+    // Comes after every directive span, not interleaved or first.
+    expect(records[records.length - 1]).toBe(rr)
+  })
+
+  it('exit is 1 when the render produced errors (blocked absolute @include path)', () => {
+    const writes: string[] = []
+    vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
+      if (typeof chunk === 'string') writes.push(chunk)
+      return true
+    })
+    // @include's absolute-path guard rejects at parse time (a ParseError,
+    // not something execute() surfaces in result.errors), so this hand-
+    // builds the AST directly, bypassing the parser, to reach an
+    // execute()-time failure: the source-jail check in executeInclude
+    // throws a FatalError for a path outside the jail.
+    const ast: ParseResult = {
+      isLiveStage: true,
+      version: null,
+      nodes: [
+        { type: 'passthrough', line: 1, raw: '' },
+        { type: 'include', line: 2, path: '../../../../../etc/passwd', condition: null, local: false, cache: null },
+      ],
+    }
+    const result = execute(ast, noSecurityCtx())
+    expect(result.errors.length).toBeGreaterThan(0)
+    const records = writes.flatMap(w => w.split('\n').filter(Boolean)).map(l => JSON.parse(l))
+    const rr = records.find((r: Record<string, unknown>) => r['t'] === 'render') as Record<string, unknown>
+    expect(rr).toBeDefined()
+    expect(rr['exit']).toBe(1)
   })
 })
 
@@ -129,9 +233,14 @@ describe('engine tracing — stderr sink', () => {
       return true
     })
     run(`${DOC}@env A fallback="1" /\n@env B fallback="2" /`, noSecurityCtx())
-    const spans = writes.flatMap(w => w.split('\n').filter(Boolean)).map(l => JSON.parse(l))
+    const records = writes.flatMap(w => w.split('\n').filter(Boolean)).map(l => JSON.parse(l))
+    const spans = records.filter((r: Record<string, unknown>) => r['t'] === 'directive')
     const runIds = [...new Set(spans.map((s: Record<string, unknown>) => s['runId']))]
     expect(runIds).toHaveLength(1)
+    // The render-level summary record uses render_id (the doc's own schema
+    // field name), not runId, but carries the same value.
+    const renderRecord = records.find((r: Record<string, unknown>) => r['t'] === 'render')
+    expect(renderRecord?.['render_id']).toBe(runIds[0])
   })
 
   it('emits valid JSON-Lines (each line is parseable)', () => {
@@ -223,7 +332,7 @@ describe('engine tracing — file sink', () => {
 
   it('writes JSON-Lines span data to the configured file path', async () => {
     const { readFileSync, unlinkSync, existsSync } = await import('node:fs')
-    const tracePath = `/tmp/markdownai-trace-test-${Date.now()}.jsonl`
+    const tracePath = `/tmp/livestage-trace-test-${Date.now()}.jsonl`
     process.env['LIVESTAGE_TRACE'] = `file:${tracePath}`
     run(`${DOC}@env FOO fallback="bar" /`, noSecurityCtx())
     await new Promise(r => setTimeout(r, 80))
@@ -235,30 +344,6 @@ describe('engine tracing — file sink', () => {
       expect(() => JSON.parse(line)).not.toThrow()
     }
     unlinkSync(tracePath)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// HTTP sink
-// ---------------------------------------------------------------------------
-
-describe('engine tracing — http sink', () => {
-  afterEach(() => {
-    delete process.env['LIVESTAGE_TRACE']
-    vi.restoreAllMocks()
-  })
-
-  it('POSTs span data to the configured HTTP endpoint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
-    vi.stubGlobal('fetch', fetchMock)
-    process.env['LIVESTAGE_TRACE'] = 'http://localhost:4317/trace'
-    run(`${DOC}@env FOO fallback="bar" /`, noSecurityCtx())
-    await new Promise(r => setTimeout(r, 50))
-    expect(fetchMock).toHaveBeenCalled()
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('http://localhost:4317/trace')
-    expect(init.method).toBe('POST')
-    expect(() => JSON.parse(init.body as string)).not.toThrow()
   })
 })
 

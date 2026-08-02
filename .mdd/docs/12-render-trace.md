@@ -3,15 +3,22 @@ id: 12-render-trace
 title: Render Trace
 type: COMPONENT
 path: Engine / Render Trace
-source_files: [src/engine/trace/record.ts, src/engine/trace/writer.ts]
-status: planned
-phase: idle
+source_files: [src/engine/trace/config.ts, src/engine/trace/emit.ts, src/engine/trace/span.ts, src/cli/commands/engine-trace.ts]
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [07-package-skeleton, 05-cr4-no-daemon-no-memory]
 tags: [trace, jsonl, append-only, masking, size-cap, observability]
-known_issues: []
+known_issues:
+  - "The doc's source_files (record.ts, writer.ts) do not match the real files (config.ts, emit.ts, span.ts); corrected above."
+  - "Found and fixed a real gap while verifying business rule 1/acceptance criterion 1: tracing was opt-in only (LIVESTAGE_TRACE unset meant no trace at all), and there was no render-level summary record at all, only per-directive spans, so the doc's own data-model schema (a {t:'render', ...} record alongside {t:'directive', ...}) did not exist. Made tracing on by default (a daily JSONL file at .livestage/trace/<yyyy-mm-dd>.jsonl, not stderr, not opt-in), added the t discriminant field, and added the render-level record emitted once per execute() call."
+  - "Found and fixed a real exclusion-list violation: trace/config.ts and trace/emit.ts still had an 'http' sink that could POST spans to a URL, exactly the event-transport subsystem the seed was supposed to exclude wholesale. Removed; only 'stderr' and 'file' sinks remain."
+  - "Found and fixed a real bug: emitSpan's file sink never created .livestage/trace/ before appending, so the very first write would fail silently (appendFile's callback discards its error). Now ensures the directory once per path."
+  - "Found and fixed a real correctness gap: the default-on trace config was being recomputed even when a caller explicitly passed ctx.traceConfig: null to disable it (both look like null after makeContext's merge). Distinguished by checking whether options.ctx.traceConfig was present in the caller's input, not the post-merge value."
+  - "A size cap on the JSONL file (business rule 3, 'size-capped') is not implemented: nothing rotates or truncates .livestage/trace/<date>.jsonl. Real gap, not fixed here; the per-day filename at least bounds growth to one day's records."
+  - "size-cap aside, business rule 3's masking half and acceptance criterion 2 (secrets masked in trace records) were already correctly implemented pre-existing (engine.ts's maskedArgs via applyMasking before every emitRecord call) and covered by an existing test."
 ---
 
 # Render Trace
@@ -66,14 +73,20 @@ schema and a direct-to-file writer.
 
 ## Acceptance Criteria
 
-- [ ] A render of a fixture doc produces one `render` record and one
+- [x] A render of a fixture doc produces one `render` record and one
       `directive` record per executed directive, matching the schema above.
-- [ ] Secrets present in a directive's resolved value are masked in the trace
-      record.
-- [ ] `engine trace --last` returns the most recent render's records;
-      `engine trace <render-id>` returns records for that render id.
-- [ ] No import of the trace reader exists inside `src/engine/` or
+      Verified live and in `tests/unit/engine/trace.test.ts`, "render summary
+      record".
+- [x] Secrets present in a directive's resolved value are masked in the trace
+      record. Pre-existing test, "args masking".
+- [x] `engine trace --last` returns the most recent render's records;
+      `engine trace <render-id>` returns records for that render id. New
+      command (`src/cli/commands/engine-trace.ts`), verified live end to end
+      and in `tests/unit/cli/engine-trace.test.ts`.
+- [x] No import of the trace reader exists inside `src/engine/` or
       `src/parser/` (only `src/cli/commands/` and doctor probes may read it).
+      Verified: `runEngineTrace` (the only trace reader) lives in
+      `src/cli/commands/`.
 
 ## Dependencies
 

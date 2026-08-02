@@ -3,15 +3,16 @@ id: 07-package-skeleton
 title: Package Skeleton
 type: COMPONENT
 path: Build / Package Skeleton
-source_files: [package.json, tsconfig.json, vitest.config.ts, eslint.config.js]
-status: planned
-phase: idle
+source_files: [package.json, tsconfig.json, tsconfig.build.json, vitest.config.ts, eslint.config.js]
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [01-seed-script, 03-cr2-one-package]
 tags: [package-json, tsconfig, vitest, single-package, exports, esm]
-known_issues: []
+known_issues:
+  - "npm run build initially emitted nothing (tsconfig.json has noEmit:true for typecheck); fixed by adding tsconfig.build.json (rootDir src, outDir dist) and pointing the build script at it"
 ---
 
 # Package Skeleton
@@ -69,15 +70,21 @@ N/A (build configuration, not runtime data).
 
 ## Acceptance Criteria
 
-- [ ] `npm install && npm run build` clean, strict TS, no `any` in new code
-      (Success Criteria checklist item, line 789-790).
-- [ ] `npm test` runs the merged suite from repo root.
-- [ ] Export subpaths resolve: importing `livestage/parser`,
+- [x] `npm install && npm run build` clean, strict TS, no `any` in new code
+      (Success Criteria checklist item, line 789-790). Verified: `tsc -p
+      tsconfig.build.json` emits to `dist/` cleanly; grep confirms no `: any`
+      / `as any` / `<any>` anywhere in `src/`.
+- [x] `npm test` runs the merged suite from repo root. 48 files, 671/671
+      green.
+- [x] Export subpaths resolve: importing `livestage/parser`,
       `livestage/engine`, `livestage/renderer` each work from a fixture
-      consumer.
-- [ ] A lint/scan step (or the em-dash check folded into feature 42's
-      Contract Scans) finds zero em dashes in new source (Success Criteria
-      checklist item, line 840).
+      consumer. Verified with a real ESM script (`node --input-type=module`)
+      resolving all three subpaths via package self-reference against the
+      built `dist/` output, not just the dev-time tsconfig/vitest aliases.
+- [!] A lint/scan step finds zero em dashes in new source. The no-em-dash
+      hook blocks any edit introducing one, so nothing written this session
+      violates it, but no standalone repo-wide scan script exists yet; that
+      is feature 42 (Contract Scans, wave 6) as the doc itself anticipated.
 
 ## Dependencies
 

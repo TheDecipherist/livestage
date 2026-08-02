@@ -4,8 +4,8 @@ title: "CR-4: No Daemon, No Memory"
 type: SPEC
 path: Contracts / No Daemon No Memory
 source_files: []
-status: planned
-phase: idle
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
@@ -66,13 +66,14 @@ N/A. Satisfied by feature 12's implementation plus feature 42's scan.
 
 ## Acceptance Criteria
 
-- [ ] Scan finds no `net.createServer`, `http.createServer`, socket listener,
-      or equivalent anywhere in `src/`.
-- [ ] Scan finds no trace-read import outside `src/cli/commands/` and the
-      doctor probes.
-- [ ] `@set` is proven scoped to a single render pass (a test that two
+- [x] Scan finds no `net.createServer`, `http.createServer`, socket listener,
+      or equivalent anywhere in `src/`. Verified.
+- [x] Scan finds no trace-read import outside `src/cli/commands/` and the
+      doctor probes. Verified: no trace-reader module exists at all yet
+      (write-only), `doctor` itself is unbuilt (feature 30, wave 4).
+- [x] `@set` is proven scoped to a single render pass (a test that two
       sequential renders of the same doc do not see each other's `@set`
-      values).
+      values). `tests/unit/engine/statelessness.test.ts`.
 
 ## Dependencies
 

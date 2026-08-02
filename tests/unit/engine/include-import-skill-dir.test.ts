@@ -51,10 +51,9 @@ describe('@include and @import expand ${VAR} placeholders', () => {
 
   it('@include expands ${CLAUDE_SKILL_DIR}', () => {
     writeFileSync(join(skillDir, 'templates/greeting.md'),
-      '@markdownai v1.0\nHello from the template!\n', 'utf8')
+      'Hello from the template!\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@include \${CLAUDE_SKILL_DIR}/templates/greeting.md /
+      `@include \${CLAUDE_SKILL_DIR}/templates/greeting.md /
 `,
     )
     expect(result.output).toContain('Hello from the template!')
@@ -62,14 +61,12 @@ describe('@include and @import expand ${VAR} placeholders', () => {
 
   it('@import expands ${CLAUDE_SKILL_DIR}', () => {
     writeFileSync(join(skillDir, 'templates/macros.md'),
-      `@markdownai v1.0
-@define greet
+      `@define greet
 Hi from a macro.
 @define-end
 `, 'utf8')
     const result = render(
-      `@markdownai v1.0
-@import \${CLAUDE_SKILL_DIR}/templates/macros.md /
+      `@import \${CLAUDE_SKILL_DIR}/templates/macros.md /
 @call greet /
 `,
     )
@@ -78,8 +75,7 @@ Hi from a macro.
 
   it('@include with unset variable expands to empty and fails closed', () => {
     const result = render(
-      `@markdownai v1.0
-@include \${NEVER_SET_VAR}/templates/x.md /
+      `@include \${NEVER_SET_VAR}/templates/x.md /
 `,
     )
     // Expansion produces "/templates/x.md" which is then either blocked by
@@ -90,10 +86,9 @@ Hi from a macro.
 
   it('@include with relative path still works (parity check)', () => {
     writeFileSync(join(projectDir, 'local.md'),
-      '@markdownai v1.0\nLocal content.\n', 'utf8')
+      'Local content.\n', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@include ./local.md /
+      `@include ./local.md /
 `,
     )
     expect(result.output).toContain('Local content.')

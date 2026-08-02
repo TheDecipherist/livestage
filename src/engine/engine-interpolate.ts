@@ -14,7 +14,7 @@ const settingsCache = new Map<string, { mtimeMs: number; value: unknown }>()
 function loadProjectSettings(cwd: string): unknown {
   const candidates = [
     resolve(cwd, '.mdd', 'settings.json'),
-    resolve(cwd, '.markdownai', 'settings.json'),
+    resolve(cwd, '.livestage', 'settings.json'),
   ]
   for (const path of candidates) {
     try {
@@ -228,7 +228,7 @@ export function evalExpr(expr: string, ctx: EngineContext): string {
     // implied by the missing content.
     //
     // Every error (suppressed or warned) is logged to
-    // ~/.markdownai/logs/markdownai-error.log for audit/debugging.
+    // ~/.livestage/logs/livestage-error.log for audit/debugging.
     if (e?.name === 'ReferenceError') {
       logEngineError({
         source: 'evalExpr',
@@ -262,9 +262,9 @@ export function resolveInterpolations(
   shellInlines: ShellInlineSpan[] = [],
 ): string {
   // Passthrough mode: emit the original `!`...`` tokens verbatim, no exec, no
-  // security gate. Set by the document's @markdownai shell-inline="passthrough"
-  // header. Only the shell spans are skipped — `{{ }}` interpolations still
-  // resolve normally.
+  // security gate. Nothing currently sets ctx.shellInline to "passthrough"
+  // (see context.ts). Only the shell spans are skipped, `{{ }}` interpolations
+  // still resolve normally.
   const activeShellInlines = ctx.shellInline === 'passthrough' ? [] : shellInlines
   if (spans.length === 0 && activeShellInlines.length === 0) return text
 

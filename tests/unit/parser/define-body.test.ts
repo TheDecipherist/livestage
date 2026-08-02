@@ -9,7 +9,7 @@ import { parse } from '../../../src/parser/parser.js'
 
 describe('@define body parsing', () => {
   it('single-word body line is included in define body', () => {
-    const src = '@markdownai v1.0\n@define my-macro local\n  HELLO\n@define-end\n'
+    const src = '@define my-macro local\n  HELLO\n@define-end\n'
     const ast = parse(src, { inImport: true })
     const def = ast.nodes.find(n => n.type === 'define')
     expect(def).toBeDefined()
@@ -18,7 +18,7 @@ describe('@define body parsing', () => {
   })
 
   it('hyphenated single-word body line is included in define body', () => {
-    const src = '@markdownai v1.0\n@define my-macro local\n  FROM-B\n@define-end\n'
+    const src = '@define my-macro local\n  FROM-B\n@define-end\n'
     const ast = parse(src, { inImport: true })
     const def = ast.nodes.find(n => n.type === 'define')
     expect(def).toBeDefined()
@@ -26,7 +26,7 @@ describe('@define body parsing', () => {
   })
 
   it('multi-word body line is included (was already working)', () => {
-    const src = '@markdownai v1.0\n@define my-macro local\n  PLAIN TEXT\n@define-end\n'
+    const src = '@define my-macro local\n  PLAIN TEXT\n@define-end\n'
     const ast = parse(src, { inImport: true })
     const def = ast.nodes.find(n => n.type === 'define')
     expect(def).toBeDefined()
@@ -34,7 +34,7 @@ describe('@define body parsing', () => {
   })
 
   it('hyphenated macro name does not affect body parsing', () => {
-    const src = '@markdownai v1.0\n@define apply-build-checklist-express local\n  EXPRESS RULES\n@define-end\n'
+    const src = '@define apply-build-checklist-express local\n  EXPRESS RULES\n@define-end\n'
     const ast = parse(src, { inImport: true })
     const def = ast.nodes.find(n => n.type === 'define')
     expect(def).toBeDefined()

@@ -1,7 +1,5 @@
-@markdownai
-
-<!-- MarkdownAI Standard Library v1.0                                             -->
-<!-- Auto-loaded into every @markdownai document — no @import needed              -->
+<!-- LiveStage Standard Library v1.0                                              -->
+<!-- Auto-loaded into every document, no @import needed                          -->
 <!-- User-defined macros with the same name override these                         -->
 <!--                                                                               -->
 <!-- Each macro stores its result in a labeled context variable.                   -->

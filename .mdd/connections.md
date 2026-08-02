@@ -10,11 +10,11 @@ overlap_count: 3
 ## Path Tree
 
 **Build / Boundary Lint**
-  └── `08-boundary-lint` - Boundary Lint (planned)
+  └── `08-boundary-lint` - Boundary Lint (complete)
 **Build / Bundle**
   └── `41-bundle` - Bundle (planned)
 **Build / Package Skeleton**
-  └── `07-package-skeleton` - Package Skeleton (planned)
+  └── `07-package-skeleton` - Package Skeleton (complete)
 **Build / Seed Script**
   └── `01-seed-script` - Seed Script (complete)
 **CLI / CI Mode**
@@ -24,13 +24,13 @@ overlap_count: 3
 **CLI / Init**
   └── `31-init` - Init (planned)
 **CLI / Router**
-  └── `13-cli-router` - CLI Router (planned)
+  └── `13-cli-router` - CLI Router (complete)
 **Contracts / Bare Checkout**
   └── `37-cr8-bare-checkout` - CR-8: Bare Checkout (planned)
 **Contracts / Contract Scans**
   └── `42-contract-scans` - Contract Scans (planned)
 **Contracts / Deny By Default**
-  └── `06-cr5-deny-by-default` - CR-5: Deny By Default (planned)
+  └── `06-cr5-deny-by-default` - CR-5: Deny By Default (complete)
 **Contracts / Doc Corpus Integrity**
   └── `38-cr9-doc-corpus-integrity` - CR-9: Doc Corpus Integrity (planned)
 **Contracts / Fallback Totality**
@@ -38,17 +38,17 @@ overlap_count: 3
 **Contracts / Markdown Out**
   └── `16-cr11-markdown-out` - CR-11: Markdown Out (planned)
 **Contracts / No Daemon No Memory**
-  └── `05-cr4-no-daemon-no-memory` - CR-4: No Daemon, No Memory (planned)
+  └── `05-cr4-no-daemon-no-memory` - CR-4: No Daemon, No Memory (complete)
 **Contracts / One Package**
-  └── `03-cr2-one-package` - CR-2: One Package (planned)
+  └── `03-cr2-one-package` - CR-2: One Package (complete)
 **Contracts / Render Purity**
   └── `15-cr10-render-purity` - CR-10: Render Purity (planned)
 **Contracts / Reuse Fidelity**
   └── `39-cr-d7-reuse-fidelity` - CR-D7: Reuse Fidelity (planned)
 **Contracts / Stage Only**
-  └── `04-cr3-stage-only` - CR-3: Stage Only (planned)
+  └── `04-cr3-stage-only` - CR-3: Stage Only (complete)
 **Contracts / Standalone Identity**
-  └── `02-cr1-standalone-identity` - CR-1: Standalone Identity (planned)
+  └── `02-cr1-standalone-identity` - CR-1: Standalone Identity (complete)
 **Contracts / Suite Baseline**
   └── `25-cr7-suite-baseline` - CR-7: Suite Baseline (planned)
 **Directives / Assert Liveness**
@@ -84,7 +84,7 @@ overlap_count: 3
 **Engine / Fallback Contract**
   └── `24-fallback-contract` - Fallback Contract (planned)
 **Engine / Render Trace**
-  └── `12-render-trace` - Render Trace (planned)
+  └── `12-render-trace` - Render Trace (complete)
 **Engine / Schema Engine**
   └── `32-schema-engine` - Schema Engine (planned)
 **Examples / Connections**
@@ -96,13 +96,13 @@ overlap_count: 3
 **Examples / Showcase**
   └── `44-examples-showcase` - Examples Showcase (planned)
 **Hook / Extension Routing**
-  └── `11-extension-routing` - Extension Routing (Hook) (planned)
+  └── `11-extension-routing` - Extension Routing (Hook) (complete)
 **Parser / Grammar**
-  └── `09-grammar-parser` - Grammar Parser (planned)
+  └── `09-grammar-parser` - Grammar Parser (complete)
 **Renderer / Formats**
   └── `20-render-formats` - Render Formats (planned)
 **Security / Policy Core**
-  └── `10-security-policy-core` - Security Policy Core (planned)
+  └── `10-security-policy-core` - Security Policy Core (complete)
 
 ## Dependency Graph
 
@@ -113,18 +113,18 @@ graph TD
   classDef done fill:#00e5cc,stroke:#008080,color:#000
   classDef deprecated fill:#f44,stroke:#a00,color:#fff
   01_seed_script["01-seed-script"]:::done
-  02_cr1_standalone_identity["02-cr1-standalone-identity"]:::planned
-  03_cr2_one_package["03-cr2-one-package"]:::planned
-  04_cr3_stage_only["04-cr3-stage-only"]:::planned
-  05_cr4_no_daemon_no_memory["05-cr4-no-daemon-no-memory"]:::planned
-  06_cr5_deny_by_default["06-cr5-deny-by-default"]:::planned
-  07_package_skeleton["07-package-skeleton"]:::planned
-  08_boundary_lint["08-boundary-lint"]:::planned
-  09_grammar_parser["09-grammar-parser"]:::planned
-  10_security_policy_core["10-security-policy-core"]:::planned
-  11_extension_routing["11-extension-routing"]:::planned
-  12_render_trace["12-render-trace"]:::planned
-  13_cli_router["13-cli-router"]:::planned
+  02_cr1_standalone_identity["02-cr1-standalone-identity"]:::done
+  03_cr2_one_package["03-cr2-one-package"]:::done
+  04_cr3_stage_only["04-cr3-stage-only"]:::done
+  05_cr4_no_daemon_no_memory["05-cr4-no-daemon-no-memory"]:::done
+  06_cr5_deny_by_default["06-cr5-deny-by-default"]:::done
+  07_package_skeleton["07-package-skeleton"]:::done
+  08_boundary_lint["08-boundary-lint"]:::done
+  09_grammar_parser["09-grammar-parser"]:::done
+  10_security_policy_core["10-security-policy-core"]:::done
+  11_extension_routing["11-extension-routing"]:::done
+  12_render_trace["12-render-trace"]:::done
+  13_cli_router["13-cli-router"]:::done
   14_cr6_fallback_totality["14-cr6-fallback-totality"]:::planned
   15_cr10_render_purity["15-cr10-render-purity"]:::planned
   16_cr11_markdown_out["16-cr11-markdown-out"]:::planned

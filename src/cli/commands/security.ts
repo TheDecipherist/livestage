@@ -1,17 +1,18 @@
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { defaultSecurityConfig, loadSecurityConfig, checkShellCommand } from 'livestage/engine'
 import type { SecurityJsonConfig, ShellCheckResult } from 'livestage/engine'
 
-const SECURITY_CONFIG_PATH = join(homedir(), '.markdownai', 'security.json')
+// Config home is `.livestage/` in the project root, not the user's home
+// directory: policy is per-project, loaded fresh on every invocation.
+const SECURITY_CONFIG_PATH = join(process.cwd(), '.livestage', 'policy.json')
 
 function readConfig(): SecurityJsonConfig {
   return loadSecurityConfig(SECURITY_CONFIG_PATH)
 }
 
 function writeConfig(config: SecurityJsonConfig): void {
-  mkdirSync(join(homedir(), '.markdownai'), { recursive: true })
+  mkdirSync(join(process.cwd(), '.livestage'), { recursive: true })
   writeFileSync(SECURITY_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf8')
 }
 

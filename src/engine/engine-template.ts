@@ -118,7 +118,7 @@ export function executeTemplate(
 
   const ast = parse(source, { filePath: full })
   if (!ast.isLiveStage) {
-    ctx.warnings.push(`@template: ${node.path} has no @markdownai header — rendered as empty`)
+    ctx.warnings.push(`@template: ${node.path} is not a LiveStage document, rendered as empty`)
     return ''
   }
 

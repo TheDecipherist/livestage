@@ -6,7 +6,7 @@ import { FILESYSTEM_ALWAYS_BLOCK_PATHS, matchGlob } from './rules.js'
 const EXTRA_LOG_BLOCK_PREFIXES: readonly string[] = Object.freeze(['/bin/', '/sbin/', '/usr/bin/', '/dev/'])
 
 function isSafeLogPath(logPath: string): boolean {
-  const abs = isAbsolute(logPath) ? logPath : resolve(homedir(), '.markdownai', logPath)
+  const abs = isAbsolute(logPath) ? logPath : resolve(homedir(), '.livestage', logPath)
   if (FILESYSTEM_ALWAYS_BLOCK_PATHS.some(pattern => matchGlob(pattern, abs))) return false
   return !EXTRA_LOG_BLOCK_PREFIXES.some(prefix => abs.startsWith(prefix))
 }
@@ -28,10 +28,10 @@ export interface AuditEntry {
 
 export function writeAuditEntry(entry: AuditEntry, logPath?: string): void {
   if (logPath !== undefined && !isSafeLogPath(logPath)) {
-    process.stderr.write(`[markdownai] audit log path rejected (blocked prefix): ${logPath}\n`)
+    process.stderr.write(`[livestage] audit log path rejected (blocked prefix): ${logPath}\n`)
     return
   }
-  const path = logPath ?? join(homedir(), '.markdownai', 'audit.log')
+  const path = logPath ?? join(homedir(), '.livestage', 'audit.log')
   const enriched = {
     ...entry,
     timestamp: new Date().toISOString(),
@@ -43,6 +43,6 @@ export function writeAuditEntry(entry: AuditEntry, logPath?: string): void {
     mkdirSync(dirname(path), { recursive: true })
     appendFileSync(path, line, 'utf8')
   } catch (err) {
-    process.stderr.write(`[markdownai] audit log write failed (${path}): ${String(err)}\n`)
+    process.stderr.write(`[livestage] audit log write failed (${path}): ${String(err)}\n`)
   }
 }

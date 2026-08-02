@@ -33,8 +33,7 @@ describe('file.containsLine / file.containsSection (@if helpers)', () => {
     it('returns true when the regex matches a line', () => {
       writeFileSync(join(projectDir, 'CHANGELOG.md'), '# Changelog\n\n## Unreleased\n\n- foo\n', 'utf8')
       const result = render(
-        `@markdownai v1.0
-@if file.containsLine("CHANGELOG.md", "^## Unreleased")
+        `@if file.containsLine("CHANGELOG.md", "^## Unreleased")
   has unreleased
 @if-end
 `,
@@ -45,8 +44,7 @@ describe('file.containsLine / file.containsSection (@if helpers)', () => {
     it('returns false when the regex does not match', () => {
       writeFileSync(join(projectDir, 'CHANGELOG.md'), '# Changelog\n\n## 1.0.0\n\n- foo\n', 'utf8')
       const result = render(
-        `@markdownai v1.0
-@if file.containsLine("CHANGELOG.md", "^## Unreleased")
+        `@if file.containsLine("CHANGELOG.md", "^## Unreleased")
   has unreleased
 @else
   no unreleased
@@ -58,8 +56,7 @@ describe('file.containsLine / file.containsSection (@if helpers)', () => {
 
     it('returns false when file does not exist', () => {
       const result = render(
-        `@markdownai v1.0
-@if file.containsLine("missing.md", "anything")
+        `@if file.containsLine("missing.md", "anything")
   found
 @else
   not found
@@ -75,8 +72,7 @@ describe('file.containsLine / file.containsSection (@if helpers)', () => {
       writeFileSync(join(projectDir, 'doc.md'),
         '# Title\n\n## Bugs\n\n- bug 1\n', 'utf8')
       const result = render(
-        `@markdownai v1.0
-@if file.containsSection("doc.md", "## Bugs")
+        `@if file.containsSection("doc.md", "## Bugs")
   has bugs
 @if-end
 `,
@@ -88,8 +84,7 @@ describe('file.containsLine / file.containsSection (@if helpers)', () => {
       writeFileSync(join(projectDir, 'doc.md'),
         '# Title\n\n### Bugs\n\nText.\n', 'utf8')
       const result = render(
-        `@markdownai v1.0
-@if file.containsSection("doc.md", "Bugs")
+        `@if file.containsSection("doc.md", "Bugs")
   has bugs section at some level
 @if-end
 `,
@@ -101,8 +96,7 @@ describe('file.containsLine / file.containsSection (@if helpers)', () => {
       writeFileSync(join(projectDir, 'doc.md'),
         '# Title\n\n## Features\n\n- f1\n', 'utf8')
       const result = render(
-        `@markdownai v1.0
-@if file.containsSection("doc.md", "## Bugs")
+        `@if file.containsSection("doc.md", "## Bugs")
   has bugs
 @else
   no bugs
@@ -116,8 +110,7 @@ describe('file.containsLine / file.containsSection (@if helpers)', () => {
       writeFileSync(join(projectDir, 'doc.md'),
         '# Title\n\nNot a heading: ## Bugs in prose\n', 'utf8')
       const result = render(
-        `@markdownai v1.0
-@if file.containsSection("doc.md", "## Bugs")
+        `@if file.containsSection("doc.md", "## Bugs")
   has bugs
 @else
   no bugs

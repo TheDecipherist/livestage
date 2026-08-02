@@ -42,7 +42,7 @@ describe('loadSecurityConfig', () => {
   })
 
   it('returns defaults on invalid JSON', () => {
-    const cfg = loadSecurityConfig('/tmp/not-real-markdownai-security.json')
+    const cfg = loadSecurityConfig('/tmp/not-real-livestage-security.json')
     expect(cfg.shell.enabled).toBe(true)
   })
 })

@@ -3,7 +3,7 @@ id: livestage-wave-1
 title: Foundation
 initiative: livestage
 initiative_version: 1
-status: planned
+status: complete
 depends_on: [livestage-wave-0]
 demo_state: "livestage render examples/hello.stage returns pure markdown via CLI; the PreToolUse hook renders the same file on a simulated read and does NOT fire on hello.md containing directive-like text; livestage security show prints the strict policy; a non-allowlisted @query fails with a policy error; boundary lint and CR-1 scan green."
 content_hash: 3add2e44aea4

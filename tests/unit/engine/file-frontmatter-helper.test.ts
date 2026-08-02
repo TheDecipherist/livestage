@@ -33,8 +33,7 @@ describe('file.frontmatterField (@if helper)', () => {
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nstatus: complete\n---\nbody', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@if file.frontmatterField("doc.md", "status") == "complete"
+      `@if file.frontmatterField("doc.md", "status") == "complete"
 done
 @else
 not done
@@ -49,8 +48,7 @@ not done
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nid: x\n---\nbody', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@if file.frontmatterField("doc.md", "status") == ""
+      `@if file.frontmatterField("doc.md", "status") == ""
 empty
 @else
 present
@@ -62,8 +60,7 @@ present
 
   it('returns empty string when file does not exist', () => {
     const result = render(
-      `@markdownai v1.0
-@if file.frontmatterField("missing.md", "status") == ""
+      `@if file.frontmatterField("missing.md", "status") == ""
 missing
 @if-end
 `,
@@ -75,8 +72,7 @@ missing
     writeFileSync(join(projectDir, 'doc.md'),
       '---\ntags:\n  - alpha\n  - beta\n---\nbody', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@if file.frontmatterField("doc.md", "tags").includes("beta")
+      `@if file.frontmatterField("doc.md", "tags").includes("beta")
 has beta
 @if-end
 `,
@@ -91,8 +87,7 @@ has beta
     writeFileSync(join(projectDir, 'doc.md'),
       '---\nid: 03-widget\nstatus: complete\n---\nbody', 'utf8')
     const result = render(
-      `@markdownai v1.0
-@set s = {{ read_frontmatter("doc.md", "status") }} /
+      `@set s = {{ read_frontmatter("doc.md", "status") }} /
 @set i = {{ read_frontmatter("doc.md", "id") }} /
 id={{ i }} status={{ s }}`,
     )
@@ -104,15 +99,13 @@ id={{ i }} status={{ s }}`,
   it('read_frontmatter is usable directly in @if and returns empty for a missing file', () => {
     writeFileSync(join(projectDir, 'doc.md'), '---\nstatus: draft\n---\nbody', 'utf8')
     const r1 = render(
-      `@markdownai v1.0
-@if {{ read_frontmatter("doc.md", "status") == "draft" }}
+      `@if {{ read_frontmatter("doc.md", "status") == "draft" }}
 yes
 @if-end`,
     )
     expect(r1.output).toContain('yes')
     const r2 = render(
-      `@markdownai v1.0
-@if {{ read_frontmatter("nope.md", "status") == "" }}
+      `@if {{ read_frontmatter("nope.md", "status") == "" }}
 missing
 @if-end`,
     )

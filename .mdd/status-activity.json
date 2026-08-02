@@ -1,1 +1,1 @@
-{"sessionId":"60931bde-df7c-47a7-992c-d0d712445bac","lastTool":"Bash","lastTarget":"cd /home/tim_carter81/projects/livestage…","tally":{"Bash":168,"Read":132,"Edit":81,"Write":62,"Agent":1},"linesAdded":5572,"linesRemoved":968,"toolSuccess":{"ok":444,"total":444}}
+{"sessionId":"60931bde-df7c-47a7-992c-d0d712445bac","lastTool":"Edit","lastTarget":"/home/tim_carter81/projects/livestage/.gitignore","tally":{"Bash":401,"Read":236,"Edit":194,"Write":80,"Agent":3,"WebFetch":4},"linesAdded":7627,"linesRemoved":1799,"toolSuccess":{"ok":918,"total":918}}

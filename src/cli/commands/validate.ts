@@ -37,7 +37,7 @@ export function runValidate(filePath: string, options: ValidateOptions = {}): Va
   try {
     const ast = parse(source, { filePath: resolved })
     if (!ast.isLiveStage) {
-      errors.push('Not a LiveStage document (missing @markdownai header on line 1)')
+      errors.push('Not a LiveStage document')
     } else {
       const defines = collectDefines(ast.nodes, dirname(resolved), new Set(), warnings, options.cwd ?? process.cwd())
       checkNodes(ast.nodes, defines, errors, warnings, resolved)
@@ -94,6 +94,15 @@ function checkNodes(nodes: ASTNode[], defines: Set<string>, errors: string[], wa
 }
 
 function checkNode(node: ASTNode, defines: Set<string>, errors: string[], warnings: string[], filePath: string, dir: string): void {
+  // CR-3 (Stage Only): a directive outside the registry parses as an inert
+  // passthrough, not silently. The one passthrough that is genuinely inert
+  // (a leading legacy format-marker line) is emitted with an empty raw
+  // specifically so it is not flagged here; every other passthrough whose
+  // raw text looks like a directive attempt is an authoring error.
+  if (node.type === 'passthrough' && node.raw.trim().startsWith('@')) {
+    const name = node.raw.trim().match(/^@([a-zA-Z][\w-]*)/)?.[1] ?? '?'
+    errors.push(`@${name}: unknown directive (${filePath}:${node.line})`)
+  }
   if (node.type === 'include' || node.type === 'import') {
     if (!existsSync(resolve(dir, node.path))) {
       errors.push(`@${node.type}: file not found: ${node.path} (referenced in ${filePath}:${node.line})`)

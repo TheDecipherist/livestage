@@ -3,15 +3,19 @@ id: 13-cli-router
 title: CLI Router
 type: COMPONENT
 path: CLI / Router
-source_files: [src/cli/index.ts]
-status: planned
-phase: idle
+source_files: [src/cli/cli.ts, src/cli/index.ts]
+status: complete
+phase: all
 last_synced: 2026-08-01
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [07-package-skeleton]
 tags: [cli, verb-router, exit-codes, flat-verbs, namespaces]
-known_issues: []
+known_issues:
+  - "The doc's source_files listed only index.ts (the library barrel export); cli.ts (the actual bin entry and router, program.command(...) registrations) is the real router and is added above."
+  - "Namespace restructuring done for what exists today: parser ast|directives|imports|macros (was flat parse/list-macros/list-imports; parser directives is new, lists the registry). engine trace already existed (feature 12). security and cache namespaces already existed."
+  - "Deferred, not built (all depend on features from later waves that do not exist yet): parser check (no clear existing implementation to route to, would need real design), engine eval (ambiguous whether this is meant to be distinct from the existing flat eval verb, or the same thing namespaced, spec text does not disambiguate), renderer preview --format (no existing renderer-preview implementation), assert and doctor flat verbs (features 26 and 30, waves 3 and 4), render's --args/--timeout/--deterministic options (features 23 F-ARGS wave 2, and 35 Determinism wave 5), watch's exit-code contract (watch runs until interrupted, not practical to assert against in an automated test without a long-running process harness, spot-checked manually instead: the verb exists and accepts a file argument)."
+  - "cache's subcommand is named show, not status as the doc's table has it (cache show|clear, pre-existing from Wave 0, not renamed since it already has test coverage under that name)."
 ---
 
 # CLI Router
@@ -80,11 +84,21 @@ N/A.
 
 ## Acceptance Criteria
 
-- [ ] Every verb in the table above routes to its implementation and returns
-      the documented exit code for a success and a failure fixture.
-- [ ] `--env <file>` correctly loads dotenv values that `@env` then reads.
-- [ ] Namespaced verbs (`parser`, `engine`, `renderer`, `security`) each
-      dispatch to their subcommands correctly.
+- [!] Every verb in the table above routes to its implementation and returns
+      the documented exit code for a success and a failure fixture. Verified
+      live (spawning the real built binary, not just library calls) for
+      `render`, `validate`, `eval`, `strip`, `watch` (existence + argument
+      only), `init`, `security`, `parser ast|directives|imports|macros`,
+      `engine trace`, `cache`: `tests/unit/cli/cli-router.test.ts`. `assert`
+      and `doctor` do not exist yet (waves 3, 4); `renderer preview` and
+      `parser check` were never implemented (see Known Issues).
+- [x] `--env <file>` correctly loads dotenv values that `@env` then reads.
+      Pre-existing, covered by `tests/unit/cli/cli-validate.test.ts`'s
+      `loadEnvFile` tests.
+- [!] Namespaced verbs (`parser`, `engine`, `renderer`, `security`) each
+      dispatch to their subcommands correctly. `parser`, `engine`,
+      `security` verified; `renderer` has no subcommands yet (`renderer
+      preview` was never implemented).
 
 ## Dependencies
 
