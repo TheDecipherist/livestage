@@ -8,6 +8,7 @@ import type { EngineContext } from './context.js'
 import { resolveDataPath } from './sources.js'
 import { resolveInterpolations } from './engine-interpolate.js'
 import { buildLiveStageContextJson } from './args.js'
+import { cacheKey, readCache, writeCache } from './cache.js'
 
 // language -> runner command. Extended/overridden by policy's code.runners.
 const DEFAULT_RUNNERS: Record<string, string> = {
@@ -54,42 +55,18 @@ function runMockCode(node: CodeNode, ctx: EngineContext): string | null {
   return stdout
 }
 
-export function executeCode(node: CodeNode, ctx: EngineContext): string {
-  // Mock cache (feature 35, determinism): serve a recorded fixture instead
-  // of spawning the runner, same convention as @query's mock branch.
-  const mocked = runMockCode(node, ctx)
-  if (mocked !== null) return mocked
+interface RunResult {
+  stdout: string
+  structured: Record<string, unknown>
+}
 
-  const codeConfig = ctx.security.codeConfig
-  const granted = codeConfig?.languages ?? []
-  if (!granted.includes(node.language)) {
-    ctx.warnings.push(`@code: language "${node.language}" is not granted (policy code.languages: [${granted.join(', ')}])`)
-    return ''
-  }
-
-  const runners = { ...DEFAULT_RUNNERS, ...(codeConfig?.runners ?? {}) }
-  const runnerCmd = runners[node.language]
-  if (!runnerCmd) {
-    ctx.warnings.push(`@code: no runner configured for language "${node.language}"`)
-    return ''
-  }
-
-  let scriptSource: string
-  if (node.src) {
-    const full = resolveDataPath(node.src, ctx, '@code')
-    if (!full || !existsSync(full)) {
-      ctx.warnings.push(`@code: src not found or blocked: ${node.src}`)
-      return ''
-    }
-    scriptSource = readFileSync(full, 'utf8')
-  } else {
-    scriptSource = node.body ?? ''
-  }
-
-  if (node.interpolate) {
-    scriptSource = resolveInterpolations(scriptSource, scanInterpolations(scriptSource), ctx, [])
-  }
-
+function runLiveCode(
+  node: CodeNode,
+  ctx: EngineContext,
+  runnerCmd: string,
+  scriptSource: string,
+  timeout: number,
+): RunResult {
   const ext = SCRIPT_EXT[node.language] ?? ''
   const tmpDir = mkdtempSync(join(tmpdir(), 'livestage-code-'))
   const scriptPath = join(tmpDir, `script${ext}`)
@@ -104,7 +81,6 @@ export function executeCode(node: CodeNode, ctx: EngineContext): string {
     ctx.docDir,
   )
 
-  const timeout = node.timeout ?? codeConfig?.timeout ?? 30_000
   const startedAt = Date.now()
   let result: import('node:child_process').SpawnSyncReturns<string>
   try {
@@ -149,12 +125,72 @@ export function executeCode(node: CodeNode, ctx: EngineContext): string {
     // stdout is not JSON; base result stands alone.
   }
 
-  const label = node.label
-  if (label) {
-    ctx.data[label] = structured
-    ctx.envFiles[label] = stdout
-    ctx.envFiles[`${label}_exit`] = String(exit)
+  return { stdout, structured }
+}
+
+export function executeCode(node: CodeNode, ctx: EngineContext): string {
+  // Mock cache (feature 35, determinism): serve a recorded fixture instead
+  // of spawning the runner, same convention as @query's mock branch.
+  const mocked = runMockCode(node, ctx)
+  if (mocked !== null) return mocked
+
+  const codeConfig = ctx.security.codeConfig
+  const granted = codeConfig?.languages ?? []
+  if (!granted.includes(node.language)) {
+    ctx.warnings.push(`@code: language "${node.language}" is not granted (policy code.languages: [${granted.join(', ')}])`)
+    return ''
   }
 
-  return stdout
+  const runners = { ...DEFAULT_RUNNERS, ...(codeConfig?.runners ?? {}) }
+  const runnerCmd = runners[node.language]
+  if (!runnerCmd) {
+    ctx.warnings.push(`@code: no runner configured for language "${node.language}"`)
+    return ''
+  }
+
+  let scriptSource: string
+  if (node.src) {
+    const full = resolveDataPath(node.src, ctx, '@code')
+    if (!full || !existsSync(full)) {
+      ctx.warnings.push(`@code: src not found or blocked: ${node.src}`)
+      return ''
+    }
+    scriptSource = readFileSync(full, 'utf8')
+  } else {
+    scriptSource = node.body ?? ''
+  }
+
+  if (node.interpolate) {
+    scriptSource = resolveInterpolations(scriptSource, scanInterpolations(scriptSource), ctx, [])
+  }
+
+  const timeout = node.timeout ?? codeConfig?.timeout ?? 30_000
+
+  // Every grant/runner/src check above already ran live; a session/persist
+  // cache hit only ever skips the actual spawn, replaying its stdout and
+  // structured result (including the ctx.data/envFiles label wiring below)
+  // exactly as a live run would have set them, so a cached @code call is
+  // indistinguishable downstream from a fresh one.
+  let run: RunResult
+  if (node.cache && node.cache.mode !== 'mock') {
+    const key = cacheKey('code', { language: node.language, src: node.src, body: node.body, interpolate: node.interpolate, args: node.args })
+    const cached = readCache(key, node.cache, ctx.docDir, ctx.cwd)
+    if (cached !== null) {
+      run = JSON.parse(cached) as RunResult
+    } else {
+      run = runLiveCode(node, ctx, runnerCmd, scriptSource, timeout)
+      writeCache(key, JSON.stringify(run), node.cache, ctx.security.filesystemConfig, 'code', ctx.cwd)
+    }
+  } else {
+    run = runLiveCode(node, ctx, runnerCmd, scriptSource, timeout)
+  }
+
+  const label = node.label
+  if (label) {
+    ctx.data[label] = run.structured
+    ctx.envFiles[label] = run.stdout
+    ctx.envFiles[`${label}_exit`] = String(run.structured['_exit'] ?? -1)
+  }
+
+  return run.stdout
 }

@@ -3,16 +3,16 @@ id: 21-cache
 title: Cache
 type: COMPONENT
 path: Engine / Cache
-source_files: [src/engine/cache.ts]
+source_files: [src/engine/cache.ts, src/engine/directive-cache.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-02
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [10-security-policy-core]
 tags: [cache, livestage-cache-dir, mock-fixtures, hook-render-cache]
 known_issues:
-  - "readCache/writeCache (session/persist modes) were, and remain, uncalled from the actual directive-execution path in engine.ts: nothing currently caches a @query/@code result during a real render. Deterministic mode's @cache mock=fixture.json substitution is explicitly owned by feature 35 (Determinism, wave 5) per this doc's own Architecture section; this component's scope is the read/write path itself, now correctly implemented and tested, not the wiring into directive execution."
+  - "RESOLVED (post-initiative known_issues sweep, 2026-08-02): readCache/writeCache (session/persist modes) are now reachable from real .stage syntax on every directive that carries a CacheConfig. src/engine/directive-cache.ts's withDirectiveCache wraps @list/@read/@tree/@query (src/engine/sources.ts), with @code (src/engine/code-runners.ts) and @include (src/engine/engine-include.ts) wired the same way but inline (their result shapes, a single string with label side effects for @code, a joined rendered string for @include, don't fit the string[]-returning helper). The parser-side `cache=`/`ttl=`/`mock=` attribute convention that reaches these (feature 35's mock= extended to cache=session|persist) is the fuller fix; see 35-determinism.md's known_issues for that half. Security placement rule followed throughout: every directive's path/shell/grant check runs live on EVERY call, cache hit or not, only the actual read/spawn/render is what a hit skips, so a cache can never bypass a check that would have blocked a live call. Live-verified against the built binary: @list session-cached across a directory mutation within one process, @read persist-cached across two separate CLI invocations (confirmed via cache show and .livestage/cache/ contents)."
   - "Fixed a real bug found while writing this component's first tests: CACHE_DIR was a module-level constant computed once from process.cwd() at import time. --cwd is threaded as a value everywhere else in this codebase (render.ts never calls process.chdir()), so cache show/clear --cwd path accepted the flag and silently did nothing with it, reading/clearing whatever directory the process happened to launch from instead. Fixed by turning CACHE_DIR into a cacheDir(cwd) function threaded through readCache/writeCache/clearPersistCache/showCacheEntries, cli/commands/cache.ts, and cli.ts's cache show/clear action handlers."
   - "Fixed a second real bug in the same pass: readCache's mock mode validated config.mockPath against docRoot via checkFilePath (correct), but then read the file via readFileSync using the raw mockPath string, not the resolved path. For a relative mockPath (the realistic case, e.g. mock=./fixtures/x.json) this resolves against process.cwd(), not docRoot, so it would silently miss the fixture in any project not run from exactly the right directory. Fixed to read the same resolved path that was validated."
   - "checkFilePath blocks all absolute paths outside a small built-in safe-root allowlist (LiveStage/MDD/Claude system dirs); an absolute mock= path pointing at a legitimate project fixture is blocked. Relative mock= paths, resolved against docRoot, are the correct usage. Not a bug, but worth documenting since it is surprising on first encounter."
@@ -91,13 +91,13 @@ the process's own launch directory.
       are correctly scoped by `--cwd`, not the process's own launch
       directory: `cache.test.ts`'s persist-mode block (6 tests), plus a
       live `--cwd`-scoped check against the real binary.
-- [!] `@cache mock=fixture.json` correctly substitutes fixture data for a
+- [x] `@cache mock=fixture.json` correctly substitutes fixture data for a
       `@query`/`@code` call under `--deterministic`. The read/write path
       itself works and is tested (mock mode, 3 tests, including two real
       bugs found and fixed: the resolved-vs-raw path mismatch, and the
-      absolute-path safe-root gate). The wiring that decides WHEN to call
-      it during a live `@query`/`@code` execution does not exist yet; owned
-      by feature 35 (Determinism, wave 5), see Known Issues.
+      absolute-path safe-root gate). Syntax is a plain `mock=` attribute
+      (feature 35); session/persist modes for every source-shaped directive
+      now also reach this read/write path, see Known Issues.
 
 ## Dependencies
 
@@ -107,10 +107,7 @@ the process's own launch directory.
 
 See the frontmatter `known_issues` above for the two real bugs fixed while
 building this component's first test coverage (the `--cwd` ignored by
-`CACHE_DIR`, and the resolved-vs-raw mock path mismatch), and the
-architectural note that this cache is a distinct mechanism from the hook's
-own render-cache file (feature 11).
-
-`@cache mock=fixture.json`'s live wiring into `@query`/`@code` execution
-does not exist yet; feature 35 (Determinism, wave 5) owns deciding when to
-call `readCache`'s mock mode instead of executing live.
+`CACHE_DIR`, and the resolved-vs-raw mock path mismatch), the architectural
+note that this cache is a distinct mechanism from the hook's own render-cache
+file (feature 11), and the RESOLVED entry describing the directive-execution
+wiring (`src/engine/directive-cache.ts`) added in the post-initiative sweep.

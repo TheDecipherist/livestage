@@ -8,6 +8,7 @@ import { evalCondition, evalExpression } from './conditions.js'
 import { checkSourcePath } from './security/filesystem.js'
 import { expandPattern } from './security/path-expand.js'
 import { buildExpandContext } from './expand-context.js'
+import { cacheKey, readCache, writeCache } from './cache.js'
 
 /**
  * Expand ${VAR} placeholders in @import / @include source paths.
@@ -35,7 +36,7 @@ function interpolatePathExpressions(path: string, ctx: EngineContext): string {
     const value = evalExpression(expr.trim(), ctx)
     if (value === '' || value === 'null') {
       throw new FatalError(
-        `@include: {{ ${expr.trim()} }} evaluated to empty in path "${path}" — cannot resolve file`,
+        `@include: {{ ${expr.trim()} }} evaluated to empty in path "${path}", cannot resolve file`,
       )
     }
     return value
@@ -45,8 +46,8 @@ function interpolatePathExpressions(path: string, ctx: EngineContext): string {
 /**
  * Non-fatal variant of interpolatePathExpressions. Used by data/write ops
  * (@update-frontmatter, @hash, @read, @list, @copy, @mkdir, etc.) which
- * should warn-and-continue on an empty interpolation rather than throwing
- * — multi-phase document renders walk every phase, and phases that don't
+ * should warn-and-continue on an empty interpolation rather than throwing,
+ * multi-phase document renders walk every phase, and phases that don't
  * apply to the current invocation legitimately produce empty path
  * interpolations. Letting them throw aborts the whole render.
  */
@@ -98,7 +99,7 @@ export function executeImport(node: ImportNode, ctx: EngineContext): void {
   const sourceJail = ctx.security.sourceJail ?? ctx.security.jailRoot ?? ctx.docDir
   const check = checkSourcePath(full, sourceJail, ctx.security.allowedSourcePaths, ctx.security.filesystemConfig)
   if (check.level === 'blocked') {
-    ctx.warnings.push(`@import: ${check.reason} (${node.path}) — skipped`)
+    ctx.warnings.push(`@import: ${check.reason} (${node.path}), skipped`)
     return
   }
   if (check.level === 'alert') ctx.warnings.push(`@import SECURITY_ALERT: ${check.reason} (${node.path})`)
@@ -133,12 +134,34 @@ export function executeInclude(
 ): string {
   if (node.condition !== null && !evalCondition(node.condition, ctx)) return ''
 
+  // Mock cache (feature 35 convention): serve a fixture's raw content in
+  // place of resolving and rendering the real include target. Resolved
+  // against the source jail, not the data jail, since @include operates on
+  // other .stage documents, not data files.
+  if (node.cache?.mode === 'mock' && node.cache.mockPath) {
+    const mockExpanded = expandImportPath(node.cache.mockPath, ctx)
+    const mockFull = isAbsolute(mockExpanded) ? mockExpanded : resolve(ctx.docDir, mockExpanded)
+    const mockJail = ctx.security.sourceJail ?? ctx.security.jailRoot ?? ctx.docDir
+    const mockCheck = checkSourcePath(mockFull, mockJail, ctx.security.allowedSourcePaths, ctx.security.filesystemConfig)
+    if (mockCheck.level === 'blocked') return ''
+    try { return readFileSync(mockFull, 'utf8') } catch { return '' }
+  }
+
   const expanded = interpolatePathExpressions(expandImportPath(node.path, ctx), ctx)
   const full = isAbsolute(expanded) ? expanded : resolve(ctx.docDir, expanded)
   const sourceJail = ctx.security.sourceJail ?? ctx.security.jailRoot ?? ctx.docDir
   const check = checkSourcePath(full, sourceJail, ctx.security.allowedSourcePaths, ctx.security.filesystemConfig)
   if (check.level === 'blocked') throw new FatalError(`@include blocked: ${check.reason}`)
   if (check.level === 'alert') ctx.warnings.push(`@include SECURITY_ALERT: ${check.reason} (${node.path})`)
+
+  // Every security check above already ran live; a session/persist cache
+  // hit only ever skips the read-parse-render below, never the jail check.
+  const useCache = node.cache !== null && node.cache.mode !== 'mock'
+  const key = useCache ? cacheKey('include', { path: node.path }) : null
+  if (key && node.cache) {
+    const cached = readCache(key, node.cache, ctx.docDir, ctx.cwd)
+    if (cached !== null) return cached
+  }
 
   if (ctx.resolutionStack.has(full)) {
     const chain = [...ctx.resolutionStack, full].join(' → ')
@@ -162,6 +185,9 @@ export function executeInclude(
     ctx.completedSet.add(full)
     for (const [name, conn] of Object.entries(includeConns)) {
       if (!includeLocalNames.has(name)) ctx.connections[name] = conn
+    }
+    if (key && node.cache) {
+      writeCache(key, out, node.cache, ctx.security.filesystemConfig, 'include', ctx.cwd)
     }
     return out
   } catch (err) {

@@ -1,5 +1,6 @@
 import type { ParseModule, ParseContext, DirectiveInput, ASTNode, IncludeNode } from '../types.js'
 import { ParseError } from '../types.js'
+import { parseCacheAttrs } from './cache-attrs.js'
 
 const include: ParseModule = {
   name: 'include',
@@ -26,7 +27,7 @@ const include: ParseModule = {
       path,
       condition,
       local,
-      cache: null,
+      cache: parseCacheAttrs(input.attrs),
     }
     return node
   },

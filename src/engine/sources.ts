@@ -9,6 +9,7 @@ import { expandPattern } from './security/path-expand.js'
 import { interpolatePathSoft } from './engine-include.js'
 import { globToRegex, walkDir, listJson, listCsv, readEnvFile, hasGlobChars, resolveGlobTargets, whereMatches } from './sources-file-utils.js'
 import { parseFrontmatterRow } from './frontmatter-utils.js'
+import { withDirectiveCache } from './directive-cache.js'
 
 /**
  * Resolve and security-check a data-op path. Returns the absolute path if
@@ -24,7 +25,7 @@ export function resolveDataPath(path: string, ctx: EngineContext, directive: str
   // Expand the path before resolving, mirroring @query (and the read-ops
   // fix). Without this, `${CLAUDE_SKILL_DIR}`, `${CWD}`, `${HOME}`, a leading
   // `~/`, and `{{ }}` interpolations stay literal in @list/@read/@count/@tree
-  // paths — so a flow installed at ~/.claude/mdd2/ that lists its own skill
+  // paths, so a flow installed at ~/.claude/mdd2/ that lists its own skill
   // tree (`@list ${CLAUDE_SKILL_DIR}/flows`) silently matches nothing.
   const expandedPath = expandPattern(interpolatePathSoft(path, ctx), {
     env: { ...ctx.env, ...ctx.envFiles },
@@ -34,11 +35,11 @@ export function resolveDataPath(path: string, ctx: EngineContext, directive: str
   const full = isAbsolute(expandedPath) ? expandedPath : resolve(dataJail, expandedPath)
   const check = checkDataPath(full, dataJail, ctx.security.allowedDataPaths, ctx.security.filesystemConfig)
   if (check.level === 'blocked') {
-    ctx.warnings.push(`SECURITY_ALERT: ${directive} path blocked — ${check.reason}: ${path}`)
+    ctx.warnings.push(`SECURITY_ALERT: ${directive} path blocked - ${check.reason}: ${path}`)
     return null
   }
   if (check.level === 'alert') {
-    ctx.warnings.push(`SECURITY_ALERT: ${directive} sensitive path accessed — ${check.reason}: ${path}`)
+    ctx.warnings.push(`SECURITY_ALERT: ${directive} sensitive path accessed - ${check.reason}: ${path}`)
   }
   return full
 }
@@ -113,20 +114,25 @@ export function executeList(node: ListNode, ctx: EngineContext): string[] {
     return executeFrontmatterQuery(node.path, node.args, ctx)
   }
 
+  // Path resolution (and its security check) always runs live, cache hit or
+  // not: only the read/parse work below is what a session/persist cache
+  // hit skips, never the jail check.
   const full = resolveDataPath(node.path, ctx, '@list')
   if (!full) return []
-  const ext = node.path.toLowerCase()
 
-  if (ext.endsWith('.json')) return listJson(full, node.args)
-  if (ext.endsWith('.csv')) return listCsv(full, node.args)
+  return withDirectiveCache('list', node.cache, { path: node.path, args: node.args }, ctx, () => {
+    const ext = node.path.toLowerCase()
+    if (ext.endsWith('.json')) return listJson(full, node.args)
+    if (ext.endsWith('.csv')) return listCsv(full, node.args)
 
-  const matchPattern = node.args['match']
-  const matchRe = matchPattern ? globToRegex(matchPattern) : null
-  const typeFilter = node.args['type'] ?? 'files'
-  const depthStr = node.args['depth']
-  const maxDepth = depthStr !== undefined ? parseInt(depthStr, 10) : -1
-  const base = node.path.replace(/\/$/, '')
-  return walkDir(full, '', matchRe, typeFilter, 0, maxDepth).map(r => `${base}/${r}`)
+    const matchPattern = node.args['match']
+    const matchRe = matchPattern ? globToRegex(matchPattern) : null
+    const typeFilter = node.args['type'] ?? 'files'
+    const depthStr = node.args['depth']
+    const maxDepth = depthStr !== undefined ? parseInt(depthStr, 10) : -1
+    const base = node.path.replace(/\/$/, '')
+    return walkDir(full, '', matchRe, typeFilter, 0, maxDepth).map(r => `${base}/${r}`)
+  })
 }
 
 // Structured-access options only mean something for their own file type:
@@ -147,25 +153,31 @@ function warnUnusedOption(ctx: EngineContext, path: string, node: ReadNode, opti
 }
 
 export function executeRead(node: ReadNode, ctx: EngineContext): string[] {
+  // Path resolution (and its security check) always runs live, cache hit or
+  // not: only the read/parse work below is what a session/persist cache
+  // hit skips, never the jail check.
   const full = resolveDataPath(node.path, ctx, '@read')
   if (!full) return []
-  const ext = node.path.toLowerCase()
-  if (ext.endsWith('.json')) {
-    warnUnusedOption(ctx, node.path, node, CSV_ONLY_OPTIONS, 'JSON')
-    return listJson(full, node.args)
-  }
-  if (ext.endsWith('.csv')) {
-    warnUnusedOption(ctx, node.path, node, JSON_ONLY_OPTIONS, 'CSV')
-    return listCsv(full, node.args)
-  }
-  if (ext.endsWith('.env')) return readEnvFile(full, node.args)
-  const givenOption = STRUCTURED_OPTIONS.find(opt => node.args[opt] !== undefined)
-  if (givenOption) {
-    ctx.warnings.push(`@read: "${givenOption}=" only applies to .json/.csv files, ${node.path} is neither; falling back to a raw content read, the option is ignored`)
-  }
-  try {
-    return readFileSync(full, 'utf8').split('\n').filter(l => l !== '')
-  } catch { return [] }
+
+  return withDirectiveCache('read', node.cache, { path: node.path, args: node.args }, ctx, () => {
+    const ext = node.path.toLowerCase()
+    if (ext.endsWith('.json')) {
+      warnUnusedOption(ctx, node.path, node, CSV_ONLY_OPTIONS, 'JSON')
+      return listJson(full, node.args)
+    }
+    if (ext.endsWith('.csv')) {
+      warnUnusedOption(ctx, node.path, node, JSON_ONLY_OPTIONS, 'CSV')
+      return listCsv(full, node.args)
+    }
+    if (ext.endsWith('.env')) return readEnvFile(full, node.args)
+    const givenOption = STRUCTURED_OPTIONS.find(opt => node.args[opt] !== undefined)
+    if (givenOption) {
+      ctx.warnings.push(`@read: "${givenOption}=" only applies to .json/.csv files, ${node.path} is neither; falling back to a raw content read, the option is ignored`)
+    }
+    try {
+      return readFileSync(full, 'utf8').split('\n').filter(l => l !== '')
+    } catch { return [] }
+  })
 }
 
 /**
@@ -180,7 +192,7 @@ export function executeRead(node: ReadNode, ctx: EngineContext): string[] {
  *
  * Used by Phase 3 of build flows to seed the feature-doc template's intent
  * fields (purpose, business_rules, definition_of_done) from the wave brief
- * the engine extracted via read_section — so the first draft is structured
+ * the engine extracted via read_section, so the first draft is structured
  * rather than dumping the whole brief into a single field.
  */
 export function parseFeatureBrief(text: string): Record<string, string> {
@@ -220,7 +232,7 @@ export function parseFeatureBrief(text: string): Record<string, string> {
  * Phase 3b to extract `src/foo.ts`-style paths from a wave brief's
  * **Source files.** paragraph (e.g. "`src/rules/parser.ts`,
  * `src/rules/loader.ts`, ..."). Only matches strings inside single backticks
- * that contain a dot followed by a 1-6 char alphabetic extension — avoids
+ * that contain a dot followed by a 1-6 char alphabetic extension, avoids
  * picking up unrelated backtick spans like `@constraint id`. Returns each
  * matched path in source order.
  */
@@ -323,7 +335,7 @@ export function executeDate(node: DateNode, ctx?: EngineContext): string[] {
   const filePath = node.args['file']
   const type = node.args['type'] ?? 'current'
   if (type === 'created') {
-    throw new Error('@date: type="created" is not supported — file creation time is not reliably available across platforms')
+    throw new Error('@date: type="created" is not supported, file creation time is not reliably available across platforms')
   }
   let date = ctx?.determinism?.now ?? new Date()
   if (type === 'modified' && filePath && ctx) {
@@ -356,11 +368,13 @@ export function buildTree(dir: string, prefix: string, matchRe: RegExp | null, d
 export function executeTree(node: TreeNode, ctx: EngineContext): string[] {
   const full = resolveDataPath(node.path, ctx, '@tree')
   if (!full) return []
-  const matchPattern = node.args['match']
-  const matchRe = matchPattern ? globToRegex(matchPattern) : null
-  const depthStr = node.args['depth']
-  const maxDepth = depthStr !== undefined ? parseInt(depthStr, 10) : -1
-  return buildTree(full, '', matchRe, 0, maxDepth)
+  return withDirectiveCache('tree', node.cache, { path: node.path, args: node.args }, ctx, () => {
+    const matchPattern = node.args['match']
+    const matchRe = matchPattern ? globToRegex(matchPattern) : null
+    const depthStr = node.args['depth']
+    const maxDepth = depthStr !== undefined ? parseInt(depthStr, 10) : -1
+    return buildTree(full, '', matchRe, 0, maxDepth)
+  })
 }
 
 export function executeQuery(node: QueryNode, ctx: EngineContext): string[] {
@@ -374,7 +388,7 @@ export function executeQuery(node: QueryNode, ctx: EngineContext): string[] {
     catch { return [] }
   }
 
-  if (!node.command) { ctx.warnings.push('@query: empty command — skipped'); return [] }
+  if (!node.command) { ctx.warnings.push('@query: empty command, skipped'); return [] }
 
   // Resolve {{ expr }} interpolations and ${VAR} expansions in the command
   // string before checking security + executing. Without this, flows that
@@ -393,16 +407,20 @@ export function executeQuery(node: QueryNode, ctx: EngineContext): string[] {
     if (!shellCheck.allowed) {
       const prefix = shellCheck.tier === 'always_block' ? 'SECURITY_ALERT' : 'WARN'
       const cmdPreview = command.length > 80 ? command.slice(0, 77) + '...' : command
-      ctx.warnings.push(`${prefix}: @query command blocked [${shellCheck.tier}] — ${shellCheck.reason}: \`${cmdPreview}\``)
+      ctx.warnings.push(`${prefix}: @query command blocked [${shellCheck.tier}], ${shellCheck.reason}: \`${cmdPreview}\``)
       return []
     }
   }
 
-  try {
-    const out = execSync(command, { cwd: ctx.cwd, encoding: 'utf8', timeout: 10_000 })
-    return out.split('\n').filter(l => l !== '')
-  } catch {
-    ctx.warnings.push(`@query: command failed — "${command}"`)
-    return []
-  }
+  // Every security check above already ran live; only the actual spawn is
+  // what a session/persist cache hit skips.
+  return withDirectiveCache('query', node.cache, { command }, ctx, () => {
+    try {
+      const out = execSync(command, { cwd: ctx.cwd, encoding: 'utf8', timeout: 10_000 })
+      return out.split('\n').filter(l => l !== '')
+    } catch {
+      ctx.warnings.push(`@query: command failed, "${command}"`)
+      return []
+    }
+  })
 }
