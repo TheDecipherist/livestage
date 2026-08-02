@@ -1,7 +1,7 @@
 ---
 generated: 2026-08-02
-doc_count: 47
-connection_count: 79
+doc_count: 48
+connection_count: 84
 overlap_count: 8
 ---
 
@@ -69,6 +69,8 @@ overlap_count: 8
   └── `17-source-directives` - Source Directives (complete)
 **Directives / Update Frontmatter**
   └── `33-update-frontmatter` - Update Frontmatter (complete)
+**Docs / README Generation**
+  └── `48-auto-readme-generation` - Auto README Generation (complete)
 **Docs / User Guide**
   └── `45-user-guide` - User Guide (complete)
 **Docs / Verification Closeout**
@@ -159,6 +161,7 @@ graph TD
   45_user_guide["45-user-guide"]:::done
   46_connections_example["46-connections-example"]:::done
   47_reach_via_code["47-reach-via-code"]:::done
+  48_auto_readme_generation["48-auto-readme-generation"]:::done
   07_package_skeleton --> 01_seed_script
   07_package_skeleton --> 03_cr2_one_package
   08_boundary_lint --> 07_package_skeleton
@@ -238,6 +241,11 @@ graph TD
   46_connections_example --> 34_graph
   46_connections_example --> 36_frontmatter_query
   47_reach_via_code --> 29_code_runners
+  48_auto_readme_generation --> 09_grammar_parser
+  48_auto_readme_generation --> 13_cli_router
+  48_auto_readme_generation --> 17_source_directives
+  48_auto_readme_generation --> 20_render_formats
+  48_auto_readme_generation --> 36_frontmatter_query
 ```
 
 ## Source File Overlap
@@ -248,7 +256,7 @@ Files referenced by 2+ docs:
 - `package.json` - 07-package-skeleton, 41-bundle
 - `src/cli/cli.ts` - 13-cli-router, 41-bundle
 - `src/engine/engine-include.ts` - 19-composition-directives, 41-bundle
-- `src/engine/engine.ts` - 29-code-runners, 35-determinism
+- `src/engine/engine.ts` - 17-source-directives, 29-code-runners, 35-determinism
 - `src/engine/frontmatter-utils.ts` - 33-update-frontmatter, 36-frontmatter-query
 - `src/engine/sources.ts` - 17-source-directives, 36-frontmatter-query
 - `src/hook/pretooluse.ts` - 11-extension-routing, 41-bundle
