@@ -1,0 +1,7 @@
+{
+  "name": "doc edit with a broken dep regenerates and surfaces a warning (requires node)",
+  "stdin": {"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{"file_path":".claude/hooks/tests/fixtures/connections-sync/data/docs/01-a.md"}},
+  "env": {"MDD_DIR":".claude/hooks/tests/fixtures/connections-sync/data","MDD_DOCS":".claude/hooks/tests/fixtures/connections-sync/data/docs","MDD_GEN_DATE":"2026-07-05"},
+  "expect_exit": 0,
+  "expect_stdout_contains": ["connections.md regenerated", "warning"]
+}

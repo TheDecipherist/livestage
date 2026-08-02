@@ -1,0 +1,5 @@
+{
+  "name": "an env-var prefix cannot smuggle a force push past the guard",
+  "stdin": { "tool_name": "Bash", "tool_input": { "command": "FOO=bar git push --force origin main" } },
+  "expect_exit": 2
+}

@@ -1,0 +1,6 @@
+{
+  "name": "a direct updateMany call warns toward bulkWrite",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "src/adapters/answers.ts", "content": "await db.collection('answers').updateMany({ status: 'draft' }, { $set: { status: 'live' } });" } },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["bulkWrite"]
+}

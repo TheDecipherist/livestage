@@ -1,0 +1,26 @@
+{
+  "name": "livestage",
+  "version": "0.0.1",
+  "description": "Live-document renderer and verifier for AI agents (placeholder - full release coming soon).",
+  "main": "index.js",
+  "type": "commonjs",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "keywords": [
+    "livestage",
+    "markdown",
+    "ai-agents",
+    "documentation"
+  ],
+  "author": "Tim Carter Clausen",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheDecipherist/livestage.git"
+  },
+  "homepage": "https://livestage.dev"
+}

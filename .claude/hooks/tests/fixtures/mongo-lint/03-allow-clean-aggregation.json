@@ -1,0 +1,6 @@
+{
+  "name": "allows clean aggregation and stays quiet",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "src/adapters/db.ts", "content": "export const getUser = (id) => coll.aggregate([{ $match: { _id: new ObjectId(id) } }]).next();" } },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": ["mongo-lint", "Mongoose"]
+}

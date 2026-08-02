@@ -1,0 +1,7 @@
+{
+  "name": "blocks a doc missing a required field (status)",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": ".claude/hooks/tests/fixtures/frontmatter-validate/docs/missing-status.md" } },
+  "env": { "MDD_DIR": ".claude/hooks/tests/fixtures/frontmatter-validate", "MDD_DOCS": ".claude/hooks/tests/fixtures/frontmatter-validate/docs" },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["decision", "missing required field: status"]
+}

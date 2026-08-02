@@ -1,0 +1,7 @@
+{
+  "name": "unauthorized push to main is blocked and does not tell the agent to open a PR",
+  "stdin": { "tool_name": "Bash", "tool_input": { "command": "git push origin main" } },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["protected branch", "MDD_ALLOW_MAIN_PUSH=1"],
+  "expect_stdout_not_contains": ["open a PR"]
+}

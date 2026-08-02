@@ -1,0 +1,6 @@
+{
+  "name": "Array.find in an ordinary app file stays quiet (no mongo signal, not data layer)",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "src/components/list.tsx", "content": "const active = items.find((i) => i.active);" } },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": ["mongo-lint"]
+}

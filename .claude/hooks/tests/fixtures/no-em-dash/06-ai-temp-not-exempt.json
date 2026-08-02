@@ -1,0 +1,6 @@
+{
+  "name": "scratch space is NOT exempt from no-em-dash: only the branch guard exempts it",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": ".ai_temp/draft.md", "content": "scratch — with an em dash" } },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["em dash"]
+}

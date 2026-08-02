@@ -1,0 +1,6 @@
+{
+  "name": "a write outside the repo root is allowed on main (cannot reach a commit)",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "/tmp/mdd-notes.md" } },
+  "env": { "MDD_BRANCH": "main", "MDD_DIR": ".claude/hooks/tests/fixtures/branch-guard/data-mdd", "MDD_REPO_ROOT": "." },
+  "expect_exit": 0
+}

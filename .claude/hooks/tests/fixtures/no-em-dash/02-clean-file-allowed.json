@@ -1,0 +1,5 @@
+{
+  "name": "a file with no em dash passes",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "packages/api/src/routes/recall.ts", "content": "// vector search, then rerank\nconst x = 1;" } },
+  "expect_exit": 0
+}

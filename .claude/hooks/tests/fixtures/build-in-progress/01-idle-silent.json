@@ -1,0 +1,7 @@
+{
+  "name": "idle state stays silent on stop",
+  "stdin": { "hook_event_name": "Stop" },
+  "env": { "MDD_DIR": ".claude/hooks/tests/fixtures/build-in-progress/data-idle", "MDD_STATE": ".claude/hooks/tests/fixtures/build-in-progress/data-idle/.state.json" },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": ["in progress"]
+}

@@ -1,0 +1,10 @@
+.ai_temp/
+node_modules/
+.env
+.env.*
+.env.local
+
+# nested git repos used as hook test fixtures
+.claude/hooks/tests/fixtures/branch-guard/data-repo/
+.claude/hooks/tests/fixtures/verify-no-secrets/data-clean/
+.claude/hooks/tests/fixtures/verify-no-secrets/data-staged/

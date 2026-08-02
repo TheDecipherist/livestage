@@ -1,0 +1,6 @@
+{
+  "name": "force push to main is still blocked even with the authorization marker",
+  "stdin": { "tool_name": "Bash", "tool_input": { "command": "MDD_ALLOW_MAIN_PUSH=1 git push --force origin main" } },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["force push is not allowed"]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "content trigger: a mongoose import is blocked even outside the data layer",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "src/routes/health.ts", "content": "import mongoose from 'mongoose';" } },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["Mongoose"]
+}

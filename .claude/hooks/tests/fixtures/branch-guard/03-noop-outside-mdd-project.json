@@ -1,0 +1,6 @@
+{
+  "name": "no-op when the project is not an MDD project",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": "src/app.ts" } },
+  "env": { "MDD_BRANCH": "main", "MDD_DIR": ".mdd-does-not-exist" },
+  "expect_exit": 0
+}

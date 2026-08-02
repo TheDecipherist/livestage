@@ -1,0 +1,6 @@
+{
+  "name": "the field case: deleteMany with a $ne version filter is blocked",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "scripts/warm-answer-cache.mjs", "content": "const r = await db.collection('brain_answers').deleteMany({ brain_version: { $ne: 2 } });" } },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["negation", "not what to keep"]
+}

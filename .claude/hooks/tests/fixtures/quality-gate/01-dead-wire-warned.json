@@ -1,0 +1,6 @@
+{
+  "name": "warns on a voided injected dependency (dead wire)",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": ".claude/hooks/tests/fixtures/quality-gate/dead-wire.ts" } },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["dead wire"]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "scratch space is NOT exempt: hardcoded Atlas URI in .ai_temp is flagged",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": ".ai_temp/probe.ts", "content": "const c = new MongoClient('mongodb+srv://admin:hunter2@prod.abc.mongodb.net/app');\nconst rows = await c.db().collection('users').aggregate([{ $match: { active: true } }]).toArray();" } },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["mongo-lint", "connection string"]
+}

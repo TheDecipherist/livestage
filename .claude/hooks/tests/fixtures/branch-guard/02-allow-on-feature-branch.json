@@ -1,0 +1,6 @@
+{
+  "name": "allows editing on a feature branch",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": "src/app.ts" } },
+  "env": { "MDD_BRANCH": "feat/auth", "MDD_DIR": ".mdd" },
+  "expect_exit": 0
+}

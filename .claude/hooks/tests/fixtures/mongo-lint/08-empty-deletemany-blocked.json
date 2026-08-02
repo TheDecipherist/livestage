@@ -1,0 +1,6 @@
+{
+  "name": "deleteMany with an empty filter is blocked outside tests",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "scripts/reset.mjs", "content": "await db.collection('answers').deleteMany({});" } },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["empty filter"]
+}

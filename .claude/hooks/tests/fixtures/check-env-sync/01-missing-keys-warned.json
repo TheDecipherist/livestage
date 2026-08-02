@@ -1,0 +1,8 @@
+{
+  "name": "keys in .env missing from .env.example are reported by name only",
+  "stdin": { "hook_event_name": "Stop" },
+  "env": { "MDD_ENV_FILE": ".claude/hooks/tests/fixtures/check-env-sync/data/env", "MDD_ENV_EXAMPLE": ".claude/hooks/tests/fixtures/check-env-sync/data/env.example" },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["B", "SECRET_VALUE"],
+  "expect_stdout_not_contains": ["real"]
+}

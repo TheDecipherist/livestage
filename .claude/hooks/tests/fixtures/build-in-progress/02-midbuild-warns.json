@@ -1,0 +1,7 @@
+{
+  "name": "stopping mid-build surfaces phase and gate",
+  "stdin": { "hook_event_name": "Stop" },
+  "env": { "MDD_DIR": ".claude/hooks/tests/fixtures/build-in-progress/data-midbuild", "MDD_STATE": ".claude/hooks/tests/fixtures/build-in-progress/data-midbuild/.state.json" },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["in progress", "implement"]
+}

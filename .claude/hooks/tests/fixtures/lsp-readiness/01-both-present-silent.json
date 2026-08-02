@@ -1,0 +1,10 @@
+{
+  "name": "both present (binary on PATH, plugin enabled) stays silent",
+  "stdin": { "hook_event_name": "SessionStart" },
+  "env": {
+    "MDD_LSP_BIN": "bash",
+    "MDD_LSP_SETTINGS": ".claude/hooks/tests/fixtures/lsp-readiness/data/settings-enabled.json"
+  },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": ["LSP not ready"]
+}

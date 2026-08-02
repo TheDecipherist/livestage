@@ -1,0 +1,6 @@
+{
+  "name": "deleteMany({}) in a test file is the standard cleanup and stays allowed",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "tests/integration/answers.test.ts", "content": "beforeEach(async () => { await db.collection('answers').deleteMany({}); });" } },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": ["empty filter"]
+}

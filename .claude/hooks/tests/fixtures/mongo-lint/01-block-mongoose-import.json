@@ -1,0 +1,6 @@
+{
+  "name": "blocks a mongoose import in a data-layer file",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "src/adapters/db.ts", "content": "import mongoose from 'mongoose';\nexport const conn = mongoose.connect(process.env.URI);" } },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["Mongoose", "native"]
+}

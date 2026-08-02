@@ -1,0 +1,6 @@
+{
+  "name": "en dash in an Edit new_string is denied too",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": "packages/shared/src/hash.ts", "new_string": "// range 1–5" } },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["deny"]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "blocks editing while on main in an MDD project",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": "src/app.ts" } },
+  "env": { "MDD_BRANCH": "main", "MDD_DIR": ".claude/hooks/tests/fixtures/branch-guard/data-mdd", "MDD_REPO_ROOT": "." },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["protected branch", "feat/"]
+}

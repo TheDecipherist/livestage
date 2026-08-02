@@ -1,0 +1,6 @@
+{
+  "name": "outside a git repo, silent no-op",
+  "stdin": { "hook_event_name": "Stop" },
+  "env": { "MDD_SECRETS_REPO": "/tmp" },
+  "expect_exit": 0
+}

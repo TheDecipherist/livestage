@@ -1,0 +1,5 @@
+{
+  "name": "authorized push to main with the marker is allowed",
+  "stdin": { "tool_name": "Bash", "tool_input": { "command": "MDD_ALLOW_MAIN_PUSH=1 git push origin main" } },
+  "expect_exit": 0
+}

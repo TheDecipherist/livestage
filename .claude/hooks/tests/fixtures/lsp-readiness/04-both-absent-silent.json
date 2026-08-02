@@ -1,0 +1,10 @@
+{
+  "name": "both absent (no binary, no plugin) stays silent, a deliberate no-LSP project",
+  "stdin": { "hook_event_name": "SessionStart" },
+  "env": {
+    "MDD_LSP_BIN": "mdd-no-such-binary-xyz",
+    "MDD_LSP_SETTINGS": ".claude/hooks/tests/fixtures/lsp-readiness/data/settings-none.json"
+  },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": ["LSP not ready"]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "plugin enabled but binary missing warns loudly",
+  "stdin": { "hook_event_name": "SessionStart" },
+  "env": {
+    "MDD_LSP_BIN": "mdd-no-such-binary-xyz",
+    "MDD_LSP_SETTINGS": ".claude/hooks/tests/fixtures/lsp-readiness/data/settings-enabled.json"
+  },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["LSP not ready", "not on PATH", "SILENTLY fall back to grep"]
+}

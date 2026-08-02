@@ -1,0 +1,6 @@
+{
+  "name": "allows editing implementation code during implement",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": "src/auth.ts" } },
+  "env": { "MDD_STATE": ".claude/hooks/tests/fixtures/test-freeze/data/state-implement.json" },
+  "expect_exit": 0
+}

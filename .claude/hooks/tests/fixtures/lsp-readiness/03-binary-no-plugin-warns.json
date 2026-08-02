@@ -1,0 +1,10 @@
+{
+  "name": "binary present but no plugin enabled warns loudly",
+  "stdin": { "hook_event_name": "SessionStart" },
+  "env": {
+    "MDD_LSP_BIN": "bash",
+    "MDD_LSP_SETTINGS": ".claude/hooks/tests/fixtures/lsp-readiness/data/settings-none.json"
+  },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["LSP not ready", "no LSP plugin is enabled"]
+}

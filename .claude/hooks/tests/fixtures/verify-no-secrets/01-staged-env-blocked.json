@@ -1,0 +1,7 @@
+{
+  "name": "a staged .env file blocks at stop",
+  "stdin": { "hook_event_name": "Stop" },
+  "env": { "MDD_SECRETS_REPO": ".claude/hooks/tests/fixtures/verify-no-secrets/data-staged" },
+  "expect_exit": 2,
+  "expect_stdout_contains": ["BLOCKED", ".env"]
+}

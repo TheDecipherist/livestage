@@ -1,0 +1,8 @@
+{
+  "phase": "implement",
+  "feature": "03-auth",
+  "branch": "feat/auth",
+  "test_files": ["tests/auth.test.ts", "tests/e2e/auth.spec.ts"],
+  "gate": "green-pending",
+  "updated_at": "2026-07-04T12:00:00Z"
+}

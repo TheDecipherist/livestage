@@ -1,0 +1,5 @@
+{
+  "name": "push to a feature branch is unaffected",
+  "stdin": { "tool_name": "Bash", "tool_input": { "command": "git push origin feat/lsp-first" } },
+  "expect_exit": 0
+}

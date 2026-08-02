@@ -1,0 +1,12 @@
+{
+  "name": "flags a doc when its controlled source file is edited ad-hoc",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": "src/auth.ts" } },
+  "env": {
+    "MDD_DIR": ".mdd",
+    "MDD_STATE": ".claude/hooks/tests/fixtures/drift-sentinel/no-state.json",
+    "MDD_DOCS": ".claude/hooks/tests/fixtures/drift-sentinel/docs",
+    "MDD_DRIFT": "/tmp/mdd-drift-test-01"
+  },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["drift", "03-auth", "last_synced"]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "allows writing test files during the red phase",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "tests/auth.test.ts" } },
+  "env": { "MDD_STATE": ".claude/hooks/tests/fixtures/test-freeze/data/state-red.json" },
+  "expect_exit": 0
+}

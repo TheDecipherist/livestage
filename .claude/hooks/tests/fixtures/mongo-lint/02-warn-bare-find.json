@@ -1,0 +1,6 @@
+{
+  "name": "warns on a bare .find() in a repository file",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "src/adapters/user.repository.ts", "content": "export const getUser = (id) => coll.find({ _id: id }).toArray();" } },
+  "expect_exit": 0,
+  "expect_stdout_contains": ["mongo-lint", ".find("]
+}

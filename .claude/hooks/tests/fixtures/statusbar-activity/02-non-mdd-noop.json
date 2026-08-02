@@ -1,0 +1,6 @@
+{
+  "name": "no .mdd workspace means no write and clean exit",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": "a.ts" } },
+  "env": { "MDD_DIR": ".claude/hooks/tests/fixtures/statusbar-activity/no-such-dir" },
+  "expect_exit": 0
+}

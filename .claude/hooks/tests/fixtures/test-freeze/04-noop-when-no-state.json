@@ -1,0 +1,6 @@
+{
+  "name": "no-op when there is no active phase state",
+  "stdin": { "tool_name": "Edit", "tool_input": { "file_path": "tests/auth.test.ts" } },
+  "env": { "MDD_STATE": ".claude/hooks/tests/fixtures/test-freeze/data/does-not-exist.json" },
+  "expect_exit": 0
+}

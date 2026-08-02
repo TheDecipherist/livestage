@@ -1,0 +1,5 @@
+{
+  "name": "a non-source file type is ignored",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": "assets/logo.svg", "content": "— dash in an svg" } },
+  "expect_exit": 0
+}

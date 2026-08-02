@@ -1,0 +1,6 @@
+{
+  "name": "writes under .ai_temp are always allowed on main, even before gitignore exists",
+  "stdin": { "tool_name": "Write", "tool_input": { "file_path": ".ai_temp/scratch-notes.md" } },
+  "env": { "MDD_BRANCH": "main", "MDD_DIR": ".claude/hooks/tests/fixtures/branch-guard/data-mdd", "MDD_REPO_ROOT": "." },
+  "expect_exit": 0
+}

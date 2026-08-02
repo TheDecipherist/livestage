@@ -1,0 +1,7 @@
+{
+  "name": "clean staged code passes silently",
+  "stdin": { "hook_event_name": "Stop" },
+  "env": { "MDD_SECRETS_REPO": ".claude/hooks/tests/fixtures/verify-no-secrets/data-clean" },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": ["BLOCKED"]
+}
