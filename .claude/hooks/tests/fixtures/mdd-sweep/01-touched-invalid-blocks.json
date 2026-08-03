@@ -1,0 +1,20 @@
+{
+  "name": "blocks the stop when a doc touched this session fails validation",
+  "stdin": {
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  "env": {
+    "MDD_DIR": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-bad",
+    "MDD_DOCS": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-bad/docs",
+    "MDD_SWEEP_TOUCHED": "bad.md",
+    "MDD_SRC_ROOT": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-bad"
+  },
+  "expect_exit": 0,
+  "expect_stdout_contains": [
+    "decision",
+    "block",
+    "fail schema validation",
+    "empty test_files"
+  ]
+}

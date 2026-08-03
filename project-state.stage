@@ -1,0 +1,57 @@
+@read "package.json" path="name" label="pkg_name" visible="false" /
+
+# {{ pkg_name }}: project state
+
+Live-rendered from `.mdd/docs/*.md`, never hand-updated. Pass one or more
+feature ids to scope this to just those features and their direct
+dependency neighborhood: `livestage render project-state.stage --args
+"17-source-directives"` or `--args "17-source-directives,18-compute-directives"`
+for several. No `--args` at all renders the whole project.
+
+@if args == ''
+## Catalog
+
+@list ".mdd/docs/*.md" fields="id,title,type,status,phase,tags,depends_on" | @render type="table" /
+
+## Dependency graph
+
+@graph target=".mdd/docs/*.md" format="mermaid" label="deps" /
+
+Nodes: {{ deps._nodes }}. Edges: {{ deps._edges }}. Cycles: {{ deps._cycles }}. Broken edges: {{ deps._broken }}.
+
+## Open work
+
+@list ".mdd/docs/*.md" where="status != 'complete'" fields="id,title,status,phase" | @render type="table" /
+
+## Open known issues
+
+@list ".mdd/docs/*.md" where="known_issues.length > 0" fields="id,known_issues" | @render type="table" /
+
+## Consumer-callable surfaces
+
+@list ".mdd/docs/*.md" where="primitives.length > 0" fields="id,primitives" | @render type="table" /
+
+## Test coverage gaps
+
+@list ".mdd/docs/*.md" where="typeof test_files === 'undefined' || test_files.length == 0" fields="id,type,title" | @render type="table" /
+@if-end
+
+@if args != ''
+## Scoped to: {{ args }}
+
+### The target feature(s)
+
+@list ".mdd/docs/*.md" where="args.split(',').includes(id)" fields="id,title,type,status,phase,tags,depends_on" | @render type="table" /
+
+### What depends on them
+
+@list ".mdd/docs/*.md" where="depends_on.some(d => args.split(',').includes(d))" fields="id,title,depends_on" | @render type="table" /
+
+### Their own open known issues
+
+@list ".mdd/docs/*.md" where="args.split(',').includes(id) && known_issues.length > 0" fields="id,known_issues" | @render type="table" /
+
+### Their consumer-callable surfaces
+
+@list ".mdd/docs/*.md" where="args.split(',').includes(id) && primitives.length > 0" fields="id,primitives" | @render type="table" /
+@if-end

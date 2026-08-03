@@ -18,12 +18,30 @@ Messaging: the status lines are the user's window into this run. Print exactly o
 plain `[wave N/4] ...` line at the start of each step below, then work silently.
 During PE3 also print one line per feature, `[wave 3/4] Feature K of T: <slug>
 (building, phase N/7)`, updated as the inner build advances phases. Questions use a
-`WAITING ON YOU` block with numbered options, never an open-ended stop. End with a
+`WAITING ON YOU` line, with the choices presented through the AskUserQuestion tool so the user picks with the arrow keys and enter, NEVER a typed-answer prose prompt. The recommended option is always FIRST and labeled "(Recommended)". Numbered text options are the fallback only when the tool is unavailable (headless or unattended runs). Never an open-ended stop. End with a
 DONE block: features built, tests green, demo-state, next action.
-Status bar mirror: alongside each step line run
+Micro-status for a wave: the label always carries feature K/T plus the inner
+build's live action, e.g. `set wave 3 4 "F3/7 21-cache: block 2/3
+cache/store.ts"`, `set wave 3 4 "F3/7 21-cache: suite green, merging"`; during
+parallel batches, the batch view: `set wave 3 4 "batch 2: 3 builders running,
+1 green"`.
+
+Task checklist shape for a wave: create it at PE1 with the four PE steps, then
+after PE1 reads the wave add one entry per feature in build order; a feature's
+entry goes in_progress when its build starts and checked when it passes the PE3
+completion gate. The inner builds never touch the list (wrapper owns it); under
+an import-spec handoff the import's list already exists, add this wave's
+features to IT instead of creating one.
+
+Status bar mirror: at PE1 run `node .claude/hooks/lib/statusbar.cjs run-start wave` ONLY when the user invoked this skill directly; under an import-spec handoff the import's run is already open and owns the timer, do not run-start. Whenever stopping for user input (any WAITING ON YOU), first run `node .claude/hooks/lib/statusbar.cjs pause` so waiting time never counts as run time; the timer resumes automatically on the next `set` after the answer. When the run completes, the freezing `done <flow>`/`run-done` call PRINTS `MDD <run> completed in <elapsed>`: repeat that line VERBATIM as the very LAST user-visible line of the run, after everything else in the DONE block, always. Task checklist, always: at run start create the session task list (TodoWrite / the native task tool) with one entry per step of this skill, named exactly like the Say lines; mark the current entry in_progress and check each one off AT the moment its step completes, so the full plan, what is done, and what is running are visible the whole run. Same ownership rule as the timer: the user-invoked wrapper creates the list; a skill executing inside another MDD flow NEVER creates or replaces it, the wrapper's list already carries that work as an entry. Micro-status: the checklist is the broad strokes; the status bar label is the LIVE one. Between Say lines, refresh it (`set <flow> <N> <T> "<msg>"`, same phase numbers) every time the concrete action changes: dispatching agents, reading a file, writing a specific file, running the suite, gate iteration K, waiting on a command. Present tense, specific, short (under ~48 chars), e.g. "writing tests/auth.test.ts", "suite run 2, 3 red", "wiring routes/session.ts". A label that sits unchanged through many actions reads as hung; the set call is near-free, refresh it liberally. Then alongside each step line run
 `node .claude/hooks/lib/statusbar.cjs set wave <N> 4 "<label>"`; during PE3 update it
 per feature (`set wave 3 4 "Feature K/T: <slug>"`). On completion `done wave`, on
-abort `clear`.
+abort `clear`, on a BLOCKED stop `run-done` (the timer freezes where the run
+stopped). Timer ownership is enforced by the statusbar lib, not by discipline: one
+run = one user-initiated process. A standalone wave's timer starts at PE1 and
+freezes at `done wave`; the inner builds' own statusbar calls are absorbed and
+never reset it; under an import-spec handoff the timer spans import plus every
+wave and only the final `run-done` freezes it.
 
 ## PE1, load and validate
 Say: `[wave 1/4] Validating wave, initiative, hashes, and dependencies.`
@@ -60,6 +78,7 @@ choice, a file placement, a test-shape call, an ambiguous doc line with one obvi
 sensible reading, a dependency version pin), writing each call to the manifest under a
 `## Judgment log` heading (what came up, what was chosen, why, which doc line). STOP
 as BLOCKED, statusbar included, for anything that could genuinely mess up the build:
+(freeze the timer with `statusbar.cjs run-done` as part of any BLOCKED stop):
 a gate that will not pass within its iteration budget, a contract violation, an
 entry-surface or boundary test that cannot be made to pass, a business rule whose
 scope would have to be narrowed (the silent-narrowing lesson), anything destructive
@@ -117,7 +136,14 @@ manifest, flip its `wave_status: active` in the wave doc, then ACTUALLY BUILD it
 feature does not build it: the manifest and status flips are bookkeeping around the
 build, never a substitute for it. To build it, read `.claude/skills/build/SKILL.md` and
 execute that build flow (Phases 1 to 7) at the chosen level for this feature. The feature
-doc already exists from planning, so Phase 3 confirms it rather than rewriting, but Phases
+doc already exists from planning, so Phase 3 confirms it rather than rewriting, with one
+hard exception: "confirm, don't rewrite" NEVER means "skip what was never filled". Any
+fact-field that is empty or absent on the planned doc (`test_files` is the proven case,
+seeding skills cannot know it; check `source_files`/`routes`/`models`/`depends_on` the
+same way) gets its discovery run for that field specifically, right here. This exact
+sentence once read as permission to skip Phase 3 wholesale, and 28 of 48 docs in a real
+project completed with empty `test_files` while their own prose cited the tests by name.
+Then Phases
 4 to 7 run in full: failing tests and the Red Gate, the block plan, implement to the
 Green Gate (this is where the code listed in `source_files` is actually written to disk),
 then verify against the real runtime. A COMPONENT that finishes the flow with no new code
@@ -126,8 +152,11 @@ on disk was NOT built, do not mark it complete. A SPEC implements nothing (empty
 COMPONENTs that depend on it, then mark it done. Then the PE3 completion gate, a hard gate before
 `[x]`: every `source_files` path exists on disk (else `[!]` and implement or document the
 gap), every `satisfies_contracts` entry is wired not pending (find the call site, verify,
-set verified_at), and the doc `status: complete`/`phase: all`/`last_synced` is actually
-written. Mark `[x]` (or `[!]` with a note), then offer to continue or pause (unattended:
+set verified_at), `test_files` lists the test files Phases 4 to 6 ACTUALLY wrote (from
+the real diff, never the planning-time guess; the validator hard-rejects a complete
+COMPONENT with source files and empty test_files, and the only escape is a loud
+`[deferred] no independently testable behavior: <why>` known_issues entry), and the doc
+`status: complete`/`phase: all`/`last_synced` is actually written. Mark `[x]` (or `[!]` with a note), then offer to continue or pause (unattended:
 continue, one progress line, no offer). Git inside a wave, per feature, done
 automatically in every mode: build each feature on its own branch cut from the WAVE
 branch (`feat/<feature-slug>`), and on completion commit (conventional message) and

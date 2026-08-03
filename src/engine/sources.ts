@@ -56,10 +56,23 @@ function preprocessArrayEmptiness(expr: string): string {
     .replace(/([A-Za-z_][A-Za-z0-9_.]*)\s*==\s*\[\s*\]/g, '$1.length === 0')
 }
 
+// An array item can itself be an object now that parseFrontmatterRow
+// parses block-list-of-objects fields (primitives, satisfies_contracts,
+// integration_contracts) into real objects rather than raw strings.
+// Array.prototype.join falls back to a plain object's default toString,
+// "[object Object]", so each object item is rendered as its own
+// space-separated key=value pairs instead.
+function stringifyListItem(item: unknown): string {
+  if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+    return Object.entries(item as Record<string, unknown>).map(([k, v]) => `${k}=${v}`).join(' ')
+  }
+  return String(item ?? '')
+}
+
 function frontmatterRowToTabLine(row: Record<string, unknown>, fields: string[]): string {
   return fields.map(f => {
     const v = row[f]
-    return Array.isArray(v) ? v.join(', ') : String(v ?? '')
+    return Array.isArray(v) ? v.map(stringifyListItem).join(', ') : String(v ?? '')
   }).join('\t')
 }
 

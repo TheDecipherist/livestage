@@ -22,67 +22,7 @@ const LOCATOR_RE = /^\S+\.[A-Za-z0-9]+:(\d+|:.+)$/;
 const unquote = (s) => s.replace(/^["']|["']$/g, '').trim();
 const asArr = (v) => (Array.isArray(v) ? v : []);
 
-// A YAML block under a key: either a scalar list (`- a`) or a list of objects
-// (`- k: v` then indented `k2: v2`). Returns strings for the former, objects
-// for the latter. Used for source_files/tags (scalars) and the contract fields
-// (objects).
-function parseBlock(blockLines) {
-  const items = [];
-  let cur = null;
-  for (const raw of blockLines) {
-    const dash = raw.match(/^\s*-\s+(.*)$/);
-    if (dash) {
-      const kv = dash[1].match(/^([A-Za-z0-9_]+):\s*(.*)$/);
-      if (kv) {
-        cur = {};
-        cur[kv[1]] = unquote(kv[2]);
-        items.push(cur);
-      } else {
-        items.push(unquote(dash[1]));
-        cur = null;
-      }
-    } else {
-      const kv = raw.match(/^\s+([A-Za-z0-9_]+):\s*(.*)$/);
-      if (kv && cur && typeof cur === 'object') cur[kv[1]] = unquote(kv[2]);
-    }
-  }
-  return items;
-}
-
-function parseFrontmatter(text) {
-  if (!text.startsWith('---')) return null;
-  const end = text.indexOf('\n---', 3);
-  if (end === -1) return null;
-  const lines = text.slice(3, end).replace(/^\r?\n/, '').split(/\r?\n/);
-  const fm = {};
-  const present = new Set();
-  let i = 0;
-  while (i < lines.length) {
-    const m = lines[i].match(/^([A-Za-z0-9_]+):\s*(.*)$/);
-    if (!m) { i++; continue; }
-    const key = m[1], val = m[2];
-    present.add(key);
-    if (val === '') {
-      const block = [];
-      let j = i + 1;
-      while (j < lines.length && (/^\s+\S/.test(lines[j]) || lines[j].trim() === '')) {
-        if (lines[j].trim() !== '') block.push(lines[j]);
-        j++;
-      }
-      fm[key] = parseBlock(block);
-      i = block.length ? j : i + 1;
-      continue;
-    } else if (val.startsWith('[')) {
-      const inner = val.replace(/^\[/, '').replace(/\]$/, '').trim();
-      fm[key] = inner ? inner.split(',').map(unquote).filter(Boolean) : [];
-      i++;
-      continue;
-    }
-    fm[key] = unquote(val);
-    i++;
-  }
-  return { fields: fm, present };
-}
+const { parseFrontmatter } = require('./fm-parse.cjs');
 
 function loadAllDocs() {
   const map = {};
@@ -104,6 +44,11 @@ function validate(targetPath) {
   const parsed = parseFrontmatter(text);
   if (!parsed) return { errors: ['no YAML frontmatter block (every feature doc needs one)'], warnings };
   const fm = parsed.fields, present = parsed.present;
+  // NOTHING drops silently: any line the parser could not place is a hard
+  // error, because a skipped line is a silently absent field and everything
+  // downstream then reasons about a doc that is not the doc on disk.
+  for (const pr of parsed.problems)
+    errors.push(`frontmatter line ${pr.line} not parseable (${pr.why}): ${String(pr.text).trim()}`);
   const fileId = path.basename(targetPath).replace(/\.md$/, '');
 
   for (const k of REQUIRED) if (!present.has(k)) errors.push(`missing required field: ${k}`);
@@ -168,6 +113,73 @@ function validate(targetPath) {
     }
   }
 
+  // --- test_files completion gate (the livestage lesson: 28 of 48 complete
+  // COMPONENT docs had real tests on disk, cited by name in their own
+  // Acceptance Criteria prose, and an empty structured field pointing at
+  // them). The producing steps (build Phase 7, plan-execute completion) are
+  // instructions; this is the enforcement. A COMPONENT that implements real
+  // source files cannot CLAIM completion while test_files is empty, because
+  // the ground truth exists by then: Phase 4 wrote the red-gate files and
+  // Phase 6 made them green, so an empty field at completion time is always
+  // a recording failure, never a timing one. Same shape as the
+  // SPEC/source_files and complete-while-pending-contract blocks above.
+  // The ONLY way past it is loud: a tagged known_issues entry that mentions
+  // tests. "[deferred] no independently testable behavior: <why>" for the
+  // genuine decision, or "[gap] test_files unknown, tests undiscovered" when
+  // /upgrade migrates a legacy doc whose tests it cannot locate. Both land in
+  // the audit's Open Items Backlog, so neither is ever silent. A schema
+  // exception with no entry does not exist.
+  const kiEntries = asArr(fm.known_issues).filter((k) => typeof k === 'string');
+  const testsDeferred = kiEntries.some((k) => /\[(deferred|gap)\]/i.test(k) && /\btests?\b|\btestab|test_files/i.test(k));
+  if (
+    fm.type === 'COMPONENT' &&
+    asArr(fm.source_files).length > 0 &&
+    ['complete', 'in_progress'].includes(fm.status) &&
+    asArr(fm.test_files).length === 0 &&
+    !testsDeferred
+  ) {
+    errors.push(
+      `COMPONENT "${fileId}" is ${fm.status} with ${asArr(fm.source_files).length} source_files but empty test_files; ` +
+      `list the real test files (Phase 4/6 wrote them, they exist on disk), or record a ` +
+      `known_issues "[deferred] no independently testable behavior: <why>" entry if that is genuinely true`
+    );
+  }
+  // Disk-existence gate: a doc CLAIMING completion cannot point at files that
+  // are not there. Planned/active docs legitimately list files that do not
+  // exist yet (MDD writes the doc before the code), so this only fires once
+  // the doc says the work is done. Kills "listed but imaginary" the same way
+  // the empty-test_files gate kills "real but unlisted". MDD_SRC_ROOT is the
+  // fixture seam; the real runtime resolves from the project root.
+  const SRC_ROOT = process.env.MDD_SRC_ROOT || '.';
+  if (['complete', 'in_progress'].includes(fm.status)) {
+    for (const f of asArr(fm.source_files).filter((s) => typeof s === 'string'))
+      if (!fs.existsSync(path.join(SRC_ROOT, f)))
+        errors.push(`source_files "${f}" does not exist on disk; a ${fm.status} doc cannot list phantom files`);
+    for (const f of asArr(fm.test_files).filter((s) => typeof s === 'string'))
+      if (!fs.existsSync(path.join(SRC_ROOT, f)))
+        errors.push(`test_files "${f}" does not exist on disk; a ${fm.status} doc cannot list phantom tests`);
+  }
+
+  // Drift companion (warn, not block): test paths cited in the body prose
+  // (Acceptance Criteria, Bug Fixes) that the structured field does not
+  // carry. Prose is where the truth kept landing while the field stayed
+  // empty; surface the gap every time the doc is written.
+  {
+    const bodyStart = text.indexOf('---', 4);
+    const bodyText = bodyStart === -1 ? '' : text.slice(bodyStart + 3);
+    const cited = new Set();
+    const re = /[\w@./-]*[\w-]\.(?:test|spec)\.[a-z]{1,4}\b/g;
+    let m;
+    while ((m = re.exec(bodyText)) !== null) cited.add(m[0]);
+    const tf = asArr(fm.test_files).filter((t) => typeof t === 'string');
+    const missing = [...cited].filter((c) => {
+      const base = c.split('/').pop();
+      return !tf.some((t) => t === c || t.endsWith('/' + base) || t.split('/').pop() === base);
+    });
+    if (missing.length)
+      warnings.push(`body cites test file(s) not listed in test_files: ${missing.slice(0, 6).join(', ')}${missing.length > 6 ? ` (+${missing.length - 6} more)` : ''}; the structured field is what tools read, prose is not`);
+  }
+
   if (Array.isArray(fm.tags))
     for (const t of fm.tags)
       if (typeof t === 'string' && (/\.(ts|tsx|js|jsx|md|json|sh)$/.test(t) || t.includes('/')))
@@ -181,7 +193,7 @@ function validate(targetPath) {
   // convention, not by schema.
   const prims = asArr(fm.primitives);
   for (const p of prims) {
-    if (!p || typeof p !== 'object') { errors.push('primitives entries must be objects with name and kind (block style, not inline braces)'); continue; }
+    if (!p || typeof p !== 'object') { errors.push('primitives entries must be objects with name and kind'); continue; }
     if (!p.name || typeof p.name !== 'string') errors.push('primitives entry missing name');
     if (!p.kind || typeof p.kind !== 'string') errors.push(`primitives entry "${p.name || '?'}" missing kind`);
     else if (!/^[a-z][a-z0-9-]*$/.test(p.kind)) errors.push(`primitives kind "${p.kind}" must be lowercase kebab-case (e.g. directive, cli-verb, endpoint, driver, ui-component)`);
@@ -261,4 +273,7 @@ function validate(targetPath) {
   return { errors, warnings };
 }
 
-process.stdout.write(JSON.stringify(validate(process.argv[2])));
+// Exported so mdd-sweep (the end-of-turn corpus sweep) can validate every doc
+// in ONE node process instead of one process per doc. CLI behavior unchanged.
+module.exports = { validate };
+if (require.main === module) process.stdout.write(JSON.stringify(validate(process.argv[2])));

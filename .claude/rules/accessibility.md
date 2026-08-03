@@ -43,6 +43,36 @@ does not fire on Enter/Space, and is announced as nothing. Same for `<nav>`, `<u
 Contrast 4.5:1 (3:1 large), never convey meaning by color alone, never disable
 zoom, respect `prefers-reduced-motion`, announce dynamic changes with `aria-live`.
 
+## Third-party components: their rendered colours are yours
+Importing a vendor stylesheet (an editor, date picker, chart, auth widget)
+makes its rendered colours your problem. Theming a wrapper element is NOT
+enough: vendor rules routinely set `color`, `fill`, and `stroke` on
+descendants directly through hashed class names, so the parent's colour is
+never inherited. Icon glyphs are the usual casualty, a themed button looks
+correct while the glyphs inside it ship near-invisible.
+- Force `fill: currentColor` and `stroke: currentColor` on the vendor's SVGs
+  (`svg`, `svg *` inside the component's wrapper) so glyphs follow their
+  control's state instead of needing a colour per state.
+- A vendor-styled surface is verified RENDERED, in BOTH colour schemes.
+  Reading the markup proves nothing, the colour is not in the markup, it is
+  in node_modules.
+- Disabled states still clear the text floor. "Quieter" is not "invisible".
+
+## Contrast is verified rendered, never by a conformance spec
+The 4.5:1 requirement above is enforced by the rendered contrast gate (build
+Phase 7 scaffolds and runs `tests/a11y/contrast.spec.ts`, both colour
+schemes, violations fail). Deliberately NO conformance spec exists for
+contrast, do not add one: a spec that greps colour classes passes cleanly in
+exactly the failing case (the colour lives in a vendor stylesheet, the
+project wrote none), and a check that reports green while asserting nothing
+about the failure mode is worse than no check. The only honest write-time
+check here is presence, not ratio: a page importing a vendor stylesheet must
+be listed in the contrast gate's ROUTES.
+
 ## Test it
 A keyboard-only pass (Tab, Enter/Space/Escape, watch the focus ring) plus a real
-screen reader on key flows. Automated tools catch only a fraction.
+screen reader on key flows, plus the rendered contrast gate in both colour
+schemes. Automated static tools catch only a fraction; rendered checks catch
+what they cannot. Neighbours of this failure shape, also only settleable
+rendered or running: motion under prefers-reduced-motion, focus order, and
+heading structure as actually announced.

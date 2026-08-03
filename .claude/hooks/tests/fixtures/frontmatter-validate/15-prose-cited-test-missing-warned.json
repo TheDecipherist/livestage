@@ -1,0 +1,22 @@
+{
+  "name": "warns when body prose cites a test file the test_files field does not carry",
+  "stdin": {
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": ".claude/hooks/tests/fixtures/frontmatter-validate/docs/tf-prose-drift.md"
+    }
+  },
+  "env": {
+    "MDD_DIR": ".claude/hooks/tests/fixtures/frontmatter-validate",
+    "MDD_DOCS": ".claude/hooks/tests/fixtures/frontmatter-validate/docs",
+    "MDD_SRC_ROOT": ".claude/hooks/tests/fixtures/frontmatter-validate"
+  },
+  "expect_exit": 0,
+  "expect_stdout_contains": [
+    "body cites test file(s) not listed in test_files",
+    "tf-drift-cli.test.ts"
+  ],
+  "expect_stdout_not_contains": [
+    "decision"
+  ]
+}

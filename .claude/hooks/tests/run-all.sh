@@ -100,6 +100,17 @@ for dir in "$FIXTURES"/*/; do
   done
 done
 
+# ---- Frontmatter parser battery (one parser, every writing style) ----
+echo "== frontmatter-parser =="
+if command -v node >/dev/null 2>&1; then
+  pout="$(node "$HOOKS_DIR/tests/parser-cases.cjs" 2>&1)"; prc=$?
+  echo "$pout" | grep -E "^  (PASS|FAIL)"
+  pp=$(echo "$pout" | grep -c "^  PASS" || true)
+  pf=$(echo "$pout" | grep -c "^  FAIL" || true)
+  PASS=$((PASS + pp)); FAIL=$((FAIL + pf))
+  [ "$prc" -ne 0 ] && FAILED_NAMES+=("frontmatter-parser (see above)")
+fi
+
 # ---- Node lib smoke tests (mdd-notes2 1.1/1.2) ----
 # Every .cjs lib must load and exit cleanly INSIDE a "type":"module" project,
 # because that is the environment that killed all of them once: the host

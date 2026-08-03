@@ -70,6 +70,15 @@ known_issues:
     source_files (17, 18, 21, 26, 35, 36), so extraction needs its own
     scoped pass with all six re-verified, not a side effect of a two-bug
     parsing/interpolation fix here."
+  - "Found live while building project-state.stage, a real .stage document
+    using where=/fields= scoped by --args: frontmatterRowToTabLine
+    (sources.ts) rendered an object-list field (primitives,
+    satisfies_contracts, integration_contracts) in a fields= table cell as
+    repeated \"[object Object]\", Array.prototype.join falling back to a
+    plain object's default toString. Only surfaced once the earlier fix
+    made these fields real objects instead of raw strings; fixed with a
+    stringifyListItem helper that renders an object item as its own
+    space-separated key=value pairs."
 ---
 
 # Frontmatter Query
@@ -214,6 +223,22 @@ each value read from that document's schema-validated frontmatter.
     not `where="id == '{{ arg0 }}'"`. An unset arg is an empty string, so
     a query referencing it correctly matches nothing rather than silently
     matching everything.
+11. Every matched file's row is spread as bare top-level variables in the
+    `where=` VM context, not as properties of an object, so a field this
+    file's frontmatter never declared is an UNDECLARED variable, not
+    `undefined`: referencing it throws (caught, evaluates to no-match),
+    same as `whereMatches`' existing catch-all behavior. This is silently
+    correct for the common case, "match only when a field is non-empty"
+    (`known_issues.length > 0`) naturally excludes docs that never
+    declared the field at all, exactly as wanted. It is a real footgun
+    for the opposite case, "match when a field is empty OR absent"
+    (`test_files.length == 0`, wanting a coverage-gap query to also catch
+    docs that never declared `test_files`): a bare `!test_files` still
+    throws, since referencing an undeclared variable happens before `!`
+    gets to run. `typeof field === 'undefined' || field.length == 0` is
+    the correct form, `typeof` being the one JS operator that reads an
+    undeclared variable safely. Found live writing `project-state.stage`'s
+    "coverage gaps" query, which silently excluded 35 of 48 real docs.
 
 ## Acceptance Criteria
 

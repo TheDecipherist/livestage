@@ -6,6 +6,8 @@ initiative: none
 wave: test-w1
 source_files:
   - src/directives/count.ts
+test_files:
+  - tests/directives/count.test.ts
 status: complete
 phase: all
 last_synced: 2026-08-02

@@ -19,42 +19,10 @@ const DOCS = process.env.MDD_DOCS || path.join('.mdd', 'docs');
 const OUT = process.env.MDD_CONNECTIONS || path.join('.mdd', 'connections.md');
 const DATE = process.env.MDD_GEN_DATE || new Date().toISOString().slice(0, 10);
 
-// Minimal YAML frontmatter parser: scalars, inline [a, b] lists, and block "- x" lists.
-// Enough for the connection fields; it never needs nested objects.
+const { parseFrontmatter: fmParse } = require('./fm-parse.cjs');
 function parseFrontmatter(text) {
-  if (!text.startsWith('---')) return {};
-  const end = text.indexOf('\n---', 3);
-  if (end === -1) return {};
-  const lines = text.slice(3, end).replace(/^\r?\n/, '').split(/\r?\n/);
-  const fm = {};
-  const unquote = (s) => s.replace(/^["']|["']$/g, '').trim();
-  let i = 0;
-  while (i < lines.length) {
-    const m = lines[i].match(/^([A-Za-z0-9_]+):\s*(.*)$/);
-    if (!m) { i++; continue; }
-    const key = m[1];
-    const val = m[2];
-    if (val === '') {
-      const items = [];
-      let j = i + 1;
-      while (j < lines.length && /^\s*-\s+/.test(lines[j])) {
-        items.push(unquote(lines[j].replace(/^\s*-\s+/, '').trim()));
-        j++;
-      }
-      fm[key] = items.length ? items : '';
-      i = items.length ? j : i + 1;
-      continue;
-    } else if (val.startsWith('[')) {
-      const inner = val.replace(/^\[/, '').replace(/\]$/, '').trim();
-      fm[key] = inner ? inner.split(',').map((s) => unquote(s)).filter(Boolean) : [];
-    } else {
-      fm[key] = unquote(val);
-      i++;
-      continue;
-    }
-    i++;
-  }
-  return fm;
+  const r = fmParse(text);
+  return r ? r.fields : {};
 }
 
 const asList = (v) => (Array.isArray(v) ? v : v ? [v] : []);

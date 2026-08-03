@@ -1,7 +1,6 @@
 ---
 name: build
-description: Document and build a feature the MDD way. Analyze in parallel, trace data flow, write the feature doc, generate failing tests, plan in blocks, implement to green, verify against the real runtime. Invoke with /build followed by the feature description.
-disable-model-invocation: true
+description: Document and build a feature the MDD way. Analyze in parallel, trace data flow, write the feature doc, generate failing tests, plan in blocks, implement to green, verify against the real runtime. Invoke with /build followed by the feature description. AUTO-INVOKE in an MDD project (an .mdd/ workspace exists) whenever the user asks to add, implement, create, or build a NEW feature or capability in plain language without naming a skill, so nothing gets built outside the gates; model-invoked entry uses the streamlined flow (one consolidated question, automated gate level, same gates). Do NOT auto-invoke for fixing broken behavior in an existing feature (that is /bug), for chores, config changes, or small refactors (that is /task), when already executing inside /plan-execute, or when the user explicitly asks for a quick ad-hoc change outside MDD (confirm once, then respect it).
 user-invocable: true
 argument-hint: "[feature description]"
 arguments: [feature]
@@ -20,6 +19,36 @@ Integration). Never skip a gate. The Branch Guard hook blocks edits on main, and
 Test Freeze hook blocks test edits once phase is `implement`, so those are enforced,
 not optional. Ownership default: my code is wrong until proven otherwise.
 
+## Entry: user-invoked vs model-invoked (two flows, one set of gates)
+
+How this skill was entered decides the INTERACTION contract, never the quality bar.
+The phases and gates below run identically in both flows; what changes is how often
+the user is stopped.
+
+USER-INVOKED (`/build ...`): the user opted into the full ceremony. Run the flow
+exactly as written below, every gate presents and waits.
+
+MODEL-INVOKED (the user asked for a feature in plain language and this skill
+auto-loaded): the user asked for the OUTCOME, not the ceremony. Open with exactly
+ONE consolidated interaction, a single AskUserQuestion call that covers:
+  1. The routing, first question, so a misroute costs one keypress: "Build this
+     through MDD?" with options `Full MDD build (Recommended)` / `Quick ad-hoc
+     change, skip MDD this once` / `This is a bug fix, route to /bug` /
+     `This is a chore, route to /task`.
+  2. Only the Phase 1 questions that are genuinely unanswerable from the request
+     and the codebase scan (dependencies, storage, endpoints when unclear). Infer
+     everything inferable; do not re-ask what the request already said.
+Then run Phases 0 to 7 at AUTOMATED level: every gate still RUNS and still
+hard-blocks on failure, but a clean gate presents its one-line result and proceeds
+without waiting (data-flow gate, doc confirmation, and plan confirmation show their
+output and continue when nothing is contested; the user watching can always
+interrupt). Stops that remain stops in both flows: any gate FAILURE or contested
+finding, the 5-iteration budget, scope growth beyond what was asked, anything the
+judgment protocol classifies as blocking, and the Phase 7 commit/merge offer (git
+stays consent-based). If the user picked ad-hoc: make the change without MDD,
+say once what was skipped (no doc, no gates, drift tracking will not see it), and
+do not relitigate.
+
 ## Messaging protocol (user-facing)
 
 The status lines are the user's window into this build. At the START of every phase
@@ -28,14 +57,30 @@ print exactly one plain line, `[build N/7] <what is happening>`, then work silen
 many and what for, and one line reports the headline result when they return, e.g.
 `[build 1/7] Explored: lands in packages/api, 2 related features, 4 rules apply.`
 Every gate reports its result on one line: `[build] GATE PASSED, Red Gate: 14/14 new
-tests fail as required.` Whenever input is required, print a block starting
-`[build] WAITING ON YOU, <gate or decision>` followed by numbered options, and stop
-there; never an open-ended stop and never a question buried in prose. On completion
+tests fail as required.` Whenever input is required, print one line
+`[build] WAITING ON YOU, <gate or decision>`, then present the choices through the
+AskUserQuestion tool so the user picks with the arrow keys and enter, recommended
+option FIRST and labeled "(Recommended)", and stop there; never a typed-answer prose
+prompt, never an open-ended stop, never a question buried in prose (numbered text
+options only as the fallback when the tool is unavailable, headless or unattended). On completion
 print a short DONE block: doc path, files written, test counts, gates passed,
 integration result, next action. If blocked: `[build] BLOCKED, <reason>`, the
-evidence, and numbered options.
+evidence, and the ways forward via AskUserQuestion, recommended first.
 
-Status bar mirror: alongside EVERY phase `Say:` line also run
+Micro-status examples for build (phase number stays, message moves):
+`set build 1 7 "3 explore agents out"`, `set build 4 7 "skeleton
+tests/session.test.ts (9 tests)"`, `set build 4 7 "Red Gate: running new
+tests"`, `set build 6 7 "block 2/4: services/session.ts"`, `set build 6 7
+"suite run 2, 1 red"`, `set build 7 7 "live probe: POST /api/v1/login"`.
+
+Task checklist shape for build: create it at Phase 0 with one entry per phase
+(0 branch fit, 1 understand, 2 data flow gate, 3 feature doc, 4 skeletons + Red
+Gate, 5 block plan, 6 implement + Green Gate, 7 verify + report); when the
+Phase 5 plan is confirmed, add one entry per implementation block under phase 6
+and check each block off as it goes green. Inside /plan-execute or /bug, do NOT
+create a list, the wrapper owns it.
+
+Status bar mirror: at the very first Say line run `node .claude/hooks/lib/statusbar.cjs run-start build`, ONLY when the user invoked this build (directly or via plain-language routing); NEVER when executing inside /plan-execute or /bug, the outer run owns the timer. Whenever stopping for user input (any WAITING ON YOU), first run `node .claude/hooks/lib/statusbar.cjs pause` so waiting time never counts as run time; the timer resumes automatically on the next `set` after the answer. When the run completes, the freezing `done <flow>`/`run-done` call PRINTS `MDD <run> completed in <elapsed>`: repeat that line VERBATIM as the very LAST user-visible line of the run, after everything else in the DONE block, always. Task checklist, always: at run start create the session task list (TodoWrite / the native task tool) with one entry per step of this skill, named exactly like the Say lines; mark the current entry in_progress and check each one off AT the moment its step completes, so the full plan, what is done, and what is running are visible the whole run. Same ownership rule as the timer: the user-invoked wrapper creates the list; a skill executing inside another MDD flow NEVER creates or replaces it, the wrapper's list already carries that work as an entry. Micro-status: the checklist is the broad strokes; the status bar label is the LIVE one. Between Say lines, refresh it (`set <flow> <N> <T> "<msg>"`, same phase numbers) every time the concrete action changes: dispatching agents, reading a file, writing a specific file, running the suite, gate iteration K, waiting on a command. Present tense, specific, short (under ~48 chars), e.g. "writing tests/auth.test.ts", "suite run 2, 3 red", "wiring routes/session.ts". A label that sits unchanged through many actions reads as hung; the set call is near-free, refresh it liberally. Then alongside EVERY phase `Say:` line also run
 `node .claude/hooks/lib/statusbar.cjs set build <N> 7 "<phase label>"` (pre-approved,
 best-effort, silent), so the status bar tracks the build live. On completion run
 `node .claude/hooks/lib/statusbar.cjs done build`; on abort or handoff run
@@ -255,7 +300,7 @@ and enforce the size gate hard here (no file over the size limit, default 300 li
 Integration verification, by feature type from the frontmatter, quality gates passing
 is not the feature working:
 - Backend: start the server, run the real happy-path request (real HTTP, real DB, not mocked), watch logs, verify response shape and status match the doc, confirm DB state changed with a direct query, test one documented error case.
-- Frontend: open the page, verify the expected data is visible (not just "it loaded"), click through the flow, confirm the network calls and responses, check the console is clean, test an error state.
+- Frontend: open the page, verify the expected data is visible (not just "it loaded"), click through the flow, confirm the network calls and responses, check the console is clean, test an error state. Then the RENDERED CONTRAST GATE, mandatory, frontend integration is NOT verified without it having run: scaffold `tests/a11y/contrast.spec.ts` from the test-writer skill's `contrast-check.template.ts` if absent (deps: `@playwright/test`, `@axe-core/playwright`), list in ROUTES every page this feature touches PLUS every page mounting a third-party visual component (the diff merely mounting one counts), run it in BOTH color schemes, and FAIL the gate on any color-contrast violation, never warn. Static analysis structurally cannot do this job: the classic failure is a vendor stylesheet in node_modules setting fill/color through hashed classes, colors that exist nowhere in the project's own source (accessibility rule, third-party section).
 - Database: verify writes with a direct query (not the insert return), verify read shapes, confirm invalid data errors rather than failing silently, EXPLAIN the primary queries for scans.
 - Tooling: run against a real scenario, verify output matches the doc exactly, test each documented error case, confirm no unintended side effects.
 - Spec invariants: for any "cannot be overridden"/"always blocked"/"required" language, verify it is actually enforced in code and asserted in a test, and that a module the spec says enforces X is actually called at the call site, and every when-conditioned contract seam (for example a scope that must hold across a join) has a structural or suite assertion, not just prose.
@@ -286,7 +331,11 @@ WHOLE service, not the change:
 Then dispatch the review agents for the diff in ONE message as foreground parallel
 subagents: `code-reviewer` always, `security-reviewer` ALWAYS when the doc's
 `routes` field is non-empty (never "if warranted", absences and auth are exactly
-what judgment skips), plus `silent-failure-hunter`, `pr-test-analyzer`, and
+what judgment skips), `design-reviewer` ALWAYS when the diff touches `.tsx`,
+`.jsx`, `.vue`, `.svelte`, `.css`, `.scss`, or a design-token file (same
+never-"if warranted" rule: rendered-surface misses are exactly what judgment
+skips, and it verifies the contrast gate actually ran), plus
+`silent-failure-hunter`, `pr-test-analyzer`, and
 `performance-reviewer` if warranted. Run them foreground so they all
 return their findings together in this turn. Do NOT background them: Phase 7 cannot
 complete until the findings are in hand, and backgrounding drops the build into an async
@@ -296,6 +345,7 @@ implementation were wrong.
 
 Completion, if integration verified:
 - Contract gate: every `satisfies_contracts` entry must be `status: done`. For each, list every call site of the function with LSP `findReferences`; if the language server is unavailable, the gate must SAY it ran degraded on grep and record that in the doc, a degraded gate never reports itself as fully passed (`grep` under-matches here, an aliased import or a re-export hides a real caller, and a missed caller is a contract falsely marked satisfied), fall back to `grep -rn` only when no language server covers the file type. Every call site must invoke it (a contract wired in one layer but not another is not satisfied), set `verified_at` to the confirmed call site as a `path.ext:line` locator, never a date. For every entry whose `when` is a specific condition (not `always`), confirm a test exercises that exact condition and is in the running suite; a when-conditioned contract with no condition-specific test does NOT count as satisfied and blocks completion. A pending contract blocks completion. Confirm every `source_files` entry exists on disk.
+- Record `test_files` from reality, not from the Phase 3 prediction: list the test files this build actually wrote or touched (the Phase 4 skeletons plus anything added since; `git diff --name-only` against the branch base, filtered to test files, is the honest source) and write them into the doc's `test_files` field now, before the status flip. Phase 3's discovery was a guess made before the files existed; this is the moment the ground truth exists, so this is where it gets recorded. The validator hard-rejects a complete COMPONENT with real `source_files` and empty `test_files`, so a completion write that skips this step does not go through. A feature with genuinely no independently testable behavior records `[deferred] no independently testable behavior: <why>` in `known_issues` instead, out loud.
 - Set the doc `status: complete`, `phase: all`, `last_synced: today`. (Writing the doc regenerates `.mdd/connections.md` on its own, the connections-sync hook owns the map, no manual rebuild.)
 - Backward sweep, on every close: `grep -rn "<this feature's id>" .mdd/docs/` (and the waves). Any OTHER doc whose known_issues or body references this feature (a stub waiting on it, "blocked until NN lands") is listed in the close report as "docs waiting on this feature, now unblocked", and each gets its entry resolved or re-tagged now, not left for someone to happen upon. `depends_on` orders builds forward; nobody walks it backward unless this step does.
 - Every `known_issues` entry written during this build carries a tag: `[deferred]` (a decision was made not to do this now, with the one-line why) or `[gap]` (found, real, nobody decided anything yet). Untagged entries read as `[gap]`. This is what lets an audit distinguish "we chose not to" from "we forgot" later; without the tag the two are identical in a grep.
