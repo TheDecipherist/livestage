@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse } from 'livestage/parser'
 import { execute } from '../../../src/engine/engine.js'
+import { parseFrontmatterRow } from '../../../src/engine/frontmatter-utils.js'
+import { runRender } from '../../../src/cli/commands/render.js'
 
 // F-FM-QUERY (feature 36): @list where=/fields= over a glob queries each
 // matched file's frontmatter instead of listing directory entries. Built
@@ -67,6 +69,143 @@ describe('@list frontmatter query (F-FM-QUERY)', () => {
   it('a nested-array where= is refused with a warning pointing at @code, not a silent wrong answer', () => {
     const result = run('@list docs/*.stage where="satisfies_contracts[0].status == \'done\'" fields="id" /')
     expect(result.warnings.some(w => w.includes('nested-array') && w.includes('@code'))).toBe(true)
+  })
+})
+
+// F-FM-QUERY parsing/interpolation fixes: parseFrontmatterRow mishandled
+// several real YAML shapes found live against this project's own 48-doc
+// corpus (multi-line inline-bracket arrays, block-list continuation
+// lines), and where= had no way to reference --args/--var. Regression
+// cases below are the exact real docs the bugs were found in, not
+// synthetic minimal repros, so a fix that handles the synthetic case but
+// not the real shape still fails here. An earlier version of this fix
+// interpolated {{ }} into where= as TEXT before eval, a real, PoC-proven
+// JS-injection sink into whereMatches' runInNewContext (two independent
+// review passes reproduced arbitrary code execution via a crafted --args
+// value). The corrected design binds arg0/args/vars as real VM context
+// variables alongside the frontmatter row, never text-spliced into the
+// evaluated expression string: `where="id == arg0"`, not `where="id ==
+// '{{ arg0 }}'"`.
+describe('F-FM-QUERY parsing/interpolation fixes (amends feature 36)', () => {
+  it('a multi-line inline-bracket array parses as the full array, not a truncated scalar (regression: 13-cli-router.md shape)', () => {
+    const content = '---\nid: x\nsource_files: [src/cli/cli.ts, src/cli/index.ts, src/cli/commands/parse.ts,\n  src/cli/commands/render.ts, src/engine/engine.ts]\n---\nbody'
+    const row = parseFrontmatterRow(content)
+    expect(Array.isArray(row?.['source_files'])).toBe(true)
+    expect(row?.['source_files']).toEqual([
+      'src/cli/cli.ts', 'src/cli/index.ts', 'src/cli/commands/parse.ts',
+      'src/cli/commands/render.ts', 'src/engine/engine.ts',
+    ])
+  })
+
+  it('a closed inline array followed by trailing text on the same line does not extend accumulation into later fields (regression: found by review, distinct from the unclosed-array case)', () => {
+    const content = '---\nid: x\ntags: [a, b] # trailing note, not a supported comment but must not corrupt later fields\ntitle: Delta\nstatus: draft\n---\nbody'
+    const row = parseFrontmatterRow(content)
+    expect(row?.['tags']).toEqual(['a', 'b'])
+    expect(row?.['id']).toBe('x')
+    expect(row?.['title']).toBe('Delta')
+    expect(row?.['status']).toBe('draft')
+  })
+
+  it('an inline array that never closes falls back to a contained scalar on just that field, never swallowing later fields', () => {
+    const content = '---\nid: x\nbroken: [a, b\ntitle: Delta\nstatus: draft\n---\nbody'
+    const row = parseFrontmatterRow(content)
+    expect(row?.['title']).toBe('Delta')
+    expect(row?.['status']).toBe('draft')
+    expect(typeof row?.['broken']).toBe('string')
+  })
+
+  it('a block-list entry whose quoted text wraps across lines parses as the complete, untruncated string (regression: 22-pipe.md shape)', () => {
+    const content = '---\nid: x\nknown_issues:\n  - "RESOLVED (2026-08-02, post-initiative known_issues sweep): the\n    quoted-flag-lookalike limitation above is fixed. tokenize() now\n    returns clean results."\n---\nbody'
+    const row = parseFrontmatterRow(content)
+    const issues = row?.['known_issues'] as string[]
+    expect(issues[0]).toBe('RESOLVED (2026-08-02, post-initiative known_issues sweep): the quoted-flag-lookalike limitation above is fixed. tokenize() now returns clean results.')
+  })
+
+  it('a block-list-of-objects entry parses as a real object with every key, not just the first line (regression: primitives shape)', () => {
+    const content = '---\nid: x\nprimitives:\n  - name: "@list"\n    kind: directive\n  - name: "@read"\n    kind: directive\n---\nbody'
+    const row = parseFrontmatterRow(content)
+    const prims = row?.['primitives'] as Array<{ name: string; kind: string }>
+    expect(prims).toEqual([{ name: '@list', kind: 'directive' }, { name: '@read', kind: 'directive' }])
+  })
+
+  it('a non-key:value continuation line under an object item is appended to the last key set, never silently dropped (regression: found by review)', () => {
+    const content = '---\nid: x\nknown_issues:\n  - Note: the parser drops trailing commas\n    and it also mangles wrapped continuation lines\n---\nbody'
+    const row = parseFrontmatterRow(content)
+    const issues = row?.['known_issues'] as Array<{ Note: string }>
+    expect(issues).toEqual([{ Note: 'the parser drops trailing commas and it also mangles wrapped continuation lines' }])
+  })
+
+  it('where= references arg0 as a bound variable; a hardcoded literal continues to match identically', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ls-fmq-args-'))
+    try {
+      mkdirSync(join(dir, 'docs'))
+      writeFileSync(join(dir, 'docs', 'a.stage'), '---\nid: 17-source-directives\nstatus: complete\n---\nA')
+      writeFileSync(join(dir, 'docs', 'b.stage'), '---\nid: 18-compute-directives\nstatus: complete\n---\nB')
+
+      const literalQuery = join(dir, 'literal.stage')
+      writeFileSync(literalQuery, '@list docs/*.stage where="id == \'17-source-directives\'" fields="id" | @render type="table" /')
+      const literal = runRender(literalQuery, { cwd: dir })
+      expect(literal.output).toMatch(/\|\s*17-source-directives\s*\|/)
+      expect(literal.output).not.toMatch(/\|\s*18-compute-directives\s*\|/)
+
+      const argQuery = join(dir, 'arg.stage')
+      writeFileSync(argQuery, '@list docs/*.stage where="id == arg0" fields="id" | @render type="table" /')
+      const withArg = runRender(argQuery, { cwd: dir, args: '17-source-directives' })
+      expect(withArg.output).toMatch(/\|\s*17-source-directives\s*\|/)
+      expect(withArg.output).not.toMatch(/\|\s*18-compute-directives\s*\|/)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('where= referencing an unset arg matches nothing, never silently disables the filter and returns everything (F-ARGS: passive hook renders carry no arguments)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ls-fmq-noargs-'))
+    try {
+      mkdirSync(join(dir, 'docs'))
+      writeFileSync(join(dir, 'docs', 'a.stage'), '---\nid: 17-source-directives\nstatus: complete\n---\nA')
+      writeFileSync(join(dir, 'docs', 'b.stage'), '---\nid: 18-compute-directives\nstatus: complete\n---\nB')
+      const query = join(dir, 'q.stage')
+      writeFileSync(query, '@list docs/*.stage where="id == arg0" fields="id" | @render type="table" /')
+      const result = runRender(query, { cwd: dir })
+      expect(result.output).not.toMatch(/\|\s*17-source-directives\s*\|/)
+      expect(result.output).not.toMatch(/\|\s*18-compute-directives\s*\|/)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('a crafted --args value cannot break out of the where= comparison to run arbitrary code (security regression: PoC from review, now inert)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ls-fmq-inject-'))
+    try {
+      mkdirSync(join(dir, 'docs'))
+      writeFileSync(join(dir, 'docs', 'a.stage'), '---\nid: real-doc\nstatus: complete\n---\nA')
+      const query = join(dir, 'q.stage')
+      writeFileSync(query, '@list docs/*.stage where="id == arg0" fields="id" | @render type="table" /')
+      // The exact PoC shape from the security review: an injection payload
+      // that, if it were spliced into the expression as text, would short-
+      // circuit the comparison to true for every row. Bound as a plain
+      // string variable instead, it's just a value that equals no real id.
+      const payload = "nomatch' || '1'=='1"
+      const result = runRender(query, { cwd: dir, args: payload })
+      expect(result.output).not.toMatch(/\|\s*real-doc\s*\|/)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('the new multi-line array and object-list shapes work through the full @list where=/fields= pipeline, not just direct parseFrontmatterRow calls', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ls-fmq-pipeline-'))
+    try {
+      mkdirSync(join(dir, 'docs'))
+      writeFileSync(join(dir, 'docs', 'a.stage'), '---\nid: a\nsource_files: [src/one.ts, src/two.ts,\n  src/three.ts]\nprimitives:\n  - name: "@foo"\n    kind: directive\n---\nA')
+      const query = join(dir, 'q.stage')
+      writeFileSync(query, '@list docs/*.stage where="source_files.length == 3" fields="id,source_files" | @render type="table" /')
+      const result = runRender(query, { cwd: dir })
+      expect(result.output).toMatch(/\|\s*a\s*\|/)
+      expect(result.output).toContain('src/three.ts')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
 

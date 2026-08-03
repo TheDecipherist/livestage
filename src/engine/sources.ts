@@ -85,6 +85,24 @@ function executeFrontmatterQuery(pathGlob: string, args: Record<string, string>,
     return []
   }
   const whereExpr = rawWhere ? preprocessArrayEmptiness(rawWhere) : null
+  // arg0..arg3/args/vars (F-ARGS, feature 23) are bound as real variables
+  // in the where= evaluation scope, never text-spliced into the expression
+  // string itself: `where="id == arg0"` reads arg0 as data, the same way a
+  // frontmatter field is referenced by bare name. Untrusted caller input
+  // (--args/--var, or a passive hook render's skill $ARGUMENTS) must never
+  // become part of the evaluated expression's own text, that path is a
+  // straight JS-injection sink into whereMatches' runInNewContext eval.
+  const skill = ctx.skillContext
+  const argsList = skill?.argsList ?? []
+  const whereExtra: Record<string, unknown> = {
+    args: skill?.args ?? '',
+    argsList,
+    arg0: argsList[0] ?? '',
+    arg1: argsList[1] ?? '',
+    arg2: argsList[2] ?? '',
+    arg3: argsList[3] ?? '',
+    vars: skill?.vars ?? {},
+  }
   const fieldsSpec = args['fields']
   const fields = fieldsSpec ? fieldsSpec.split(',').map(f => f.trim()) : null
 
@@ -95,7 +113,7 @@ function executeFrontmatterQuery(pathGlob: string, args: Record<string, string>,
     try { content = readFileSync(file, 'utf8') } catch { continue }
     const row = parseFrontmatterRow(content)
     if (row === null) continue
-    if (whereExpr && !whereMatches(row, whereExpr)) continue
+    if (whereExpr && !whereMatches(row, whereExpr, whereExtra)) continue
     matched.push(file)
     rows.push(row)
   }

@@ -44,8 +44,15 @@ export function walkDir(dir: string, rel: string, matchRe: RegExp | null, typeFi
   return results
 }
 
-export function whereMatches(row: Record<string, unknown>, expr: string): boolean {
-  try { return Boolean(runInNewContext(expr, { ...row }, { timeout: 500 })) } catch { return false }
+// `extra` binds additional read-only variables (e.g. arg0/vars from
+// --args/--var, F-ARGS feature 23) into the evaluated expression's scope,
+// alongside the frontmatter row. It is DATA, resolved as real values in the
+// VM context object, never text spliced into `expr` itself: `expr` is
+// always author-written, trusted .stage-file content (the same trust level
+// as every other directive attribute), so nothing caller-supplied ever
+// becomes part of the expression string that gets evaluated.
+export function whereMatches(row: Record<string, unknown>, expr: string, extra?: Record<string, unknown>): boolean {
+  try { return Boolean(runInNewContext(expr, { ...extra, ...row }, { timeout: 500 })) } catch { return false }
 }
 
 export function hasGlobChars(s: string): boolean {
