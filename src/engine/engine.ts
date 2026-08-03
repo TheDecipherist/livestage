@@ -7,7 +7,7 @@ import { scanInterpolations } from 'livestage/parser'
 import { render } from 'livestage/renderer'
 import type { RenderType, RendererInput } from 'livestage/renderer'
 import { makeContext, resolveEnv, type EngineContext } from './context.js'
-import { substituteParams } from './macros.js'
+import { substituteParams, unescapeBraces } from './macros.js'
 import { evalCondition, evalExpression } from './conditions.js'
 import { runBuiltin } from './pipe.js'
 import { runShell } from './shell.js'
@@ -273,7 +273,12 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
     // contributes nothing to output, same as the retired header node used to.
     case 'passthrough': return node.raw
     case 'graph': return executeGraph(node, ctx)
-    case 'markdown': return resolveInterpolations(node.text, node.interpolations, ctx, node.shellInlines)
+    case 'markdown': {
+      const resolved = resolveInterpolations(node.text, node.interpolations, ctx, node.shellInlines)
+      // Only nodes macro substitution touched (see macros.ts) carry
+      // escaped braces to undo; every directly-parsed node is untouched.
+      return node.substituted ? unescapeBraces(resolved) : resolved
+    }
     case 'env': return resolveEnv(node.name, node.fallback, ctx)
     case 'define': { ctx.macros[node.name] = { body: node.body, params: node.params }; return '' }
     case 'call': return handleCall(node, ctx)

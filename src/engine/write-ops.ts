@@ -12,6 +12,7 @@ import type { EngineContext } from './context.js'
 import { checkWritePath } from './security/filesystem.js'
 import { expandPattern } from './security/path-expand.js'
 import { interpolatePathSoft } from './engine-include.js'
+import { unescapeBraces } from './macros.js'
 import { extractFrontmatter, fieldRegex, readFrontmatterField } from './frontmatter-utils.js'
 import { buildExpandContext } from './expand-context.js'
 import { loadSchema } from './schema/loader.js'
@@ -110,7 +111,14 @@ export function executeUpdateFrontmatter(node: UpdateFrontmatterNode, ctx: Engin
   // like value="{{ vars.run_id }}" wrote the literal template text into
   // frontmatter instead of the resolved value (found live-verifying the
   // multi-step pattern example, feature 40).
-  const value = interpolatePathSoft(node.value, ctx)
+  //
+  // unescapeBraces (feature 49): node.value may already have been macro-
+  // substituted (a @foreach/@call bound value spliced in with its own
+  // braces escaped for safety, see macros.ts). interpolatePathSoft only
+  // evaluates AUTHOR-WRITTEN {{ }} (the escaped ones don't match), so the
+  // escape survives to here; unescape it now so the WRITTEN value is the
+  // real data, not a backslash-mangled copy of it.
+  const value = unescapeBraces(interpolatePathSoft(node.value, ctx))
 
   // Schema pre-write gate (F-SCHEMA, feature 32): if the target document
   // declares a class, and that class has a schema, and the schema

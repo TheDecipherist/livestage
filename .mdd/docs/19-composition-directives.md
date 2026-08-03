@@ -20,32 +20,23 @@ known_issues:
     was not run here, this doc was only touched to record the RCE gap below
     during an unrelated build (read-body-directive). Needs its own
     mdd-frontmatter-discovery pass."
-  - "[gap] CRITICAL, RCE via @foreach body substitution: substituteNode's
-    'markdown' case (src/engine/macros.ts) text-substitutes a loop item's
-    VALUE into the body then re-derives interpolation spans with
-    scanInterpolations() on the result. If the item's value (e.g. a line
-    read from a file via @read, @list, @query, or @read-body/read_body)
-    itself contains literal {{ }} syntax, that text is picked up as a NEW
-    real expression and evaluated at render time. The vm sandbox exposes
-    host-realm objects, so file content like
-    '{{ this.constructor.constructor(\"return process\")() }}' escapes to
-    the real Node process, same vulnerability class and same escape
-    technique as the where= RCE fixed in feature 36
-    (frontmatter-query), just a different, older sink. Verified live via
-    the pre-existing @read source (not read-body): @foreach x in @read
-    'evil.md' / ITEM {{ x }} / @foreach-end printed process.platform, no
-    read-body code involved. Root cause: subStr()'s regex substitution
-    treats data (the item value) and template (the body's own {{ }}
-    spans) as the same trust level; the rescan should only re-derive
-    spans that existed in the ORIGINAL template text, not spans
-    introduced by substituted data. Found during the read-body-directive
-    build's Phase 7 security review (2026-08-03) because that build added
-    read_body/@read-body as one more @foreach-reachable source; the sink
-    itself and its exploitability predate that build entirely and are not
-    caused by it. Needs a dedicated fix build (redesign macros.ts's
-    substitution to bind loop values as sandbox data rather than
-    text-splice + rescan, mirroring the where= fix's arg-binding
-    approach), not a bundled fix inside an unrelated feature."
+  - "RESOLVED (2026-08-03, feature 49, fix/foreach-interpolation-rce):
+    the @foreach/@call/@template body-substitution RCE described here was
+    fixed, and expanded in scope during the fix's own Phase 7 review to
+    five MORE vectors sharing the same root cause (subStr splicing a
+    bound value into text a downstream consumer re-evaluates): @code
+    body/src (script/command injection), @data/@template's rhs/dataExpr
+    (unconditional eval), @list/@read's where=, and @foreach/@set's own
+    source expression (directive injection via evaluateSource's @-prefix
+    parsing). See 49-fix-foreach-interpolation-rce.md for the full
+    architecture, all six vectors' live PoCs, and the two fix shapes
+    (escape-for-display/lookup vs never-substitute-for-eval fields). One
+    adjacent, pre-existing, NOT-yet-fixed gap was found in the same
+    review and is tracked on that doc instead of here: @query/@test/
+    @check's command= and a pipe's shell stage are still substituted, and
+    checkShellCommand's prefix allowlist does not prevent chaining
+    further commands after an allowed prefix, a different root cause
+    (the allowlist's own matching design) needing its own dedicated fix."
 primitives:
   - name: "@set"
     kind: directive
