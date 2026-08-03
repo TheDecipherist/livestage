@@ -1,7 +1,7 @@
 ---
 generated: 2026-08-03
-doc_count: 48
-connection_count: 84
+doc_count: 49
+connection_count: 85
 overlap_count: 32
 ---
 
@@ -89,6 +89,8 @@ overlap_count: 32
   └── `12-render-trace` - Render Trace (complete)
 **Engine / Schema Engine**
   └── `32-schema-engine` - Schema Engine (complete)
+**Engine / Security**
+  └── `49-fix-foreach-interpolation-rce` - Fix Foreach Interpolation RCE (complete)
 **Examples / Connections**
   └── `46-connections-example` - Connections Example (complete)
 **Examples / Pattern Example**
@@ -162,6 +164,7 @@ graph TD
   46_connections_example["46-connections-example"]:::done
   47_reach_via_code["47-reach-via-code"]:::done
   48_auto_readme_generation["48-auto-readme-generation"]:::done
+  49_fix_foreach_interpolation_rce["49-fix-foreach-interpolation-rce"]:::done
   07_package_skeleton --> 01_seed_script
   07_package_skeleton --> 03_cr2_one_package
   08_boundary_lint --> 07_package_skeleton
@@ -246,6 +249,7 @@ graph TD
   48_auto_readme_generation --> 17_source_directives
   48_auto_readme_generation --> 20_render_formats
   48_auto_readme_generation --> 36_frontmatter_query
+  49_fix_foreach_interpolation_rce --> 19_composition_directives
 ```
 
 ## Source File Overlap
@@ -263,15 +267,15 @@ Files referenced by 2+ docs:
 - `src/engine/context.ts` - 13-cli-router, 35-determinism
 - `src/engine/engine-include.ts` - 19-composition-directives, 35-determinism, 41-bundle
 - `src/engine/engine-interpolate.ts` - 17-source-directives, 19-composition-directives, 35-determinism
-- `src/engine/engine.ts` - 13-cli-router, 17-source-directives, 29-code-runners, 35-determinism
+- `src/engine/engine.ts` - 13-cli-router, 17-source-directives, 29-code-runners, 35-determinism, 49-fix-foreach-interpolation-rce
 - `src/engine/frontmatter-utils.ts` - 33-update-frontmatter, 36-frontmatter-query
 - `src/engine/graph.ts` - 32-schema-engine, 34-graph, 46-connections-example
-- `src/engine/macros.ts` - 17-source-directives, 19-composition-directives
+- `src/engine/macros.ts` - 17-source-directives, 19-composition-directives, 49-fix-foreach-interpolation-rce
 - `src/engine/pipe.ts` - 22-pipe, 36-frontmatter-query
 - `src/engine/read-ops.ts` - 17-source-directives, 32-schema-engine, 36-frontmatter-query
 - `src/engine/sources.ts` - 17-source-directives, 35-determinism, 36-frontmatter-query
 - `src/engine/stripper.ts` - 17-source-directives, 24-fallback-contract
-- `src/engine/write-ops.ts` - 33-update-frontmatter, 40-pattern-example
+- `src/engine/write-ops.ts` - 33-update-frontmatter, 40-pattern-example, 49-fix-foreach-interpolation-rce
 - `src/hook/pretooluse.ts` - 11-extension-routing, 41-bundle
 - `src/parser/directives/code.ts` - 29-code-runners, 35-determinism
 - `src/parser/directives/import.ts` - 19-composition-directives, 35-determinism
@@ -282,7 +286,7 @@ Files referenced by 2+ docs:
 - `src/parser/directives/render.ts` - 22-pipe, 36-frontmatter-query
 - `src/parser/directives/tree.ts` - 17-source-directives, 35-determinism
 - `src/parser/registry.ts` - 09-grammar-parser, 17-source-directives
-- `src/parser/types.ts` - 09-grammar-parser, 17-source-directives, 35-determinism
+- `src/parser/types.ts` - 09-grammar-parser, 17-source-directives, 35-determinism, 49-fix-foreach-interpolation-rce
 - `src/renderer/formats/tree.ts` - 20-render-formats, 36-frontmatter-query, 46-connections-example
 
 ## Warnings

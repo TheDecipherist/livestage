@@ -220,6 +220,14 @@ export interface MarkdownNode extends ASTNodeBase {
   text: string
   interpolations: InterpolationSpan[]
   shellInlines: ShellInlineSpan[]
+  // Set only by macro substitution (substituteNode in macros.ts) when a
+  // @foreach/@call/@template bound value was spliced into this node's text.
+  // The value's own literal {{ }} sequences were escaped before splicing
+  // so a re-scan for interpolations only picks up spans that existed in
+  // the original template; the render site unescapes the final resolved
+  // text back to literal characters for display fidelity. Absent (falsy)
+  // on every node parsed directly from a .stage file.
+  substituted?: boolean
 }
 
 export interface PassthroughNode extends ASTNodeBase {
