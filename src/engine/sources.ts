@@ -8,7 +8,7 @@ import { checkShellCommand } from './security/shell.js'
 import { expandPattern } from './security/path-expand.js'
 import { interpolatePathSoft } from './engine-include.js'
 import { globToRegex, walkDir, listJson, listCsv, readEnvFile, hasGlobChars, resolveGlobTargets, whereMatches } from './sources-file-utils.js'
-import { parseFrontmatterRow } from './frontmatter-utils.js'
+import { parseFrontmatterRow, extractFrontmatter } from './frontmatter-utils.js'
 import { withDirectiveCache } from './directive-cache.js'
 
 /**
@@ -312,6 +312,31 @@ export function readMarkdownSection(absPath: string, headingContains: string): s
     }
   }
   return lines.slice(startIdx, endIdx).join('\n').trim()
+}
+
+/**
+ * Read a markdown file's whole prose body, blank lines preserved. Neither
+ * `@read` (whole file including frontmatter, blank lines stripped) nor
+ * `readMarkdownSection` (requires a heading, returns '' for the whole
+ * thing) covers this. Given a heading, delegates to `readMarkdownSection`
+ * for exact behavioral parity with what `read_section()` already returns.
+ * Returns '' on read failure; if the file has no frontmatter block,
+ * returns the whole trimmed content.
+ */
+export function readMarkdownBody(absPath: string, headingContains?: string): string {
+  // headingContains !== undefined (not truthy) so an explicitly-empty
+  // heading (as opposed to omitted) still delegates to readMarkdownSection
+  // and gets its '' miss behavior, exact parity with read_section(path, '').
+  if (headingContains !== undefined) return readMarkdownSection(absPath, headingContains)
+  let content: string
+  try { content = readFileSync(absPath, 'utf8') } catch { return '' }
+  // extractFrontmatter's delimiter regex is LF-only; normalize CRLF first or
+  // a Windows-authored file's frontmatter block silently fails to match and
+  // gets emitted whole, credentials and all, as if it were plain body text.
+  content = content.replace(/\r\n/g, '\n')
+  const fm = extractFrontmatter(content)
+  const body = fm ? content.slice(fm.fullBlock.length) : content
+  return body.trim()
 }
 
 export function formatDate(date: Date, fmt: string): string {

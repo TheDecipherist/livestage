@@ -11,7 +11,7 @@ import type { EngineContext } from './context.js'
 import type { FilesystemSecurityConfig } from './security/config.js'
 import { checkDataPath } from './security/filesystem.js'
 import { readFrontmatterField } from './frontmatter-utils.js'
-import { readMarkdownSection } from './sources.js'
+import { readMarkdownSection, readMarkdownBody } from './sources.js'
 
 /**
  * The data jail for read helpers: explicit `dataJail`, else the legacy
@@ -28,6 +28,7 @@ export interface FileHelpers {
   containsLine: (p: string, pattern: string) => boolean
   frontmatterField: (p: string, field: string) => string
   readSection: (p: string, headingContains: string) => string
+  readBody: (p: string, headingContains?: string) => string
   containsSection: (p: string, heading: string) => boolean
 }
 
@@ -40,11 +41,18 @@ export function makeFileHelpers(
   dataJail: string | null,
   allowedDataPaths: string[] | undefined,
   fsConfig: FilesystemSecurityConfig | undefined,
+  warnings?: string[],
 ): FileHelpers {
   function confined(p: string): string | null {
     if (!dataJail) return null
     const check = checkDataPath(p, dataJail, allowedDataPaths, fsConfig)
-    if (check.level === 'blocked') return null
+    if (check.level === 'blocked') {
+      warnings?.push(`SECURITY_ALERT: blocked, ${check.reason}: ${p}`)
+      return null
+    }
+    if (check.level === 'alert') {
+      warnings?.push(`SECURITY_ALERT: sensitive path accessed, ${check.reason}: ${p}`)
+    }
     return isAbsolute(p) ? p : resolve(dataJail, p)
   }
   return {
@@ -95,6 +103,11 @@ export function makeFileHelpers(
       const abs = confined(p)
       if (abs === null) return ''
       return readMarkdownSection(abs, headingContains)
+    },
+    readBody: (p: string, headingContains?: string): string => {
+      const abs = confined(p)
+      if (abs === null) return ''
+      return readMarkdownBody(abs, headingContains)
     },
     containsSection: (p: string, heading: string): boolean => {
       const abs = confined(p)

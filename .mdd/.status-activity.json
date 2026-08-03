@@ -1,1 +1,2 @@
-{"lastCommand":"cd /home/tim_carter81/projects/livestage\ngit status --short","lastTool":"Write","lastTarget":"/home/tim_carter81/projects/livestage/.mdd/00-frontmatter-spec.md"}
+{"lastCommand":"cd /home/tim_carter81/projects/livestage\ncat > .mdd/.state.j","lastTool":"Grep","lastTarget":"/home/tim_carter81/projects/livestage/src/parser"}
+pipe.md"}

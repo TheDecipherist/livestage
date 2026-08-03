@@ -1,1 +1,1 @@
-{"flow":"wave","index":1,"total":4,"label":"Validating","status":"running","ts":1785646218184,"startTs":1785629321157}
+{"flow":"build","index":7,"total":7,"label":"verify: quality gates, review fan-out","status":"done","ts":1785779467666,"runFlow":"build","runStartTs":1785766105344,"runDoneTs":1785779467666,"runPausedTs":null}

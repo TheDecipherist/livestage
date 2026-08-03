@@ -93,6 +93,7 @@ function stripNode(node: ASTNode, env: Record<string, string>, warnings: string[
     case 'foreach':
     case 'hash':
     case 'read-frontmatter':
+    case 'read-body':
     case 'template':
     case 'data':
     case 'assert':

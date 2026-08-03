@@ -3,17 +3,25 @@ id: 17-source-directives
 title: Source Directives
 type: COMPONENT
 path: Directives / Sources
-source_files: [src/parser/directives/list.ts, src/parser/directives/read.ts, src/parser/directives/read-frontmatter.ts, src/parser/directives/tree.ts, src/parser/directives/count.ts, src/parser/directives/date.ts, src/parser/directives/env.ts, src/engine/sources.ts, src/engine/read-ops.ts, src/engine/engine.ts]
+source_files: [src/parser/directives/list.ts, src/parser/directives/read.ts, src/parser/directives/read-frontmatter.ts, src/parser/directives/read-body.ts, src/parser/directives/tree.ts, src/parser/directives/count.ts, src/parser/directives/date.ts, src/parser/directives/env.ts, src/parser/types.ts, src/parser/registry.ts, src/engine/sources.ts, src/engine/read-ops.ts, src/engine/engine.ts, src/engine/engine-interpolate.ts, src/engine/conditions.ts, src/engine/file-access.ts, src/engine/stripper.ts, src/engine/macros.ts]
+test_files: [tests/unit/engine/read-body.test.ts, tests/golden/markdown-out.test.ts, tests/golden/deterministic-snapshots.test.ts, tests/unit/engine/fallback-registry.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-03
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [09-grammar-parser, 11-extension-routing, 10-security-policy-core]
-tags: [list, read, read-frontmatter, tree, count, date, env, filesystem-policy]
+tags: [list, read, read-frontmatter, read-body, tree, count, date, env, filesystem-policy]
+data_flow: .mdd/audits/flow-read-body-directive-2026-08-03.md
 known_issues:
   - "source_files sources.ts and read-ops.ts are shared with feature 18 (Compute Directives): @query's engine implementation (executeQuery) lives in sources.ts, and @hash's (executeHash) lives in read-ops.ts, not in 18's own exec-ops.ts. The donor organized these engine modules by cohesion, not by strict per-directive file boundaries; corrected here and cross-referenced in 18's known_issues rather than moved."
   - "RESOLVED (2026-08-02, found while building feature 48, Auto README Generation): @read-frontmatter did not honor visible=/silent=, the only source-shaped directive that was missed when @list/@read/@tree/@code all got this suppression convention. Fixed in src/engine/engine.ts's case 'read-frontmatter' to match the existing case 'list'/'read'/'tree' pattern: visible=\"false\" or silent=\"true\" suppresses inline output while label= still captures the value. Purely additive, every existing call site in the repo (grepped: 11 files across examples/tests/docs) omits both attrs and is unaffected. tests/unit/engine/read-frontmatter.test.ts covers both attributes plus a default-unchanged regression check."
+  - "[gap] read_section, read_frontmatter, parse_brief, and extract_paths
+    (the pre-existing {{ }}/@if sandbox builtins in engine-interpolate.ts
+    and conditions.ts) are real, tested, production capabilities with zero
+    primitives documentation anywhere in the corpus. Found while adding
+    read_body/@read-body in the same family. Backfilling them needs its
+    own scoped pass, not a side effect of this build."
 primitives:
   - name: "@list"
     kind: directive
@@ -28,6 +36,10 @@ primitives:
   - name: "@date"
     kind: directive
   - name: "@env"
+    kind: directive
+  - name: "read_body"
+    kind: sandbox-builtin
+  - name: "@read-body"
     kind: directive
 satisfies_contracts:
   - from: 10-security-policy-core
@@ -59,8 +71,9 @@ filesystem, structured files, and the environment.
 
 ## Interface Overview
 
-These seven directives are how a `.stage` document reads the real world:
-the filesystem, structured JSON/CSV files, another document's frontmatter,
+These directives (plus one sandbox function for composing content inline)
+are how a `.stage` document reads the real world: the filesystem,
+structured JSON/CSV files, another document's frontmatter or body text,
 and the environment. Reach for one of these any time you'd otherwise write
 a paragraph by hand and hope it stays accurate, a file listing, a value
 pulled out of `package.json`, the current date, a config value from the
@@ -72,10 +85,12 @@ answers again, from whatever is true then.
 | `@list` | Lists files in a directory, or rows from a JSON array or CSV file. |
 | `@read` | Reads a file's raw content, or one value/table out of a JSON or CSV file. |
 | `@read-frontmatter` | Reads one field out of a markdown file's YAML frontmatter. |
+| `@read-body` | Reads a markdown file's whole body, or one section of it, past the frontmatter. |
 | `@tree` | Renders a directory as an indented tree. |
 | `@count` | Counts files in a directory, or lines in a file. |
 | `@date` | The current date/time, or a file's last-modified time, in a format you choose. |
 | `@env` | An environment variable, with an optional fallback. |
+| `read_body` | The same read as `@read-body`, callable inline inside `{{ }}` or `@if` for composing into a larger expression. |
 
 ### @list
 
@@ -130,6 +145,24 @@ into a render without opening the file yourself.
 |---|---|---|
 | `field` | frontmatter key | The single top-level field to read (arrays come back comma-joined) |
 | `label` | name | Capture the value into a variable |
+| `visible` / `silent` | `false` / `true` | Suppress the inline print, keep only the captured value |
+
+### @read-body
+
+Reads a markdown file's whole body, everything after its frontmatter
+block, blank lines preserved, as a standalone directive: prints inline,
+captures via `label=`, or feeds into a pipe. Give it `section=` to get
+just one part of the doc instead of the whole thing.
+
+```stage
+@read-body ".mdd/docs/17-source-directives.md" section="Business Rules" | @render type="code" lang="markdown" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The markdown file to read |
+| `section` | heading text | Return just this one section instead of the whole body |
+| `label` | name | Capture the result into a variable |
 | `visible` / `silent` | `false` / `true` | Suppress the inline print, keep only the captured value |
 
 ### @tree
@@ -188,6 +221,26 @@ Reads an environment variable, with an optional fallback when it isn't set.
 | (positional) | variable name | The environment variable to read |
 | `fallback` | any string | Value to use when the variable isn't set |
 
+### read_body
+
+A sandbox function, callable inside `{{ }}` or an `@if` condition, that
+returns a markdown file's whole body, everything after its frontmatter
+block, blank lines preserved. Give it a heading and it returns just that
+one section instead, the same result `read_section()` already returns.
+Reach for this when you're composing a doc's own content into a larger
+expression, the same way `README.stage` chains `.replace()` onto
+`read_section()`'s result today.
+
+```stage
+{{ read_body(".mdd/docs/17-source-directives.md") }}
+{{ read_body(".mdd/docs/17-source-directives.md", "Architecture") }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `path` | file path | The markdown file to read (first argument) |
+| `section` | heading text (optional) | Return just this one section instead of the whole body (second argument) |
+
 ## Architecture
 
 Every filesystem or env access these directives make must resolve through
@@ -214,8 +267,10 @@ schema validation of frontmatter reads is owned by feature 32).
 | `@list` | glob/`match`/`type`/`depth` (filesystem), `path`/`mode` (JSON), `columns`+`where` (structured rows), `label`, `as=` | files, dirs, JSON array/object items, CSV rows |
 | `@read` | `file`, `path=` (dot-notation, JSON/YAML/TOML), `column=`+`where=` (CSV), `key=` (.env) implemented but unreachable, see Known Issues), `label`, `as=` | raw file content, or a value/table extracted from structured files |
 | `@read-frontmatter` | `path`, `field` (single, seeded) | schema-validated (F-SCHEMA); reads ONE top-level field per call, arrays comma-joined |
+| `@read-body` | `path`, `section=` (optional), `label`, `visible`/`silent` | markdown file's whole body past the frontmatter, or one section |
 | `@tree` / `@count` | path/glob | tree render / count |
 | `@date` / `@env` | format / `fallback` | now / env value; `@env` has no `masked` attribute. A resolved secret-shaped value is masked before it is written to cache (`cache.ts`) or a trace record (`engine.ts`'s `applyMasking` on directive args), never in the primary render/stdout output, which shows the value the caller explicitly requested |
+| `read_body` (sandbox function) | `path`, `section` (optional) | same result as `@read-body`, callable inside `{{ }}`/`@if` |
 
 ## Business Rules
 
@@ -243,6 +298,46 @@ schema validation of frontmatter reads is owned by feature 32).
 6. `@read-frontmatter` honors `visible="false"`/`silent="true"` the same way
    `@list`/`@read`/`@tree`/`@code` do: suppresses inline output, `label=`
    still captures the value (RESOLVED 2026-08-02, see known_issues).
+7. `read_body(path, section?)` and `@read-body <path> [section=]` return a
+   markdown file's whole body (everything after the closing frontmatter
+   delimiter), blank lines preserved; with a heading given, they return
+   exactly what `read_section()`'s existing section-extraction returns,
+   so the two mechanisms never disagree on the same input.
+8. `read_body` is bound as a sandbox function in THREE places: `{{ }}`
+   interpolation (`engine-interpolate.ts`), `@if` condition evaluation
+   (`conditions.ts`), and macro/`@foreach` body substitution
+   (`macros.ts`'s `substituteNode`), matching how `read_frontmatter` is
+   bound; a builtin added to only the first two throws `unhandled AST
+   node type` the moment it appears inside a `@foreach` or `@call` body,
+   found live during Phase 7 review (`@read-body path="{{ x }}" /` inside
+   `@foreach x in @list ...`) and fixed before this doc closed.
+9. `@read-body` degrades to an empty string under a stripped/degraded
+   render (`stripper.ts`), the same fallback contract every other source
+   directive has (CR-6, Fallback Totality).
+10. `read_body`/`@read-body` normalize CRLF line endings before stripping
+    frontmatter: the shared `FRONTMATTER_RE` (`frontmatter-utils.ts`) is
+    LF-only, so a Windows-authored file's frontmatter block silently
+    failed to match and got emitted whole as "body" (credentials
+    included). Fixed in `readMarkdownBody` specifically since it is the
+    first whole-file-content reader on this path; `read_frontmatter`'s
+    field-scoped reads are unaffected by the same root cause since a miss
+    there returns nothing rather than everything.
+11. An explicitly-empty `section=`/second `read_body` argument is NOT the
+    same as omitting it: omitted means "whole body," explicitly empty
+    delegates to `read_section()`'s own empty-heading miss behavior (`''`),
+    exact parity per rule 7. A section that matches no heading warns
+    (`no heading matching "..." in <path>`) instead of returning an
+    indistinguishable empty string, matching `@read-frontmatter`'s
+    warn-on-miss convention.
+12. A blocked or alert-classified path reached through the sandbox
+    functions (`read_body`/`read_section`/`read_frontmatter`, via
+    `file-access.ts`'s shared `confined()` helper) now pushes the same
+    `SECURITY_ALERT` warning the `@read-body`/`@read-frontmatter`
+    directive path already pushed via `resolveReadPath`; previously a
+    jail-escape attempt through the sandbox path left no warning at all,
+    a silent audit-trail gap found during Phase 7 security review and
+    closed for every helper that shares `confined()`, not only
+    `read_body`.
 
 ## Acceptance Criteria
 
@@ -270,6 +365,29 @@ schema validation of frontmatter reads is owned by feature 32).
 - [x] `@read-frontmatter visible="false"`/`silent="true"` suppresses inline
       output while `label=` still captures the value; the default (neither
       attribute given) is unchanged. tests/unit/engine/read-frontmatter.test.ts.
+- [x] `read_body(path)` inside `{{ }}` returns a markdown file's whole
+      body with blank lines preserved, not the frontmatter, not
+      line-filtered the way `@read`'s raw-text path is. Live-verified via
+      the real CLI (`livestage build`) plus
+      `tests/unit/engine/read-body.test.ts`.
+- [x] `read_body(path, "Heading")` returns exactly what
+      `read_section(path, "Heading")` already returns for the same input,
+      including the empty-heading edge case (parity, not just the happy
+      path). `tests/unit/engine/read-body.test.ts`.
+- [x] `read_body(path)` also works inside an `@if` condition (the second
+      binding site, `conditions.ts`) and inside a `@foreach` body (a third
+      binding site, `macros.ts`'s `substituteNode`, found missing during
+      Phase 7 review and fixed). Live-verified plus
+      `tests/unit/engine/read-body.test.ts`.
+- [x] `@read-body <path>` standalone renders the whole body inline;
+      `label=`/`visible=`/`silent=` behave the same as every other source
+      directive's suppression convention. Live-verified plus
+      `tests/unit/engine/read-body.test.ts`.
+- [x] `@read-body <path> section="..."` piped into `@render` works as a
+      pipe source. Live-verified plus `tests/unit/engine/read-body.test.ts`.
+- [x] A stripped/degraded render of a document containing `@read-body`
+      degrades to an empty string instead of throwing (CR-6).
+      `tests/unit/engine/read-body.test.ts`.
 
 ## Dependencies
 
@@ -277,6 +395,11 @@ schema validation of frontmatter reads is owned by feature 32).
 10-security-policy-core (filesystem/env enforcement).
 
 ## Known Issues
+
+See the frontmatter `known_issues` above: `read_section`, `read_frontmatter`,
+`parse_brief`, and `extract_paths` are real, undocumented sandbox builtins
+found while adding `read_body`/`@read-body` in the same family, deliberately
+left out of this build's scope.
 
 - RESOLVED (2026-08-02): `@read`'s access options are now cross-validated
   against the file's actual format (`warnUnusedOption` in `sources.ts`);

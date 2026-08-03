@@ -201,7 +201,7 @@ function buildSandbox(ctx: EngineContext): Record<string, unknown> {
   }
   // v2.0: prefer dataJail; fall back to legacy jailRoot/docDir for old callers.
   const dataJail = resolveDataJail(ctx)
-  const file = makeFileHelpers(dataJail, ctx.security.allowedDataPaths, ctx.security.filesystemConfig)
+  const file = makeFileHelpers(dataJail, ctx.security.allowedDataPaths, ctx.security.filesystemConfig, ctx.warnings)
   const skill = ctx.skillContext
   const ARGUMENTS = skill?.args ?? ''
   const argsList = skill?.argsList ?? []
@@ -273,6 +273,13 @@ function buildSandbox(ctx: EngineContext): Record<string, unknown> {
     // Claude reading the raw file.
     read_section: (path: unknown, headingContains: unknown): string => {
       return file.readSection(String(path ?? ''), String(headingContains ?? ''))
+    },
+    // Whole-body reader: same file/section semantics as read_section, minus
+    // the requirement that a heading be given. Lets @if conditions test
+    // full document content (`read_body(path).includes(...)`) rather than
+    // just one section.
+    read_body: (path: unknown, headingContains?: unknown): string => {
+      return file.readBody(String(path ?? ''), headingContains === undefined ? undefined : String(headingContains))
     },
     // Brief parser: splits a `**Label.**`-delimited markdown block into a
     // struct of { snake_case_label: body_text }. Use to seed feature-doc

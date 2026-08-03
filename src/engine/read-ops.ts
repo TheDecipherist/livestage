@@ -7,7 +7,7 @@
 import { createHash } from 'node:crypto'
 import { readFileSync, existsSync } from 'node:fs'
 import { isAbsolute, resolve } from 'node:path'
-import type { ReadFrontmatterNode, HashNode } from 'livestage/parser'
+import type { ReadFrontmatterNode, ReadBodyNode, HashNode } from 'livestage/parser'
 import type { EngineContext } from './context.js'
 import { checkDataPath } from './security/filesystem.js'
 import { expandPattern } from './security/path-expand.js'
@@ -16,6 +16,7 @@ import { readFrontmatterField, parseFrontmatterRow } from './frontmatter-utils.j
 import { resolveDataJail } from './file-access.js'
 import { loadSchema } from './schema/loader.js'
 import { validateFieldValue } from './schema/validate.js'
+import { readMarkdownBody } from './sources.js'
 
 function buildExpandContext(ctx: EngineContext) {
   const env: Record<string, string> = { ...ctx.env, ...ctx.envFiles }
@@ -109,6 +110,33 @@ export function executeReadFrontmatter(node: ReadFrontmatterNode, ctx: EngineCon
     const result = validateFieldValue(schema.schema, node.field, value)
     if (!result.valid) ctx.warnings.push(`@read-frontmatter: ${node.path} does not conform to its declared schema, ${result.error}`)
   }
+  if (label) ctx.envFiles[label] = value
+  return value
+}
+
+export function executeReadBody(node: ReadBodyNode, ctx: EngineContext): string {
+  if (!node.path) {
+    ctx.warnings.push('@read-body: path= is required')
+    return ''
+  }
+  const target = resolveReadPath(node.path, ctx, '@read-body')
+  if (!target) return ''
+  if (!existsSync(target)) {
+    ctx.warnings.push(`@read-body: file does not exist: ${node.path}`)
+    return ''
+  }
+  // 'section' in node.args (not node.section's truthiness) distinguishes
+  // "section= omitted" (whole body) from "section= explicitly empty" (a
+  // genuine miss, parity with read_section(path, "")); node.section is
+  // always a string so `|| undefined` would collapse both to the same
+  // "whole body" behavior, silently widening an empty interpolated
+  // section= to the entire document.
+  const hasSection = 'section' in node.args
+  const value = readMarkdownBody(target, hasSection ? node.section : undefined)
+  if (hasSection && node.section && value === '') {
+    ctx.warnings.push(`@read-body: no heading matching "${node.section}" in ${node.path}`)
+  }
+  const label = node.args['label']
   if (label) ctx.envFiles[label] = value
   return value
 }

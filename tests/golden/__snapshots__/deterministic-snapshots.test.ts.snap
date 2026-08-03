@@ -126,6 +126,8 @@ exports[`golden snapshots under --deterministic: every registered directive > qu
 
 exports[`golden snapshots under --deterministic: every registered directive > read 1`] = `"demo"`;
 
+exports[`golden snapshots under --deterministic: every registered directive > read-body 1`] = `"Body."`;
+
 exports[`golden snapshots under --deterministic: every registered directive > read-frontmatter 1`] = `"draft"`;
 
 exports[`golden snapshots under --deterministic: every registered directive > render 1`] = `""`;

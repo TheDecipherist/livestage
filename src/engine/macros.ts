@@ -81,6 +81,13 @@ function substituteNode(node: ASTNode, args: Record<string, string>): ASTNode {
         field: subStr(node.field, args),
         args: subArgs(node.args, args),
       }
+    case 'read-body':
+      return {
+        ...node,
+        path: subStr(node.path, args),
+        section: subStr(node.section, args),
+        args: subArgs(node.args, args),
+      }
     case 'test':
     case 'check':
       return {
