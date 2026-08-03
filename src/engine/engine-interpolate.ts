@@ -134,6 +134,7 @@ export function evalExpr(expr: string, ctx: EngineContext): string {
     dataJail,
     ctx.security.allowedDataPaths,
     ctx.security.filesystemConfig,
+    ctx.warnings,
   )
   // Build the sandbox with skill context variables exposed at the top level
   // (mirrors conditions.ts so {{ arg0 }} / {{ argsList[0] }} / etc. resolve correctly).
@@ -198,6 +199,9 @@ export function evalExpr(expr: string, ctx: EngineContext): string {
     },
     read_section: (path: unknown, headingContains: unknown): string => {
       return fileHelper.readSection(String(path ?? ''), String(headingContains ?? ''))
+    },
+    read_body: (path: unknown, headingContains?: unknown): string => {
+      return fileHelper.readBody(String(path ?? ''), headingContains === undefined ? undefined : String(headingContains))
     },
     parse_brief: (text: unknown): Record<string, string> => {
       return parseFeatureBrief(String(text ?? ''))

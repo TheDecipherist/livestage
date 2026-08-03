@@ -125,6 +125,13 @@ export interface ReadFrontmatterNode extends ASTNodeBase {
   args: Record<string, string>  // optional: label=
 }
 
+export interface ReadBodyNode extends ASTNodeBase {
+  type: 'read-body'
+  path: string
+  section: string
+  args: Record<string, string>  // optional: label=, visible=, silent=
+}
+
 export interface TestNode extends ASTNodeBase {
   type: 'test'
   command: string | null
@@ -294,6 +301,7 @@ export type ASTNode =
   | CountNode
   | UpdateFrontmatterNode
   | ReadFrontmatterNode
+  | ReadBodyNode
   | TestNode
   | CheckNode
   | HashNode

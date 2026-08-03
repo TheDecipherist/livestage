@@ -174,8 +174,9 @@ Overview appears here on the next `npm run readme`.
 
 ### Source Directives
 
-These seven directives are how a `.stage` document reads the real world:
-the filesystem, structured JSON/CSV files, another document's frontmatter,
+These directives (plus one sandbox function for composing content inline)
+are how a `.stage` document reads the real world: the filesystem,
+structured JSON/CSV files, another document's frontmatter or body text,
 and the environment. Reach for one of these any time you'd otherwise write
 a paragraph by hand and hope it stays accurate, a file listing, a value
 pulled out of `package.json`, the current date, a config value from the
@@ -187,10 +188,12 @@ answers again, from whatever is true then.
 | `@list` | Lists files in a directory, or rows from a JSON array or CSV file. |
 | `@read` | Reads a file's raw content, or one value/table out of a JSON or CSV file. |
 | `@read-frontmatter` | Reads one field out of a markdown file's YAML frontmatter. |
+| `@read-body` | Reads a markdown file's whole body, or one section of it, past the frontmatter. |
 | `@tree` | Renders a directory as an indented tree. |
 | `@count` | Counts files in a directory, or lines in a file. |
 | `@date` | The current date/time, or a file's last-modified time, in a format you choose. |
 | `@env` | An environment variable, with an optional fallback. |
+| `read_body` | The same read as `@read-body`, callable inline inside `{{ }}` or `@if` for composing into a larger expression. |
 
 ### @list
 
@@ -245,6 +248,24 @@ into a render without opening the file yourself.
 |---|---|---|
 | `field` | frontmatter key | The single top-level field to read (arrays come back comma-joined) |
 | `label` | name | Capture the value into a variable |
+| `visible` / `silent` | `false` / `true` | Suppress the inline print, keep only the captured value |
+
+### @read-body
+
+Reads a markdown file's whole body, everything after its frontmatter
+block, blank lines preserved, as a standalone directive: prints inline,
+captures via `label=`, or feeds into a pipe. Give it `section=` to get
+just one part of the doc instead of the whole thing.
+
+```stage
+@read-body ".mdd/docs/17-source-directives.md" section="Business Rules" | @render type="code" lang="markdown" /
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| (positional) or `path` | file path | The markdown file to read |
+| `section` | heading text | Return just this one section instead of the whole body |
+| `label` | name | Capture the result into a variable |
 | `visible` / `silent` | `false` / `true` | Suppress the inline print, keep only the captured value |
 
 ### @tree
@@ -302,6 +323,26 @@ Reads an environment variable, with an optional fallback when it isn't set.
 |---|---|---|
 | (positional) | variable name | The environment variable to read |
 | `fallback` | any string | Value to use when the variable isn't set |
+
+### read_body
+
+A sandbox function, callable inside `{{ }}` or an `@if` condition, that
+returns a markdown file's whole body, everything after its frontmatter
+block, blank lines preserved. Give it a heading and it returns just that
+one section instead, the same result `read_section()` already returns.
+Reach for this when you're composing a doc's own content into a larger
+expression, the same way `README.stage` chains `.replace()` onto
+`read_section()`'s result today.
+
+```stage
+{{ read_body(".mdd/docs/17-source-directives.md") }}
+{{ read_body(".mdd/docs/17-source-directives.md", "Architecture") }}
+```
+
+| Parameter | Values | Description |
+|---|---|---|
+| `path` | file path | The markdown file to read (first argument) |
+| `section` | heading text (optional) | Return just this one section instead of the whole body (second argument) |
 
 ### Compute Directives
 

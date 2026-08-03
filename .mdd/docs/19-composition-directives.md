@@ -11,7 +11,41 @@ initiative: livestage
 wave: livestage-wave-2
 depends_on: [09-grammar-parser, 17-source-directives]
 tags: [interpolation, control-flow, macros, include, import, template, scoping]
-known_issues: []
+known_issues:
+  - "[gap] test_files unknown, tests undiscovered. This doc predates the
+    test_files completion gate; real coverage almost certainly exists
+    (tests/unit/engine/{set,switch,foreach,data,template,template-foreach,
+    template-security,include-dynamic-path,include-import-skill-dir}.test.ts
+    and others reference these source files) but a precise per-file mapping
+    was not run here, this doc was only touched to record the RCE gap below
+    during an unrelated build (read-body-directive). Needs its own
+    mdd-frontmatter-discovery pass."
+  - "[gap] CRITICAL, RCE via @foreach body substitution: substituteNode's
+    'markdown' case (src/engine/macros.ts) text-substitutes a loop item's
+    VALUE into the body then re-derives interpolation spans with
+    scanInterpolations() on the result. If the item's value (e.g. a line
+    read from a file via @read, @list, @query, or @read-body/read_body)
+    itself contains literal {{ }} syntax, that text is picked up as a NEW
+    real expression and evaluated at render time. The vm sandbox exposes
+    host-realm objects, so file content like
+    '{{ this.constructor.constructor(\"return process\")() }}' escapes to
+    the real Node process, same vulnerability class and same escape
+    technique as the where= RCE fixed in feature 36
+    (frontmatter-query), just a different, older sink. Verified live via
+    the pre-existing @read source (not read-body): @foreach x in @read
+    'evil.md' / ITEM {{ x }} / @foreach-end printed process.platform, no
+    read-body code involved. Root cause: subStr()'s regex substitution
+    treats data (the item value) and template (the body's own {{ }}
+    spans) as the same trust level; the rescan should only re-derive
+    spans that existed in the ORIGINAL template text, not spans
+    introduced by substituted data. Found during the read-body-directive
+    build's Phase 7 security review (2026-08-03) because that build added
+    read_body/@read-body as one more @foreach-reachable source; the sink
+    itself and its exploitability predate that build entirely and are not
+    caused by it. Needs a dedicated fix build (redesign macros.ts's
+    substitution to bind loop values as sandbox data rather than
+    text-splice + rescan, mirroring the where= fix's arg-binding
+    approach), not a bundled fix inside an unrelated feature."
 primitives:
   - name: "@set"
     kind: directive

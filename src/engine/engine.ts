@@ -13,7 +13,7 @@ import { runBuiltin } from './pipe.js'
 import { runShell } from './shell.js'
 import { executeList, executeRead, executeCount, executeDate, executeTree, executeQuery } from './sources.js'
 import { executeUpdateFrontmatter } from './write-ops.js'
-import { executeReadFrontmatter, executeHash } from './read-ops.js'
+import { executeReadFrontmatter, executeReadBody, executeHash } from './read-ops.js'
 import { executeTest, executeCheck } from './exec-ops.js'
 import { executeForeach, executeSet, setIterEngine } from './iter-ops.js'
 import { resolveInterpolations } from './engine-interpolate.js'
@@ -324,6 +324,17 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
       if (visible === 'false' || silent === 'true') return ''
       return value
     }
+    case 'read-body': {
+      const value = executeReadBody(node, ctx)
+      // Same visible=false/silent=true suppression convention as every
+      // other source-shaped directive (@list/@read/@tree/@code/
+      // @read-frontmatter): label= already captured the value, inline
+      // output would just repeat it.
+      const visible = node.args['visible']
+      const silent = node.args['silent']
+      if (visible === 'false' || silent === 'true') return ''
+      return value
+    }
     case 'test': return executeTest(node, ctx)
     case 'check': return executeCheck(node, ctx)
     case 'hash': return executeHash(node, ctx)
@@ -520,6 +531,10 @@ function executeSource(node: ASTNode, ctx: EngineContext): string[] {
     case 'read-frontmatter': {
       // Field read returns a scalar; emit as a single line.
       const out = executeReadFrontmatter(node as import('livestage/parser').ReadFrontmatterNode, ctx)
+      return out === '' ? [] : out.split('\n')
+    }
+    case 'read-body': {
+      const out = executeReadBody(node as import('livestage/parser').ReadBodyNode, ctx)
       return out === '' ? [] : out.split('\n')
     }
     case 'hash': {

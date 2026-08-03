@@ -31,6 +31,7 @@ export const FIXTURES: Record<string, string> = {
   pipe: '@list ./ match="*.md" | @render type="list" /',
   query: '@query "echo hi" /',
   read: '@read ./package.json path="name" /',
+  'read-body': '@read-body path="doc.md" /',
   'read-frontmatter': '@read-frontmatter path="doc.md" field="status" /',
   render: '@render type="list" /',
   set: '@set x = "1" /',

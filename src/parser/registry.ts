@@ -12,6 +12,7 @@ import date from './directives/date.js'
 import count from './directives/count.js'
 import updateFrontmatter from './directives/update-frontmatter.js'
 import readFrontmatter from './directives/read-frontmatter.js'
+import readBody from './directives/read-body.js'
 import test from './directives/test.js'
 import check from './directives/check.js'
 import hash from './directives/hash.js'
@@ -30,7 +31,7 @@ import code from './directives/code.js'
 const modules: ParseModule[] = [
   include, importDir, env, define, call,
   list, read, query, tree, date, count,
-  updateFrontmatter, readFrontmatter, test, check, hash,
+  updateFrontmatter, readFrontmatter, readBody, test, check, hash,
   foreach, setDir, switchDir,
   render, ifDir, graph, pipe,
   template, data, assert, code,
