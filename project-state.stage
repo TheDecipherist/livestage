@@ -33,7 +33,7 @@ Nodes: {{ deps._nodes }}. Edges: {{ deps._edges }}. Cycles: {{ deps._cycles }}. 
 
 ## Test coverage gaps
 
-@list ".mdd/docs/*.md" where="test_files.length == 0" fields="id,title" | @render type="table" /
+@list ".mdd/docs/*.md" where="typeof test_files === 'undefined' || test_files.length == 0" fields="id,type,title" | @render type="table" /
 @if-end
 
 @if args != ''

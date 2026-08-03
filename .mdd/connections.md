@@ -2,7 +2,7 @@
 generated: 2026-08-03
 doc_count: 48
 connection_count: 84
-overlap_count: 8
+overlap_count: 28
 ---
 
 # MDD Connections
@@ -253,13 +253,33 @@ graph TD
 Files referenced by 2+ docs:
 
 - `eslint.config.js` - 07-package-skeleton, 08-boundary-lint
-- `package.json` - 07-package-skeleton, 41-bundle
-- `src/cli/cli.ts` - 13-cli-router, 41-bundle
-- `src/engine/engine-include.ts` - 19-composition-directives, 41-bundle
-- `src/engine/engine.ts` - 17-source-directives, 29-code-runners, 35-determinism
+- `package.json` - 07-package-skeleton, 41-bundle, 48-auto-readme-generation
+- `src/cli/cli.ts` - 13-cli-router, 35-determinism, 40-pattern-example, 41-bundle
+- `src/cli/commands/assert.ts` - 28-ci-mode, 40-pattern-example
+- `src/cli/commands/render.ts` - 13-cli-router, 35-determinism, 40-pattern-example
+- `src/engine/assert/operators.ts` - 26-assert-operators, 36-frontmatter-query, 40-pattern-example
+- `src/engine/code-runners.ts` - 29-code-runners, 35-determinism
+- `src/engine/context.ts` - 13-cli-router, 35-determinism
+- `src/engine/engine-include.ts` - 19-composition-directives, 35-determinism, 41-bundle
+- `src/engine/engine-interpolate.ts` - 19-composition-directives, 35-determinism
+- `src/engine/engine.ts` - 13-cli-router, 17-source-directives, 29-code-runners, 35-determinism
 - `src/engine/frontmatter-utils.ts` - 33-update-frontmatter, 36-frontmatter-query
-- `src/engine/sources.ts` - 17-source-directives, 36-frontmatter-query
+- `src/engine/graph.ts` - 32-schema-engine, 34-graph, 46-connections-example
+- `src/engine/pipe.ts` - 22-pipe, 36-frontmatter-query
+- `src/engine/read-ops.ts` - 17-source-directives, 32-schema-engine, 36-frontmatter-query
+- `src/engine/sources.ts` - 17-source-directives, 35-determinism, 36-frontmatter-query
+- `src/engine/write-ops.ts` - 33-update-frontmatter, 40-pattern-example
 - `src/hook/pretooluse.ts` - 11-extension-routing, 41-bundle
+- `src/parser/directives/code.ts` - 29-code-runners, 35-determinism
+- `src/parser/directives/import.ts` - 19-composition-directives, 35-determinism
+- `src/parser/directives/include.ts` - 19-composition-directives, 35-determinism
+- `src/parser/directives/list.ts` - 17-source-directives, 35-determinism
+- `src/parser/directives/query.ts` - 18-compute-directives, 35-determinism
+- `src/parser/directives/read.ts` - 17-source-directives, 35-determinism
+- `src/parser/directives/render.ts` - 22-pipe, 36-frontmatter-query
+- `src/parser/directives/tree.ts` - 17-source-directives, 35-determinism
+- `src/parser/types.ts` - 09-grammar-parser, 35-determinism
+- `src/renderer/formats/tree.ts` - 20-render-formats, 36-frontmatter-query, 46-connections-example
 
 ## Warnings
 
