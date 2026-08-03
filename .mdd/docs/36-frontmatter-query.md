@@ -70,6 +70,15 @@ known_issues:
     source_files (17, 18, 21, 26, 35, 36), so extraction needs its own
     scoped pass with all six re-verified, not a side effect of a two-bug
     parsing/interpolation fix here."
+  - "Found live while building project-state.stage, a real .stage document
+    using where=/fields= scoped by --args: frontmatterRowToTabLine
+    (sources.ts) rendered an object-list field (primitives,
+    satisfies_contracts, integration_contracts) in a fields= table cell as
+    repeated \"[object Object]\", Array.prototype.join falling back to a
+    plain object's default toString. Only surfaced once the earlier fix
+    made these fields real objects instead of raw strings; fixed with a
+    stringifyListItem helper that renders an object item as its own
+    space-separated key=value pairs."
 ---
 
 # Frontmatter Query
