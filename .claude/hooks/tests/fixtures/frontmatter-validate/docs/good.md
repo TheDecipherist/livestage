@@ -6,6 +6,8 @@ initiative: none
 wave: test-w1
 source_files:
   - src/good.ts
+test_files:
+  - tests/core/good.test.ts
 status: complete
 phase: all
 last_synced: 2026-07-10

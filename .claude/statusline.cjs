@@ -232,9 +232,16 @@ function readJson(path) {
 function readFlow(cwd, nowMs) {
   const bar = readJson(join(cwd, '.mdd', '.statusbar.json'));
   if (bar && typeof bar.ts === 'number' && nowMs - bar.ts <= IDLE_AFTER_MS) {
+    // Timer fields come from the RUN (runStartTs/runDoneTs), which one
+    // user-initiated MDD process owns end to end, whatever flows it nests;
+    // fall back to legacy startTs for a feed written by an older statusbar.
+    const runStart = typeof bar.runStartTs === 'number' ? bar.runStartTs
+      : (typeof bar.startTs === 'number' ? bar.startTs : undefined);
+    const runDone = typeof bar.runDoneTs === 'number' ? bar.runDoneTs : undefined;
+    const runPaused = typeof bar.runPausedTs === 'number' ? bar.runPausedTs : undefined;
     if (bar.status === 'done') {
       if (nowMs - bar.ts > DONE_LINGER_MS) return { status: 'idle' };
-      return { status: 'done', flow: bar.flow, label: bar.label, startTs: bar.startTs, doneTs: bar.ts };
+      return { status: 'done', flow: bar.flow, label: bar.label, startTs: runStart, doneTs: runDone ?? bar.ts };
     }
     return {
       status: 'running',
@@ -242,7 +249,9 @@ function readFlow(cwd, nowMs) {
       index: typeof bar.index === 'number' ? bar.index : undefined,
       total: typeof bar.total === 'number' ? bar.total : undefined,
       label: typeof bar.label === 'string' ? bar.label : undefined,
-      startTs: typeof bar.startTs === 'number' ? bar.startTs : undefined,
+      startTs: runStart,
+      doneTs: runDone,
+      pausedTs: runPaused,
     };
   }
   // Fallback: the build skill's state file.
@@ -380,8 +389,18 @@ function formatElapsed(ms) {
 
 function renderElapsed(flow, mode, nowMs) {
   if (flow.startTs === undefined) return '';
+  // Frozen (green) whenever the RUN has ended, ticking (white) while it is
+  // open, regardless of what the display status says: the run owns the timer.
+  if (flow.doneTs !== undefined) {
+    return fg(formatElapsed(flow.doneTs - flow.startTs), PALETTE.green, mode);
+  }
+  // Paused for a user decision: frozen amber at the pause moment, waiting
+  // time never counts as run time (the writer shifts the start on resume).
+  if (flow.pausedTs !== undefined) {
+    return fg(formatElapsed(flow.pausedTs - flow.startTs), PALETTE.amber, mode);
+  }
   if (flow.status === 'done') {
-    return fg(formatElapsed((flow.doneTs ?? nowMs) - flow.startTs), PALETTE.green, mode);
+    return fg(formatElapsed(nowMs - flow.startTs), PALETTE.green, mode);
   }
   if (flow.status !== 'running') return '';
   return fg(formatElapsed(nowMs - flow.startTs), PALETTE.white, mode);

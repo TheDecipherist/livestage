@@ -1,0 +1,20 @@
+{
+  "name": "never blocks twice: reports instead when stop_hook_active is already true",
+  "stdin": {
+    "hook_event_name": "Stop",
+    "stop_hook_active": true
+  },
+  "env": {
+    "MDD_DIR": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-bad",
+    "MDD_DOCS": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-bad/docs",
+    "MDD_SWEEP_TOUCHED": "bad.md",
+    "MDD_SRC_ROOT": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-bad"
+  },
+  "expect_exit": 0,
+  "expect_stdout_contains": [
+    "STILL invalid"
+  ],
+  "expect_stdout_not_contains": [
+    "decision"
+  ]
+}

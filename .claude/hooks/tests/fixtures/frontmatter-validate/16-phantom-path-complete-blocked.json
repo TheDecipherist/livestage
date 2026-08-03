@@ -1,0 +1,20 @@
+{
+  "name": "blocks a complete doc listing a source file that does not exist on disk",
+  "stdin": {
+    "tool_name": "Write",
+    "tool_input": {
+      "file_path": ".claude/hooks/tests/fixtures/frontmatter-validate/docs/tf-phantom.md"
+    }
+  },
+  "env": {
+    "MDD_DIR": ".claude/hooks/tests/fixtures/frontmatter-validate",
+    "MDD_DOCS": ".claude/hooks/tests/fixtures/frontmatter-validate/docs",
+    "MDD_SRC_ROOT": ".claude/hooks/tests/fixtures/frontmatter-validate"
+  },
+  "expect_exit": 0,
+  "expect_stdout_contains": [
+    "decision",
+    "does not exist on disk",
+    "phantom"
+  ]
+}

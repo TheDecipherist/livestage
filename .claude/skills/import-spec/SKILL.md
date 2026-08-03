@@ -23,10 +23,22 @@ comparing against prior output. The only source of truth is $spec (plus existing
 `.mdd/docs` `path` values for vocabulary). Keep shell to the few commands the steps
 actually require.
 
-Status bar mirror: alongside every `Say:` line also run
+Micro-status for an import: `set import-spec 2 6 "extracting: 14 features so
+far"`, `set import-spec 5 6 "wrote 07-parser (9/23)"`, and during handed-off
+waves the wave micro-status format takes over (same run, same timer).
+
+Task checklist shape for an import: create it at IS1 with the six IS steps; on
+approval at IS3 in modes (a)/(b) append one entry per wave to be built, checked
+off as each wave's merge to main lands, so the whole unattended run stays
+visible on one list end to end.
+
+Status bar mirror: at IS1 run `node .claude/hooks/lib/statusbar.cjs run-start import-spec` (import-spec is always user-invoked). Whenever stopping for user input (any WAITING ON YOU), first run `node .claude/hooks/lib/statusbar.cjs pause` so waiting time never counts as run time; the timer resumes automatically on the next `set` after the answer. When the run completes, the freezing `done <flow>`/`run-done` call PRINTS `MDD <run> completed in <elapsed>`: repeat that line VERBATIM as the very LAST user-visible line of the run, after everything else in the DONE block, always. Task checklist, always: at run start create the session task list (TodoWrite / the native task tool) with one entry per step of this skill, named exactly like the Say lines; mark the current entry in_progress and check each one off AT the moment its step completes, so the full plan, what is done, and what is running are visible the whole run. Same ownership rule as the timer: the user-invoked wrapper creates the list; a skill executing inside another MDD flow NEVER creates or replaces it, the wrapper's list already carries that work as an entry. Micro-status: the checklist is the broad strokes; the status bar label is the LIVE one. Between Say lines, refresh it (`set <flow> <N> <T> "<msg>"`, same phase numbers) every time the concrete action changes: dispatching agents, reading a file, writing a specific file, running the suite, gate iteration K, waiting on a command. Present tense, specific, short (under ~48 chars), e.g. "writing tests/auth.test.ts", "suite run 2, 3 red", "wiring routes/session.ts". A label that sits unchanged through many actions reads as hung; the set call is near-free, refresh it liberally. Then alongside every `Say:` line also run
 `node .claude/hooks/lib/statusbar.cjs set import-spec <N> 6 "<label>"` (pre-approved,
-best-effort). During IS4 refresh it per file batch. On finish run
-`node .claude/hooks/lib/statusbar.cjs done import-spec`; on abort, `clear`.
+best-effort). During IS4 refresh it per file batch. On abort, `clear`. On finish,
+mode (c) only: `node .claude/hooks/lib/statusbar.cjs done import-spec`. In modes
+(a) and (b) DO NOT call done here: the elapsed timer belongs to the whole run
+(import through the handed-off waves) and the main thread freezes it with
+`run-done` after the last wave completes.
 
 ## IS1, read the spec (in full)
 First ensure the workspace exists: run `node .claude/hooks/lib/mdd-ensure.cjs`. It is idempotent, on a bare project it creates `.mdd/` with `00-frontmatter-spec.md`, `.startup.md`, `.state.json`, and empty `docs/` and `waves/`; on an existing workspace it is a silent no-op and never overwrites anything. This guarantees IS4 has the frontmatter schema to read even on a first run in a fresh project.
@@ -76,14 +88,16 @@ build shape from the depends_on graph: `sequential` (foundation waves, features 
 or `parallel-eligible: N of M` (leaf features with no same-wave dependencies);
 /plan-execute computes the authoritative lane plan at build time, this annotation is
 what lets the user see where the parallel speedup will come from.
-Then present this numbered choice and WAIT for the answer. Never just stop with an empty
-prompt, always show the options:
+Then present the choice through the AskUserQuestion tool and WAIT for the answer: the
+user picks with the arrow keys and enter, never types an option number. Order the
+options with the recommended one FIRST, labeled "(Recommended)". Never just stop with
+an empty prompt. The options (numbered text only as the headless/unattended fallback):
   1) Accept plan, write the .mdd docs and waves
   2) Save the full waveplan to ./waveplan.md only (human-readable file, no .mdd changes)
   3) Both, save ./waveplan.md and write the .mdd docs and waves
   (or say adjust with what to change and I re-plan, or abort to do nothing)
-In the SAME interaction (one answer, not two prompts), ask the execution mode for
-after the write:
+In the SAME AskUserQuestion call (it takes multiple questions, one interaction, not
+two prompts), ask the execution mode for after the write, again recommended first:
   a) Unattended end-to-end: build EVERY wave via /plan-execute back to back, best
      judgment on the small stuff, no "next wave" prompts, stop only on a genuine
      blocker. Walk away, come back to a built project.
@@ -106,8 +120,8 @@ Read `.mdd/00-frontmatter-spec.md` first for the schema. `mkdir -p` initiatives,
 docs. Write in order: CLAUDE.md (if approved), the initiative doc (whenever the plan has waves, per IS2's label-iff-doc rule), waves, then feature docs.
 - Initiative: id, title, status active, version 1, a real 3-to-6-paragraph Overview (what/why/philosophy/components/done), and a Waves table. Compute its content hash.
 - Waves: id, title, initiative, initiative_version, status, depends_on the prior wave, demo_state, plus a Features table. Compute the hash.
-- Feature docs, per feature in wave order: auto-number from the highest existing id. RE-READ the source line ranges recorded in IS2 now, do not write from the extraction summary. Run the completeness checklist against the freshly-read source (every options table row and default, every CLI flag, every config key and type, every interface and AST node, every error format and trigger, every behavioral table, every always/never rule, every edge-case example, every named distinction). Then write the doc with sections: What to Build (concrete inputs/outputs/must-nots, not a vague description), Architecture (place in the system, interfaces copied verbatim), Implementation Notes (only the non-obvious constraints), Data Model, API/Interface (every export, flag, key), Business Rules (exhaustive, with exact error formats), Acceptance Criteria (concrete, verifiable statements), Dependencies, Known Issues. Frontmatter carries every required schema field (`id`, `title`, `type`, `path`, `source_files`, `status: planned`, `phase: idle`, `last_synced`) plus `initiative`, `wave`, `depends_on` (COMPONENTs list the SPECs and lower COMPONENTs they build on; a SPEC's `depends_on` never contains a COMPONENT), `tags` (4 to 8 concepts, never file paths), and the contract fields below. A SPEC's `source_files` is empty. The frontmatter-validate hook now BLOCKS any doc that violates `.mdd/00-frontmatter-spec.md`, so every field must be correct on the first write, not fixed later.
-- Set `primitives` on every doc that documents consumer-callable surfaces: one entry per primitive the doc owns, block style only (`- name: "@list"` / `  kind: directive`; inline braces do not parse), `kind` free-form lowercase kebab-case from the project's own vocabulary (keep the set small and consistent across the import). For each such doc also write `## Interface Overview` per the spec template's convention, three parts in order: the Part 1 prose overview (1 to 2 paragraphs, no heading of its own, what this primitive set is as a whole and why someone reaches for it), the Part 2 quick table (header exactly `| Name | What it does |`, one row per primitive), then Part 3, `### <exact identifier>` per primitive with a stranger-readable blurb, a Parameter/Values/Description table when it takes named parameters, and one runnable example somewhere in the section, zero internal jargon (the validator enforces structure and warns on jargon). The spec's syntax tables are the raw material, but REWRITE for a stranger, never paste spec prose that leans on the spec's own context. Pull the names from the spec's own syntax tables and command lists, they are exactly what the completeness checklist already extracts. This field is how any tool finds "every directive doc" or "every CLI verb doc" with zero path guessing; a doc with primitives must carry the exact `## API/Interface` and `## Business Rules` headings (the validator blocks otherwise).
+- Feature docs, per feature in wave order: auto-number from the highest existing id. RE-READ the source line ranges recorded in IS2 now, do not write from the extraction summary. Run the completeness checklist against the freshly-read source (every options table row and default, every CLI flag, every config key and type, every interface and AST node, every error format and trigger, every behavioral table, every always/never rule, every edge-case example, every named distinction). Then write the doc with sections: What to Build (concrete inputs/outputs/must-nots, not a vague description), Architecture (place in the system, interfaces copied verbatim), Implementation Notes (only the non-obvious constraints), Data Model, API/Interface (every export, flag, key), Business Rules (exhaustive, with exact error formats), Acceptance Criteria (concrete, verifiable statements), Dependencies, Known Issues. Frontmatter carries every required schema field (`id`, `title`, `type`, `path`, `source_files`, `status: planned`, `phase: idle`, `last_synced`) plus `initiative`, `wave`, `depends_on` (COMPONENTs list the SPECs and lower COMPONENTs they build on; a SPEC's `depends_on` never contains a COMPONENT), `tags` (4 to 8 concepts, never file paths), and the contract fields below. A SPEC's `source_files` is empty. Seed `test_files: []` explicitly on every COMPONENT: at plan time the test files do not exist yet, so an empty list is the honest value, but write the field so it is visibly a promise, not an omission. The build's completion step fills it from the files Phases 4 to 6 actually write, and the validator hard-rejects any COMPONENT that tries to reach `complete` with it still empty. The frontmatter-validate hook now BLOCKS any doc that violates `.mdd/00-frontmatter-spec.md`, so every field must be correct on the first write, not fixed later.
+- Set `primitives` on every doc that documents consumer-callable surfaces: one entry per primitive the doc owns, block or flow style, both are valid YAML and both parse, `kind` free-form lowercase kebab-case from the project's own vocabulary (keep the set small and consistent across the import). For each such doc also write `## Interface Overview` per the spec template's convention, three parts in order: the Part 1 prose overview (1 to 2 paragraphs, no heading of its own, what this primitive set is as a whole and why someone reaches for it), the Part 2 quick table (header exactly `| Name | What it does |`, one row per primitive), then Part 3, `### <exact identifier>` per primitive with a stranger-readable blurb, a Parameter/Values/Description table when it takes named parameters, and one runnable example somewhere in the section, zero internal jargon (the validator enforces structure and warns on jargon). The spec's syntax tables are the raw material, but REWRITE for a stranger, never paste spec prose that leans on the spec's own context. Pull the names from the spec's own syntax tables and command lists, they are exactly what the completeness checklist already extracts. This field is how any tool finds "every directive doc" or "every CLI verb doc" with zero path guessing; a doc with primitives must carry the exact `## API/Interface` and `## Business Rules` headings (the validator blocks otherwise).
 - Narrowing is a decision, never a default: whenever the doc scopes a business rule tighter than the rule's own wording in the source spec (the spec says "schema-validated documents", the doc delivers write-path validation only; the spec names a user-level path, the doc builds only project-level), write the narrowing INTO the doc as an explicit line, `Scope decision: <rule> narrowed to <scope> because <why>`, and surface every such line in the IS gate's WAITING ON YOU block for sign-off. A reader of the spec must never assume a delivery the doc quietly cut; the audit's fidelity pass flags exactly this, so record it here where it is a choice instead of there where it is a finding.
 - Contracts (declare on providers, wire on consumers), so the build's Phase 7 contract gate has something real to verify instead of passing vacuously: for each SPEC invariant or security rule that names a REQUIRED gate function (identifier resolution, an auth or permission check, input validation, masking, any "check before X"), find the COMPONENT that PROVIDES that function and add an `integration_contracts` entry on that provider (`function`, `when` the condition or `always`, `mandatory: true`). Declare it on the provider COMPONENT, never on the SPEC, so the provider is not asked to satisfy its own function. Then for every COMPONENT whose `depends_on` includes that provider AND that actually calls the function, add a matching `satisfies_contracts` placeholder (`from` the provider id, `function`, `when`, `status: pending`, `verified_at: ""`); a dependent that never calls it carries no entry. The build flips each to `status: done` with a real call site at Phase 7, and a `complete` doc must carry no `pending` contract.
 As each file is written, print one indented line `  wrote <id>-<slug>` so the user watches the tree fill in. Mark each file `[~]` before writing and `[x]` after, so a resume never rewrites a done file.
@@ -130,12 +144,22 @@ regenerate the connections map explicitly by running `node .claude/hooks/lib/con
 connections-sync hook), and delete the job folder. The spec snapshot lives in
 `.mdd/specs/` for future re-imports and audits.
 
-Then act on the IS3 execution mode:
-- (a) unattended: read `.claude/skills/plan-execute/SKILL.md` and execute it for
-  wave 1 in unattended mode, then wave 2, and so on through the last wave, no
-  prompt between waves. Each wave gets its own branch and its own merge to main
-  (plan-execute owns that hard rule). If any wave stops BLOCKED, stop the run
+Then the execution handoff. This skill runs FORKED, and the wave execution must
+NOT run inside the fork: building waves is long-running, dispatches its own
+builder and review agents, and its BLOCKED stops must reach the user in the main
+thread. So the fork ENDS here, and the DONE block's LAST lines are the handoff,
+which the main thread MUST act on immediately as its next action, no re-asking
+(the user already chose at IS3). Note on mechanics: chaining works by READING the
+target skill's SKILL.md and executing it, which is always allowed;
+disable-model-invocation only governs starting a flow uninvited from
+conversation, it never blocks an in-flow handoff.
+- (a) unattended: end with `HANDOFF: read .claude/skills/plan-execute/SKILL.md
+  and execute wave 1 in UNATTENDED mode, then every subsequent wave in order, no
+  prompt between waves; after the final wave completes (or the run stops
+  BLOCKED), run node .claude/hooks/lib/statusbar.cjs run-done.` Each wave gets its own branch and its own merge to main
+  (plan-execute owns that hard rule). If any wave stops BLOCKED, the run stops
   there with the blocker report; never skip a blocked wave to start the next.
-- (b) execute wave 1 the same way, then stop and report, naming the next wave.
-- (c) report the tree and the next steps (`/plan-execute <slug>-wave-1`, or
-  `/audit` to review).
+- (b) the same HANDOFF line for wave 1 only (run-done when wave 1 completes,
+  the paused run is this run's end), then stop and report, naming the next wave.
+- (c) no handoff: report the tree and the next steps
+  (`/plan-execute <slug>-wave-1`, or `/audit` to review).

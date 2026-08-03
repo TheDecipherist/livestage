@@ -16,9 +16,12 @@ Messaging: this skill runs forked, so the status lines are the user's ONLY windo
 Print exactly one plain `[audit N/8] ...` line at the start of each step, then work
 silently. While shards run (A3/A4), re-print the line whenever the done-count moves
 by about 10 percent or a shard finishes: `[audit 4/8] 5 shards running, 42/117 files
-done.` Questions use a `WAITING ON YOU` block with numbered options. End with a DONE
+done.` Questions use a `WAITING ON YOU` line, with the choices presented through the AskUserQuestion tool so the user picks with the arrow keys and enter, NEVER a typed-answer prose prompt. The recommended option is always FIRST and labeled "(Recommended)". Numbered text options are the fallback only when the tool is unavailable (headless or unattended runs). Never an open-ended stop. End with a DONE
 block: totals by severity, top issues, report path, next action.
-Status bar mirror: alongside each step line run
+Task checklist shape for an audit: create it at A1 with the eight A steps;
+while shards run, the A3 entry's name carries the live count (42/117 files).
+
+Status bar mirror: at A1 run `node .claude/hooks/lib/statusbar.cjs run-start audit` (only when user-invoked, never from inside another MDD flow). Whenever stopping for user input (any WAITING ON YOU), first run `node .claude/hooks/lib/statusbar.cjs pause` so waiting time never counts as run time; the timer resumes automatically on the next `set` after the answer. When the run completes, the freezing `done <flow>`/`run-done` call PRINTS `MDD <run> completed in <elapsed>`: repeat that line VERBATIM as the very LAST user-visible line of the run, after everything else in the DONE block, always. Task checklist, always: at run start create the session task list (TodoWrite / the native task tool) with one entry per step of this skill, named exactly like the Say lines; mark the current entry in_progress and check each one off AT the moment its step completes, so the full plan, what is done, and what is running are visible the whole run. Same ownership rule as the timer: the user-invoked wrapper creates the list; a skill executing inside another MDD flow NEVER creates or replaces it, the wrapper's list already carries that work as an entry. Micro-status: the checklist is the broad strokes; the status bar label is the LIVE one. Between Say lines, refresh it (`set <flow> <N> <T> "<msg>"`, same phase numbers) every time the concrete action changes: dispatching agents, reading a file, writing a specific file, running the suite, gate iteration K, waiting on a command. Present tense, specific, short (under ~48 chars), e.g. "writing tests/auth.test.ts", "suite run 2, 3 red", "wiring routes/session.ts". A label that sits unchanged through many actions reads as hung; the set call is near-free, refresh it liberally. Then alongside each step line run
 `node .claude/hooks/lib/statusbar.cjs set audit <N> 8 "<label>"`; during A3/A4 refresh
 it with the file progress (`set audit 4 8 "42/117 files"`). On completion `done
 audit`, on abort `clear`.
@@ -50,7 +53,24 @@ narrows to that feature's files; `staged` is `git diff --cached --name-only`; a 
 
 Main-thread doc cross-checks (these compare docs to each other and to disk, per-file
 agents cannot do them). Write results to `.mdd/audits/doc-findings-<date>.md`:
+- Schema validation on EVERY doc in scope, first, before the relational checks:
+  run `node .claude/hooks/lib/frontmatter-validate.cjs <doc>` per doc and record
+  every reported error as a finding (P2 by default, P1 when the error touches
+  `integration_contracts`, `satisfies_contracts`, or `security_read_sites`).
+  This is the outlier catcher: the validate hook only fires when a doc is
+  WRITTEN, so a doc that predates a schema change, was hand-edited outside
+  Claude, or came from an old /upgrade sits invalid forever and no gate ever
+  looks at it again. The audit is the one place that re-reads everything, so
+  it re-validates everything. A doc the validator cannot parse at all is P1:
+  every downstream check silently skips it, which is exactly the invisible
+  failure this pass exists to surface. Suggest /upgrade when the errors match
+  the legacy patterns (missing required fields, pre-2.0 enums).
 - Every `source_files` path exists on disk (missing = P2).
+- Every `test_files` path exists on disk (missing = P2), and every test file path
+  cited in a doc's BODY prose (Acceptance Criteria, Bug Fixes) appears in its
+  `test_files` field (missing = P2). Prose is where the truth lands when the field
+  gets skipped; the field is what Test Freeze and every tool actually read, so
+  drift between them means the tests are unprotected while the doc reads covered.
 - A feature with `depends_on` on a feature that has `integration_contracts` must have non-empty `satisfies_contracts` (missing = P2).
 - Every `satisfies_contracts` entry with `status: pending` = P1 (documented, never wired).
 - For satisfied contracts, EVERY source file performing the contracted operation has the guard call, not just one (unguarded file = P2, or P1 if a security contract).
@@ -85,6 +105,7 @@ Dispatch all shard agents at once, plus the review agents the diff warrants (rea
 diff, not just paths): `code-reviewer` always; `silent-failure-hunter` on error
 handling; `pr-test-analyzer` when tests or behavior changed; `security-reviewer` on
 auth/input/queries/tokens; `performance-reviewer` on endpoints/queries/loops;
+`design-reviewer` on markup, styles, or design tokens;
 `doc-reviewer` on docs. Each shard agent runs its per-file loop (mark `[~]`, read,
 analyze against the criteria, append findings plus a mandatory `Contracts:` line to its
 own notes, mark `[x]`/`[!]`, clear context, resume from the manifest). While they run,
@@ -150,8 +171,12 @@ Say: `[audit 7/8] Report ready.`
 Report totals by severity, the top issues, and the report path. Offer: fix all, review
 first, or P1+P2 only. On fix, detect the test runner once, then per finding: read the
 source, apply the fix, write/update its test, run ONLY that test file. After all fixes,
-run the full suite once as a regression check. Remove fixed items from `known_issues`,
-bump `mdd_version` on edited docs. Then run a tag pass (generate `tags:` for any doc
+run the full suite once as a regression check. Fixed items are MOVED, never deleted:
+remove the entry from `known_issues` and append it to the doc's `## Fixed Issues`
+section (create the section at the bottom if missing) as `- <original text> (fixed
+<YYYY-MM-DD>, audit: <one line of evidence>)`, the same convention /fix-known-issues
+and /bug use. Silent deletion erases the record that the issue ever existed. Bump
+`mdd_version` on edited docs. Then run a tag pass (generate `tags:` for any doc
 missing them), regenerate the connections map explicitly with
 `node .claude/hooks/lib/connections-gen.cjs` (audit runs forked, so trigger the generator
 directly rather than relying on the connections-sync hook), and rebuild `.mdd/.startup.md`.

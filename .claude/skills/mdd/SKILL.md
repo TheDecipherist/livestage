@@ -19,7 +19,7 @@ catalog IS the output. After the catalog, run the drift check at the bottom.
 | Command | What it does |
 |---|---|
 | `/build <feature>` | Document and build a feature the full MDD way: explore in parallel, trace data flow, write the feature doc, generate failing tests (Red Gate), plan in blocks, implement to green (Green Gate), verify against the real runtime. The flagship. |
-| `/bug <symptom>` | Report and fix a bug in an existing feature: finds the owning feature doc, logs the bug in its Bugs table, fixes it (lightweight or through the full gates), marks it complete. |
+| `/bug <symptom>` | Report and fix a bug: traces the symptom into the code, derives the owning docs from the defect's files, fixes it (lightweight or full gates), reconciles the real diff against the doc set, and leaves a dated Bug Fixes record in every touched doc. |
 | `/task <description>` | A scoped one-off (chore, config change, small refactor) recorded the MDD way as a frozen task doc that is never flagged as drifted. |
 | `/update <doc id>` | Resync a feature doc with code that changed: diffs doc against source, rewrites only affected sections, preserves known issues, clears the drift flag. |
 | `/audit [scope]` | Shard the code across parallel agents and audit it against the feature docs, plus specialist review passes; merges into one deduplicated, confidence-ranked report and optionally fixes. |
@@ -28,7 +28,7 @@ catalog IS the output. After the catalog, run the drift check at the bottom.
 | `/status` | Full MDD overview (docs, tests, known issues, initiatives, waves, drift counts), then rebuilds the session brief. The "where am I" command. |
 | `/import-spec <path>` | Turn an external spec into a numbered tree of MDD docs in build-dependency order: initiative, waves with demo-states, feature docs, previewed as a mandatory dry run before writing. The dry-run approval also picks the execution mode: unattended end-to-end (build every wave, walk away), wave 1 then pause, or docs only. |
 | `/mdd-init [focus]` | Install MDD into a project on evidence: scans the codebase, proposes a justified plan (every rule and hook tied to something found), installs only what is approved. |
-| `/reverse-engineer [path]` | Generate a feature doc from existing source code, inferring purpose, models, routes, and rules, disclosing what could not be inferred. |
+| `/reverse-engineer [path]` | Generate feature docs from existing source code: one feature, or corpus mode for a whole undocumented project (partition, dependency-ordered numbering, dry-run preview, resumable batch writing). Discloses what could not be inferred via a [gap] known_issues entry per doc. |
 | `/deprecate <doc id>` | Retire a feature doc safely: flags dependents, archives, asks separately before touching source or tests. Never auto-deletes code. |
 | `/upgrade` | Batch-patch missing frontmatter fields across every doc, non-destructively. How untracked docs become in-sync in one pass. |
 | `/note <text \| list \| clear>` | Append-only working notes in the session brief that survive across sessions. |

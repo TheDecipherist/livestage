@@ -6,6 +6,8 @@ initiative: none
 wave: test-w1
 source_files:
   - src/directives/hash.ts
+test_files:
+  - tests/directives/hash.test.ts
 status: complete
 phase: all
 last_synced: 2026-08-02

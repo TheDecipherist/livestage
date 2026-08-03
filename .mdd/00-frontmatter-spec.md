@@ -20,13 +20,13 @@ every write. Fields marked required must be present or the hook flags the doc.
 | `wave` | no | string | The wave id this feature belongs to, e.g. `havendb-wave-1`. |
 | `routes` | no | list | API routes this feature exposes, e.g. `POST /api/v1/login`. |
 | `models` | no | list | Data models this feature touches. |
-| `test_files` | no | list of paths | The tests for this feature. Load-bearing: copied into `.state.json` so Test Freeze knows what to protect. |
+| `test_files` | no | list of paths | The tests for this feature. Load-bearing: copied into `.state.json` so Test Freeze knows what to protect. Optional at seed time (for a new feature the real paths only exist once Phase 4 writes them), but NOT at completion: a COMPONENT with non-empty `source_files` cannot be `complete` or `in_progress` with this empty (validator-enforced, hard). The only escape is loud: a `known_issues` entry `[deferred] no independently testable behavior: <why>` (or `[gap] test_files unknown, tests undiscovered` on a legacy doc /upgrade could not backfill). Populate it from the files the build actually wrote, never from a prediction. |
 | `data_flow` | no | string | One-line trace of the request path. Authored by a human, not discovered. |
 | `depends_on` | no | list of ids | Feature docs this one depends on. A SPEC's list must never contain a COMPONENT. |
 | `tags` | no | list | Domain concepts, technology names, or feature names. Never file paths or generic words. |
 | `known_issues` | no | list | ACTIVE unfixed issues only. Each entry starts with `[deferred]` (a decision not to do it now, with the why) or `[gap]` (found, undecided); untagged reads as `[gap]`. An entry leaves this list only by moving to the doc's `## Fixed Issues` body section (bottom of the doc) with the fix date and evidence, /fix-known-issues owns that move; silent deletion never. The tags let an audit tell "we chose not to" from "we forgot", and the list length IS the doc's open-issue count. |
 | `security_read_sites` | no | list | Security-sensitive sites to read before touching this feature. |
-| `primitives` | no | list of objects | The consumer-callable surfaces this doc documents, one entry per primitive, BLOCK style (`- name: "@list"` newline `  kind: directive`; inline `{...}` braces do not parse). `name` is the exact identifier (`@list`, `GET /users/:id`, `render`). `kind` is FREE-FORM lowercase kebab-case, whatever this project's primitives actually are (`directive`, `cli-verb`, `endpoint`, `driver`, `ui-component`, ...); keep the per-project set small and consistent. Absent on docs covering internal architecture, contracts, or tooling nobody outside the project calls, most docs will not have it. Tools filter `kind == "directive"` instead of guessing path conventions, and the build's Green Gate exercises each entry live. A doc with primitives MUST carry exact `## API/Interface`, `## Business Rules`, and `## Interface Overview` headings, with one `### <name>` per primitive inside Interface Overview (validator-enforced). |
+| `primitives` | no | list of objects | The consumer-callable surfaces this doc documents, one entry per primitive, any valid YAML style: block (`- name: "@list"` newline `  kind: directive`) or flow (`- {name: "@list", kind: directive}`), the kit parser accepts both. `name` is the exact identifier (`@list`, `GET /users/:id`, `render`). `kind` is FREE-FORM lowercase kebab-case, whatever this project's primitives actually are (`directive`, `cli-verb`, `endpoint`, `driver`, `ui-component`, ...); keep the per-project set small and consistent. Absent on docs covering internal architecture, contracts, or tooling nobody outside the project calls, most docs will not have it. Tools filter `kind == "directive"` instead of guessing path conventions, and the build's Green Gate exercises each entry live. A doc with primitives MUST carry exact `## API/Interface`, `## Business Rules`, and `## Interface Overview` headings, with one `### <name>` per primitive inside Interface Overview (validator-enforced). |
 | `mdd_version` | no | string | The MDD schema version that wrote this doc. |
 | `integration_contracts` | no | list | Declared on the provider COMPONENT that exposes a security-critical gate function. Each entry has `function` / `when` (a condition, or `always`) / `mandatory` (bool). |
 | `satisfies_contracts` | no | list | Declared on a dependent COMPONENT that calls a provider's gate function. Each entry has `from` / `function` / `when` / `status` (`pending` or `done`) / `verified_at`. When `status` is `done`, `verified_at` MUST be a test locator (`path.ext:line` or `path.ext::name`), never a bare date; a date proves nothing. |
@@ -39,6 +39,35 @@ The fact-fields (`source_files`, `routes`, `models`, `depends_on`, `test_files`,
 fans them out to parallel discovery agents and assembles the frontmatter from
 their verified lists. The synthesis-fields (`data_flow`, `title`, `known_issues`)
 need judgment and are authored in the main thread.
+
+One fact-field is time-delayed: `test_files` for a brand-new feature is a
+prediction at Phase 3 (the files do not exist yet) and only becomes a fact
+after Phase 4 writes the red-gate skeletons. So its authoritative write
+happens at COMPLETION, from the real files on disk, in every flow that marks
+a doc complete (build Phase 7, plan-execute's completion gate). Discovery at
+Phase 3 is a best guess; the completion write is the record. The validator
+enforces the record, not the guess.
+
+And the record must be real: on a `complete` or `in_progress` doc, every
+`source_files` and `test_files` path must exist on disk (validator-enforced,
+hard). Planned and active docs may list files that do not exist yet, the doc
+is written before the code on purpose; a doc claiming the work is done may
+not. Deliberately NO count rule exists (one test file per source file is not
+the model: tests cover behavior, one test file legitimately covers several
+source files, and a barrel or types file needs none). Whether each source
+file is actually EXERCISED is the test runner's coverage report's job, not a
+filename comparison's.
+
+## Bug Fixes (body section, at the bottom of the doc)
+
+Open bugs live in `known_issues` as `[gap] B<N>: <symptom>` entries, so the
+open-items machinery (/status, /audit's backlog, /fix-known-issues) counts
+them like everything else. When /bug closes one, the entry moves to a
+`## Bug Fixes` section at the bottom of every doc the fix touched: a dated
+`### B<N> (fixed YYYY-MM-DD)` block with Symptom, Cause, and Fix
+(root-cause file:line plus the regression test locator). Sits below
+`## Fixed Issues` when both exist. Append-only history, same rule as Fixed
+Issues: nothing is ever silently deleted.
 
 ## Interface Overview (body section, required when `primitives` is set)
 

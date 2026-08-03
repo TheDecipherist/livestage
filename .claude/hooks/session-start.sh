@@ -47,6 +47,17 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   # Setup gaps worth one line each at the top of a session (mdd-notes 1.5, 10.1).
   if mdd_active; then
     [ ! -f "CLAUDE.md" ] && printf '%s\n' "Setup gap: no project CLAUDE.md. Rule discovery runs on path globs alone; offer to generate one."
+    # Dead USER-LEVEL hook registrations (an old install like mdd2 left
+    # entries in ~/.claude/settings.json): every edit in every project sprays
+    # "not found" errors that look like this kit's fault. One line, once.
+    if [ -f "$HOME/.claude/settings.json" ] && command -v jq >/dev/null 2>&1; then
+      dead="$(jq -r '.hooks // {} | .[] | .[] | .hooks[]? | .command // empty' "$HOME/.claude/settings.json" 2>/dev/null | while IFS= read -r c; do
+        pth="$c"; case "$c" in node\ *|bash\ *|sh\ *|python3\ *) pth="${c#* }";; esac
+        pth="${pth//\"/}"; pth="${pth/#\~/$HOME}"
+        case "$pth" in /*) [ ! -e "$pth" ] && printf '%s\n' "$c";; esac
+      done | head -3)"
+      [ -n "$dead" ] && printf '%s\n' "Setup gap: ~/.claude/settings.json registers hooks whose files no longer exist (stale entries from an old install, they fire in EVERY project):" "$dead" "Remove those entries from your USER settings; bash .claude/hooks/fix-permissions.sh lists them all."
+    fi
     # MDD installed but never fed (mdd-notes3 2.2): the whole doc-driven flow is
     # inert with zero feature docs, and nothing else says so out loud.
     docs_n="$(find "$MDD_DIR/docs" -maxdepth 1 -name '*.md' ! -name '00-*' 2>/dev/null | wc -l | tr -d ' ')"

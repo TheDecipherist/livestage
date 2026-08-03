@@ -1,0 +1,18 @@
+{
+  "name": "silent on a fully valid corpus",
+  "stdin": {
+    "hook_event_name": "Stop",
+    "stop_hook_active": false
+  },
+  "env": {
+    "MDD_DIR": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-clean",
+    "MDD_DOCS": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-clean/docs",
+    "MDD_SWEEP_TOUCHED": "none.md",
+    "MDD_SRC_ROOT": ".claude/hooks/tests/fixtures/mdd-sweep/corpus-clean"
+  },
+  "expect_exit": 0,
+  "expect_stdout_not_contains": [
+    "decision",
+    "sweep"
+  ]
+}

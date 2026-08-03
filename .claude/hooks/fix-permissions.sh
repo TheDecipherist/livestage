@@ -89,6 +89,40 @@ else
   done < <(jq -r '.hooks // {} | .[] | .[] | .hooks[]? | .command // empty' "$SETTINGS")
 fi
 
+# 3. USER-LEVEL settings (~/.claude/settings.json) can register hooks too, and
+#    Claude Code merges them into every project. An old install (mdd2, a
+#    removed tool) leaving entries behind means every edit in every project
+#    sprays "not found" errors that look like THIS kit's fault. Report-only:
+#    user settings are personal config, never edited by a project script.
+USER_SETTINGS="$HOME/.claude/settings.json"
+if [ -f "$USER_SETTINGS" ] && command -v jq >/dev/null 2>&1; then
+  while IFS= read -r cmd; do
+    [ -z "$cmd" ] && continue
+    path="$cmd"
+    case "$cmd" in
+      node\ * | bash\ * | sh\ * | python3\ *) path="${cmd#* }" ;;
+    esac
+    path="${path//\"/}"
+    path="${path/#\~/$HOME}"
+    case "$path" in
+      /*)
+        if [ ! -e "$path" ]; then
+          problems+=("registered in ~/.claude/settings.json, not on disk: $cmd (stale hook from an old install; remove that entry from your USER settings, it fires in every project)")
+        fi
+        ;;
+    esac
+  done < <(jq -r '.hooks // {} | .[] | .[] | .hooks[]? | .command // empty' "$USER_SETTINGS" 2>/dev/null)
+  sl="$(jq -r '.statusLine.command // empty' "$USER_SETTINGS" 2>/dev/null)"
+  if [ -n "$sl" ]; then
+    slpath="$sl"
+    case "$sl" in node\ *|bash\ *|sh\ *) slpath="${sl#* }" ;; esac
+    slpath="${slpath//\"/}"; slpath="${slpath/#\~/$HOME}"
+    case "$slpath" in
+      /*) [ ! -e "$slpath" ] && problems+=("statusLine in ~/.claude/settings.json points at a missing file: $sl (an old status bar; the kit's statusline.cjs replaces it)") ;;
+    esac
+  fi
+fi
+
 if [ "$fixed" -eq 0 ]; then
   echo "All hook scripts already executable."
 else

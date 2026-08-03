@@ -15,7 +15,7 @@ costs tokens and trust forever.
 ## Phase 1: Scan (read-only, no writes)
 
 Say: `[mdd-init 1/5] Scanning the codebase for evidence.`
-Status bar mirror: alongside each phase's Say line run `node .claude/hooks/lib/statusbar.cjs set mdd-init <N> 5 "<label>"`, and `done mdd-init` at the end.
+Status bar mirror: at Phase 1 run `node .claude/hooks/lib/statusbar.cjs run-start mdd-init`. Whenever stopping for user input (any WAITING ON YOU), first run `node .claude/hooks/lib/statusbar.cjs pause` so waiting time never counts as run time; the timer resumes automatically on the next `set` after the answer. When the run completes, the freezing `done <flow>`/`run-done` call PRINTS `MDD <run> completed in <elapsed>`: repeat that line VERBATIM as the very LAST user-visible line of the run, after everything else in the DONE block, always. Task checklist, always: at run start create the session task list (TodoWrite / the native task tool) with one entry per step of this skill, named exactly like the Say lines; mark the current entry in_progress and check each one off AT the moment its step completes, so the full plan, what is done, and what is running are visible the whole run. Same ownership rule as the timer: the user-invoked wrapper creates the list; a skill executing inside another MDD flow NEVER creates or replaces it, the wrapper's list already carries that work as an entry. Micro-status: the checklist is the broad strokes; the status bar label is the LIVE one. Between Say lines, refresh it (`set <flow> <N> <T> "<msg>"`, same phase numbers) every time the concrete action changes: dispatching agents, reading a file, writing a specific file, running the suite, gate iteration K, waiting on a command. Present tense, specific, short (under ~48 chars), e.g. "writing tests/auth.test.ts", "suite run 2, 3 red", "wiring routes/session.ts". A label that sits unchanged through many actions reads as hung; the set call is near-free, refresh it liberally. Then alongside each phase's Say line run `node .claude/hooks/lib/statusbar.cjs set mdd-init <N> 5 "<label>"`, and `done mdd-init` at the end.
 
 Build an evidence table. Do not stop at manifests, read real code.
 - Stack and real commands: `package.json`/`pyproject.toml`/`Cargo.toml`/`go.mod`, CI workflows. Record the actual build/test/lint commands, not guesses.
@@ -31,7 +31,7 @@ If `$focus` is set, weight the scan toward it.
 
 ## Phase 2: Confirm
 
-Say: `[mdd-init 2/5] Findings below.` Then the summary, ending in a `WAITING ON YOU` block.
+Say: `[mdd-init 2/5] Findings below.` Then the summary, one `WAITING ON YOU` line, and the questions presented through the AskUserQuestion tool (arrow keys and enter, recommended option first and marked "(Recommended)"), never typed-answer prompts.
 
 Present a compact findings summary and confirm it with the user before proposing
 anything. Ask about anything ambiguous or invisible to the scan (generated dirs to
