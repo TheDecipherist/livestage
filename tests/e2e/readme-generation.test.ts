@@ -4,6 +4,7 @@ import { readFileSync, mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { getAvailableDirectives } from 'livestage/parser'
+import { stripGeneratedMetadataBlock } from '../../src/engine/generated-metadata.js'
 
 // Auto README Generation (feature 48): README.stage at the repo root
 // renders itself into README.md by reading the project's own state live
@@ -193,6 +194,76 @@ describe('npm run readme / readme:check regenerate README.md via the existing bu
       writeFileSync(readmePath, 'deliberately stale content for this test\n')
       expect(runCheckReadme).toThrow()
     } finally {
+      writeFileSync(readmePath, original)
+    }
+  })
+})
+
+// feat/drift-gates, Part 2: scripts/verify-generated.mjs is what
+// .githooks/pre-commit and pre-push actually run. Co-located here (not a
+// new test file) deliberately: it mutates the same tracked README.md this
+// file's own vacuousness proof above already does, and vitest runs test
+// FILES in parallel by default, a second file doing the same mutation
+// against the same real path risks catching this one mid-mutation (the
+// documented examples:check gotcha in CLAUDE.md). Same file, same
+// synchronous mutate/act/restore boundary, no new collision surface.
+describe('scripts/verify-generated.mjs (what the git hooks actually run)', () => {
+  const verifyGeneratedScript = join(repoRoot, 'scripts', 'verify-generated.mjs')
+
+  it('passes silently (exit 0) when README.md, CLAUDE.md, and examples are all current', () => {
+    const out = execFileSync('node', [verifyGeneratedScript], { cwd: repoRoot, encoding: 'utf8' })
+    expect(out).toContain('OK readme')
+    expect(out).toContain('all generated files current')
+  })
+
+  it('FAILS with the exact fix command when README.md is stale, proving the gate is not vacuous', () => {
+    const readmePath = join(repoRoot, 'README.md')
+    const original = readFileSync(readmePath, 'utf8')
+    try {
+      writeFileSync(readmePath, 'deliberately stale content for this test\n')
+      expect(() => execFileSync('node', [verifyGeneratedScript], { cwd: repoRoot, encoding: 'utf8' })).toThrow()
+      let output = ''
+      try {
+        execFileSync('node', [verifyGeneratedScript], { cwd: repoRoot, encoding: 'utf8' })
+      } catch (err) {
+        output = String((err as { stdout?: string }).stdout ?? '') + String((err as { stderr?: string }).stderr ?? '')
+      }
+      expect(output).toContain('FAIL readme')
+      expect(output).toContain('npm run readme && git add README.md')
+    } finally {
+      writeFileSync(readmePath, original)
+    }
+  })
+
+  it('--fix regenerates and re-stages a stale README.md instead of failing (design decision: check-and-fail is the DEFAULT, --fix is the explicit opt-in)', () => {
+    const readmePath = join(repoRoot, 'README.md')
+    const original = readFileSync(readmePath, 'utf8')
+    try {
+      writeFileSync(readmePath, 'deliberately stale content for this test\n')
+      const out = execFileSync('node', [verifyGeneratedScript, '--fix'], { cwd: repoRoot, encoding: 'utf8' })
+      expect(out).toContain('regenerating (--fix)')
+      expect(out).toContain('regenerated and staged README.md')
+      const fixed = readFileSync(readmePath, 'utf8')
+      // Compare with the metadata block stripped, not the raw bytes: every
+      // regeneration stamps a fresh livestage_updated_at (wall-clock, at
+      // the moment --fix ran), so a byte-for-byte compare against the
+      // pre-test committed file fails on the timestamp alone even when the
+      // actual rendered content is identical, the same reason
+      // check-readme.mjs itself strips this block before comparing.
+      expect(stripGeneratedMetadataBlock(fixed)).toBe(stripGeneratedMetadataBlock(original))
+      // --fix stages the regenerated file via `git add`, since the whole
+      // point of check-and-fail-by-default is that a generated file never
+      // enters a commit silently; --fix still leaves a normal, visible,
+      // reviewable staged diff for the author to look at before committing.
+      // The regenerated content happens to round-trip back to exactly what
+      // HEAD already has content-wise (this test's "stale" content was
+      // synthetic, not a real drift), so `git diff --cached` is empty by
+      // correct git behavior, not a sign staging didn't happen: check the
+      // INDEX (staged) blob directly instead.
+      const stagedBlob = execFileSync('git', ['show', ':README.md'], { cwd: repoRoot, encoding: 'utf8' })
+      expect(stripGeneratedMetadataBlock(stagedBlob)).toBe(stripGeneratedMetadataBlock(original))
+    } finally {
+      execFileSync('git', ['reset', 'README.md'], { cwd: repoRoot })
       writeFileSync(readmePath, original)
     }
   })

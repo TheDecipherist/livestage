@@ -25,8 +25,12 @@ describe('shouldHandle', () => {
     expect(shouldHandle({ tool_name: 'Read', tool_input: { file_path: '/a/b/doc.stage' } })).toBe(true)
   })
 
-  it('never fires on .md, pure extension match, no content sniffing', () => {
-    expect(shouldHandle({ tool_name: 'Read', tool_input: { file_path: '/a/b/doc.md' } })).toBe(false)
+  it('handles a Read of a .md file too (Part 5, feat/drift-gates: the guarantee moved to the file agents actually read); pure extension match, no content sniffing at THIS layer, whether a .md carries the livestage:generated contract is decided inside handlePostToolUse, not here', () => {
+    expect(shouldHandle({ tool_name: 'Read', tool_input: { file_path: '/a/b/doc.md' } })).toBe(true)
+  })
+
+  it('does not fire on an unrelated extension', () => {
+    expect(shouldHandle({ tool_name: 'Read', tool_input: { file_path: '/a/b/doc.txt' } })).toBe(false)
   })
 
   it('does not fire on other tools', () => {

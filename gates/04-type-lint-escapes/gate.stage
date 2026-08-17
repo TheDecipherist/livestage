@@ -1,0 +1,27 @@
+# Gate 4 - Type and Lint Escapes
+
+`any`, `as unknown as`, `@ts-ignore`, `@ts-expect-error`, `eslint-disable` are
+all one-line ways to make a red thing green.
+
+Census each across `src/`, computed fresh by `check.cjs` every render.
+Growing past the committed ceiling (`ceilings.json`) fails the gate; the
+live list below shows exactly where each one is.
+
+@code language="javascript" src="check.cjs" label="gate" visible="false" /
+
+## Current census
+
+{{ gate.table }}
+
+## Every occurrence
+
+@render source="gate.hits.any" type="list" /
+@render source="gate.hits.asUnknownAs" type="list" /
+
+The tracked `tests/conformance/rules.conformance.test.ts` implicit-`any` gap
+(`npm run typecheck`'s own known, non-regressing gap, documented in
+`CLAUDE.md`) is not a literal `any` in source, so it never appears in the
+census above; it is tracked separately and shown here for context, not
+hidden: **{{ gate.knownImplicitAnyGapErrorCount }}** current `tsc` errors.
+
+@assert operator="json-key" target="report.json" key="pass" equals="true" /

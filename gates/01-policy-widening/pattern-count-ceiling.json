@@ -1,0 +1,4 @@
+{
+  "_comment": "Committed ceiling on the total shell.allow_patterns count across every .livestage/policy.json in the repo. Set to the current real count (8, as of this gate's own introduction). Growing past it is a deliberate, reviewed bump to this file, not something that happens silently as a side effect of an unrelated change.",
+  "max_allow_patterns": 8
+}

@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/); this file starts
 at 1.0.2, the first version documented this way.
 
+## 1.1.0
+
+### Added
+
+- **The generated-`.md` contract**: `livestage build ... --stamp-metadata
+  [--hash-inputs="glob,glob"]` writes a `livestage:generated` HTML comment
+  block (not YAML frontmatter, deliberately, GitHub renders a leading
+  `---` block ugly at the top of a repo's own README) naming the `.stage`
+  source, when it was rendered, which version rendered it, and a content
+  hash over the render's declared inputs.
+- The installed **PostToolUse** hook now also watches reads of any `.md`
+  carrying that block, not only `.stage` files. It hashes the declared
+  inputs before doing any work; unchanged means the committed file is
+  served with zero render. On a changed hash, the user-set
+  `livestage_regenerate_on_read` field decides what's served: absent
+  serves the committed file with a stale-drift notice and the exact regen
+  command, `true` serves a fresh render with a notice naming the source,
+  `false` serves the committed file silently (an explicit opt-out). A
+  render that fails or times out always serves the committed file with a
+  could-not-verify notice; a read through this hook never fails and never
+  serves a fresh render silently, at any setting.
+- New public exports from `livestage/engine`: `parseGeneratedMetadata`,
+  `extractGeneratedMetadataBlock`, `stripGeneratedMetadataBlock`,
+  `stampGeneratedMetadata`, `recomputeContentHash`.
+
 ## 1.0.2
 
 ### Security

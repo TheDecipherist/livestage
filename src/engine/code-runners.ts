@@ -1,6 +1,5 @@
 import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { scanInterpolations } from 'livestage/parser'
@@ -14,6 +13,7 @@ import { cacheKey, readCache, writeCache } from './cache.js'
 import { parseCodeOutput, parseCoerceSpec, isParseFormat } from './parse-formats.js'
 import type { SchemaField } from './schema/loader.js'
 import { validateFieldValue } from './schema/validate.js'
+import { hashFileSet } from './content-hash.js'
 
 // language -> runner command. Extended/overridden by policy's code.runners.
 const DEFAULT_RUNNERS: Record<string, string> = {
@@ -137,17 +137,7 @@ function validateCodeSchema(value: unknown, fields: Record<string, SchemaField>,
 function computeCacheKeyContentHash(glob: string, ctx: EngineContext): string | null {
   const files = resolveGlobTargets(glob, p => resolveDataPath(p, ctx, '@code cache-key'))
   if (files.length === 0) return null
-  const hash = createHash('sha256')
-  for (const f of [...files].sort()) {
-    hash.update(f)
-    try {
-      hash.update(readFileSync(f))
-    } catch {
-      // File vanished between the glob walk and the read; its absence is
-      // already reflected in the path list itself, nothing more to hash.
-    }
-  }
-  return hash.digest('hex')
+  return hashFileSet(files)
 }
 
 function runMockCode(node: CodeNode, ctx: EngineContext): string | null {

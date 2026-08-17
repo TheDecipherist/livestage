@@ -16,6 +16,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { stripGeneratedMetadataBlock } from '../dist/engine/generated-metadata.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(here, '..')
@@ -50,7 +51,9 @@ if (lineCount < 100 || sectionCount < 6) {
   process.exit(3)
 }
 
-const committed = readFileSync(claudeMdPath, 'utf8')
+// Part 5 (feat/drift-gates): stripped before comparing, same reasoning
+// as check-readme.mjs, see its own comment for why.
+const committed = stripGeneratedMetadataBlock(readFileSync(claudeMdPath, 'utf8'))
 const normalize = s => s.trim() + '\n'
 if (normalize(committed) !== normalize(rendered)) {
   console.error('check-claude-md: FAIL. CLAUDE.md is stale, it does not match what CLAUDE.stage currently renders. Run "npm run claude-md" to regenerate, then commit the result.')

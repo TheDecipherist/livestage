@@ -1,0 +1,8 @@
+{
+  "_comment": "Committed ceilings on each type/lint escape pattern's census count across src/. Set to the current real counts as of this gate's introduction (any: 0, everything else: 0 except as-unknown-as, one deliberate, pre-existing occurrence in engine.ts's trace-args extraction). Raising any of these is a deliberate, reviewed bump to this file.",
+  "any": 0,
+  "asUnknownAs": 1,
+  "tsIgnore": 0,
+  "tsExpectError": 0,
+  "eslintDisable": 0
+}

@@ -271,8 +271,15 @@ universalOptions(
     .command('build <file>')
     .description('render and write output to file')
     .option('-o, --output <path>', 'output file path (required)')
+    .option('--stamp-metadata', 'write the livestage:generated metadata block into the output (Part 5, feat/drift-gates)')
+    .option('--hash-inputs <glob>', 'glob (relative to the .stage file\'s own directory) naming the files livestage_content_hash covers; defaults to the .stage file itself')
 ).action((file: string, opts: Record<string, string | boolean | undefined>) => {
-  const result = runBuild(file, opts)
+  const buildOpts = {
+    ...opts,
+    stampMetadata: opts['stampMetadata'] === true,
+    ...(typeof opts['hashInputs'] === 'string' ? { hashInputs: opts['hashInputs'] } : {}),
+  }
+  const result = runBuild(file, buildOpts)
   for (const warn of result.warnings) {
     if (!opts['silent']) process.stderr.write(`WARN: ${warn}\n`)
   }

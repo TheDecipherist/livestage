@@ -1,0 +1,32 @@
+# Gate 1 - Security Policy Widening
+
+The most important gate. The shortcut this catches: an agent hits a policy
+denial and, instead of narrowing the command, widens the policy. Not
+hypothetical: `git *` shipped in the default allowlist through 1.0.1, and a
+compound-command hole rode in with it.
+
+Four checks over every `.livestage/policy.json` in the repo, plus the trust
+store, computed fresh by `check.cjs` every render:
+
+1. No `*` in any `shell.allow_patterns` entry.
+2. `code.languages` empty unless the file is on the reviewed exception list
+   (`exceptions.json`).
+3. `http.enabled` never `true`.
+4. Total `allow_patterns` count across every file never exceeds the
+   committed ceiling (`pattern-count-ceiling.json`).
+5. The trust store gained no entries. "Just trust the directory" is the
+   same shortcut one layer up.
+
+@code language="javascript" src="check.cjs" label="gate" visible="false" /
+
+## Current state
+
+@render source="gate.problems" type="list" /
+
+**{{ gate.policyFileCount }}** policy files, **{{ gate.totalPatterns }}**
+total allow_patterns (ceiling {{ gate.ceiling }}), **{{ gate.trustedCount }}**
+trusted director{{ gate.trustedCount == 1 ? "y" : "ies" }}.
+
+{{ gate.table }}
+
+@assert operator="json-key" target="report.json" key="pass" equals="true" /

@@ -1,0 +1,4 @@
+{
+  "_comment": "Committed ceiling on the total .skip( count across tests/. Currently zero. Raising it is a deliberate, reviewed change, not something that happens silently; every occurrence still needs a reason comment regardless of the floor.",
+  "max_skip": 0
+}

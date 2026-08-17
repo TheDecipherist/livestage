@@ -1,0 +1,25 @@
+# Gate 3 - Tests Neutered
+
+`it.only` silently passes a whole suite by running one test. `it.skip` and a
+commented-out expectation are the quieter versions.
+
+Three checks, computed fresh by `check.cjs` every render:
+
+1. Zero `.only(` anywhere in `tests/`.
+2. `.skip(` count never above the committed floor (`skip-floor.json`), and
+   every occurrence carries a reason comment on the same or preceding line.
+3. Total test count never drops below `scripts/test-baseline.json`'s
+   recorded floor, the same file `npm run test:baseline` already checks,
+   wired into this gate rather than duplicated.
+
+@code language="javascript" src="check.cjs" label="gate" visible="false" /
+
+## Current state
+
+@render source="gate.problems" type="list" /
+
+**{{ gate.onlyCount }}** `.only(`, **{{ gate.skipCount }}** `.skip(`
+(floor {{ gate.skipFloor }}), **{{ gate.currentTestCount }}** tests
+(baseline {{ gate.baseline }}).
+
+@assert operator="json-key" target="report.json" key="pass" equals="true" /

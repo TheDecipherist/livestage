@@ -1,25 +1,46 @@
-// The PostToolUse hook that renders `.stage` files in place of the raw Read.
+// The PostToolUse hook that renders `.stage` files in place of the raw Read,
+// AND (Part 5, feat/drift-gates) keeps a generated `.md`'s own committed
+// bytes honest against its `.stage` source under the document's own
+// control, since agents read CLAUDE.md and README.md; the `.stage` is the
+// source almost nobody opens, the guarantee used to land on the wrong file.
 //
 // Named `pretooluse.ts` to match the spec's file layout, but it registers as
 // a PostToolUse hook in Claude Code's settings.json: PreToolUse can only
 // allow/deny/rewrite tool ARGUMENTS (`updatedInput`), it cannot substitute
 // the content a Read call returns. PostToolUse can, via
-// `hookSpecificOutput.updatedToolOutput.content`. This is the "hook
-// substitution mechanism" decision the doc's Known Issues flagged as needing
-// to be settled against the current Claude Code hook API.
+// `hookSpecificOutput.updatedToolOutput.content`. Re-verified against the
+// installed Claude Code binary's own embedded strings, not just docs
+// (feature-doc citations can go stale): "Replaces the tool output before it
+// is sent to the model" for `updatedToolOutput` ("works for all tools"),
+// versus PreToolUse's `updatedInput`/`permissionDecision` only, and a hook's
+// `updatedToolOutput` must match the ORIGINATING tool's own output shape
+// (confirmed by the binary's own validation error message), which is why
+// this stays an object with `content`/`isError`, not a bare string.
 //
-// Fires on a pure `.stage` extension match, nothing else (CR-3, no content
-// sniffing). Renders via the exact same code path as `cli render` by
-// spawning the built CLI binary as a child process, which also gives a real,
-// killable timeout (an in-process call cannot be interrupted once a
-// synchronous engine execution, e.g. a slow @query, is underway).
+// Fires on a pure `.stage` OR `.md` extension match, nothing else (CR-3, no
+// content sniffing AT THIS LAYER): shouldHandle never opens the file.
+// Whether a `.md` actually carries the livestage:generated contract (Part
+// 5.1) is a content question, answered inside handlePostToolUse once the
+// file is already being read, exactly the same way the `.stage` path
+// already has to read the file to render it. A `.md` with no metadata
+// block at all is passed through completely untouched, filename coincidence
+// with a same-named `.stage` sibling is never enough on its own.
+//
+// Renders via the exact same code path as `cli render` by spawning the
+// built CLI binary as a child process, which also gives a real, killable
+// timeout (an in-process call cannot be interrupted once a synchronous
+// engine execution, e.g. a slow @query, is underway).
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'livestage/parser'
-import { strip, applyMasking, parseTraceConfig, emitRecord } from 'livestage/engine'
+import {
+  strip, applyMasking, parseTraceConfig, emitRecord,
+  parseGeneratedMetadata, stripGeneratedMetadataBlock, recomputeContentHash,
+  type GeneratedMetadata,
+} from 'livestage/engine'
 
 export const RENDER_TIMEOUT_MS = 5000
 
@@ -44,7 +65,7 @@ export interface HookOutput {
 export function shouldHandle(input: HookInput): boolean {
   if (input.tool_name !== 'Read') return false
   const path = input.tool_input.file_path
-  return typeof path === 'string' && path.endsWith('.stage')
+  return typeof path === 'string' && (path.endsWith('.stage') || path.endsWith('.md'))
 }
 
 function findPackageRoot(startDir: string): string {
@@ -173,17 +194,108 @@ export function handlePostToolUse(input: HookInput): HookOutput {
     if (!shouldHandle(input)) return {}
     const filePath = input.tool_input.file_path!
     if (!existsSync(filePath)) return {}
-    const { output } = renderViaCli(filePath)
-    writeRenderCache(filePath, output)
-    return {
-      hookSpecificOutput: {
-        hookEventName: 'PostToolUse',
-        updatedToolOutput: { content: output, isError: false },
-      },
+    if (filePath.endsWith('.stage')) {
+      const { output } = renderViaCli(filePath)
+      writeRenderCache(filePath, output)
+      return substitute(output)
     }
+    return handleGeneratedMarkdownRead(filePath)
   } catch {
     return {}
   }
+}
+
+function substitute(content: string): HookOutput {
+  return {
+    hookSpecificOutput: {
+      hookEventName: 'PostToolUse',
+      updatedToolOutput: { content, isError: false },
+    },
+  }
+}
+
+// Part 5 (feat/drift-gates): a .md read is only ever substituted when the
+// file carries the livestage:generated metadata block (Part 5.1) AND that
+// block names a source. No block, or a block with no livestage_source:
+// pass through untouched, filename coincidence with a same-named .stage
+// sibling is never enough on its own.
+function handleGeneratedMarkdownRead(filePath: string): HookOutput {
+  const committed = readFileSync(filePath, 'utf8')
+  const metadata = parseGeneratedMetadata(committed)
+  if (!metadata || !metadata.livestage_source) return {}
+
+  const mdDir = dirname(filePath)
+
+  // Cheap pre-check (Part 5.2): an unchanged hash of the declared inputs
+  // serves the committed file immediately with no render at all, the
+  // hot-path case. recomputeContentHash returning null (no source to
+  // resolve) falls through to the full render-and-compare path below
+  // rather than guessing.
+  const freshHash = recomputeContentHash(metadata, mdDir)
+  if (freshHash !== null && freshHash === metadata.livestage_content_hash) {
+    return {}
+  }
+
+  const sourcePath = resolve(mdDir, metadata.livestage_source)
+  if (!existsSync(sourcePath)) {
+    return substitute(`${cannotVerifyNotice(metadata, 'source file not found')}\n\n${committed}`)
+  }
+
+  const { output: freshBody, degraded } = renderViaCli(sourcePath)
+  if (degraded) {
+    return substitute(`${cannotVerifyNotice(metadata, 'render failed or timed out')}\n\n${committed}`)
+  }
+
+  const freshNormalized = `${(freshBody.endsWith('\n') ? freshBody : `${freshBody}\n`).trim()}\n`
+  const committedBody = `${stripGeneratedMetadataBlock(committed).trim()}\n`
+
+  if (freshNormalized === committedBody) {
+    // Identical: serve the committed file, say nothing. Rule 5.3's
+    // overwhelmingly common case; the hash shortcut only ever widens the
+    // net of "maybe render and check" without ever being wrong the other
+    // way (a false "unchanged" would need a hash collision), the actual
+    // render settles a hash-said-maybe-stale case for free.
+    return {}
+  }
+
+  const regenerateOnRead = metadata.livestage_regenerate_on_read === 'true'
+  const notice = staleNotice(metadata, filePath, regenerateOnRead)
+  const body = regenerateOnRead ? freshNormalized : committedBody
+  return substitute(`${notice}\n\n${body}`)
+}
+
+function regenCommandFor(source: string): string {
+  // The two flagship generated files (Part 5's own motivation: agents
+  // read these two, not their .stage source) get their real, exact
+  // command; anything else gets the general form, since there is no
+  // reviewed, committed mapping from an arbitrary .stage file to its own
+  // npm script the way README.stage/CLAUDE.stage have one.
+  if (source === 'README.stage') return 'npm run readme'
+  if (source === 'CLAUDE.stage') return 'npm run claude-md'
+  return `livestage build ${source} -o <output> --stamp-metadata`
+}
+
+// "Render fails or times out: serve the committed .md unchanged, with a
+// notice that it may be stale and could not be verified. Never serve
+// nothing, never fail the Read." (Part 5.3)
+function cannotVerifyNotice(metadata: Partial<GeneratedMetadata>, reason: string): string {
+  return `> [!NOTE] Could not verify freshness (${reason}). Showing the committed file as-is; it may be stale relative to \`${metadata.livestage_source}\`.`
+}
+
+// "Different: serve according to livestage_regenerate_on_read, and either
+// way prepend a visible in-band notice: that the committed file is stale,
+// which fields differ, and the exact command to regenerate." (Part 5.3)
+// When serving fresh, the notice also states plainly that what follows is
+// a render of the SOURCE, not the file's own committed bytes, so an agent
+// that edits/greps/quotes it afterward knows which artifact it is holding.
+function staleNotice(metadata: Partial<GeneratedMetadata>, mdFilePath: string, servingFresh: boolean): string {
+  const source = metadata.livestage_source ?? '(unknown source)'
+  const regenCmd = regenCommandFor(source)
+  const fileName = mdFilePath.split('/').pop() ?? mdFilePath
+  if (servingFresh) {
+    return `> [!WARNING] **STALE, showing a FRESH render instead of the committed file.** \`${fileName}\`'s committed bytes do not match a fresh render of \`${source}\` (content hash differs). What follows is a LIVE RENDER of \`${source}\`, not \`${fileName}\`'s own committed bytes: an edit, grep, or quote against this content will not persist. Regenerate and commit with \`${regenCmd}\`.`
+  }
+  return `> [!WARNING] **STALE.** \`${fileName}\` does not match a fresh render of \`${source}\` (content hash differs). Showing the committed file. Regenerate with \`${regenCmd}\`, or set \`livestage_regenerate_on_read: true\` in its metadata block to always see a fresh render here instead.`
 }
 
 function readStdin(): string {

@@ -54,3 +54,9 @@ tests/conformance/
 /mdd-suggested-livestage-improvements.md
 .worktrees/
 .mdd/*.tmp
+
+# gates/ (feat/drift-gates): each gate's @code script writes a small
+# report.json to its own directory so @assert json-key can read it back
+# through the default docDir jail, no filesystem grant needed. Scratch,
+# regenerated on every gate render, never meant to be committed.
+gates/**/report.json
