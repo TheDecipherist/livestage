@@ -87,22 +87,41 @@ re-run by hand every time.
 
 ## Part 2: Could the feature docs themselves use LiveStage?
 
-Short answer: not by becoming `.stage` files (see "Why not," below), but
-yes, in the sense that matters: their claims about code could be verified
-live instead of trusted by grep, every time an agent touches a feature.
+Yes, and this section originally undersold it. The first draft of this
+document argued docs should not become `.stage` sources because "every
+tool assumes `.md`." That reasoning does not hold up: it missed that the
+output can stay exactly `.md`, the same relationship `README.stage` already
+has to `README.md`, and `CLAUDE.stage` to `CLAUDE.md`. A `docid.stage`
+source generating the committed `docid.md` means every downstream
+consumer, `frontmatter-validate.cjs`, `connections-gen.cjs`, doc-discovery
+globs, every build/bug/task skill, needs zero changes: they would still be
+reading a plain `.md` file with plain YAML frontmatter, exactly as they do
+today.
 
-### Why not just convert `.mdd/docs/*.md` to `.stage`
+### The real tradeoff is workflow fit, not tooling compatibility
 
-LiveStage's own rule is explicit and load-bearing: only `.stage` files are
-ever parsed or executed, no content sniffing, no header directive, ever.
-Every piece of MDD tooling that touches feature docs (the
-`frontmatter-validate` hook, `connections-gen.cjs`, every build/bug/task
-skill, doc discovery via `.mdd/docs/*.md` globs throughout the whole
-system) assumes `.md`. Renaming the corpus to `.stage` would be an
-invasive, high-blast-radius change to the methodology itself for a
-speculative benefit, not recommended.
+`README.stage`/`CLAUDE.stage` are regenerated occasionally. Feature docs
+are edited constantly, by every build/bug/task skill, at nearly every
+phase. Converting the corpus would mean teaching every skill "edit the
+`.stage` source, then run `livestage build`" instead of "edit the `.md`
+directly." That is close to zero added cost for an agent following scripted
+skill steps (this whole corpus is already agent-authored, not
+hand-typed by a person clicking around), which is the actual, correct
+reason this is more feasible than the first draft credited.
 
-### Where the real drift lives: frontmatter
+### The stronger design this makes possible
+
+A `.stage` source is not just less drift-prone than a hand-typed `.md`,
+it can refuse to regenerate when its own claims about the code go stale.
+Embed `@assert`/`@query` checks for `source_files`/`test_files` existence
+and Acceptance-Criteria test-name citations directly in the doc's own
+`.stage` source, and `livestage build` fails, or clearly flags, the moment
+someone regenerates a doc whose claims no longer hold, at generation time,
+not via a separate audit tool checked after the fact. That is a stronger
+guarantee than the standing-report idea below, which only surfaces drift
+after it has already happened.
+
+### Where the real drift lives today: frontmatter
 
 `source_files`/`test_files` were the single most common thing that went
 stale this session, found and fixed by hand at least half a dozen times
@@ -146,25 +165,45 @@ The pattern behind both: an agent reading a feature doc before touching it
 does not take these citations on faith, it re-verifies them by grep, every
 time (as this session did, constantly). That is exactly the "Claude
 computes what LiveStage could have already computed" waste the whole
-project exists to close. A `.stage` audit tool treating the doc corpus as
-data (never rewriting the docs, never becoming one) could confirm every
-cited test name still exists, every cited file still exists, before an
-agent starts work, instead of after it stumbles into a stale citation.
+project exists to close. Either shape below (a separate verifier reading
+the docs as data, or the docs becoming `.stage` sources themselves) closes
+it; the two options below differ in cost and strength, not in whether the
+problem is solvable.
 
-### Recommended framing if this gets built
+### Two shapes this could take, both real options
 
-Not "docs become `.stage` files." Rather: a small number of `.stage`
-verifier documents, sitting alongside the corpus, that read the docs as
+**A, standalone verifier (lower risk, smaller win).** A small number of
+`.stage` documents, sitting alongside the corpus, that read the docs as
 plain data (`@read-frontmatter`, `@list ... where=`) and cross-check their
 claims against the real repository, the same trust boundary
-`examples/connections/connections.stage` already draws between "the fixture
-corpus" (data) and "the `.stage` file that reports on it" (computation).
+`examples/connections/connections.stage` already draws between "the
+fixture corpus" (data) and "the `.stage` file that reports on it"
+(computation). Docs stay untouched; nothing about how they are authored or
+edited changes. Drift is caught after the fact, whenever the verifier is
+run.
+
+**B, doc corpus becomes `docid.stage` sources generating `docid.md`
+(higher effort, stronger guarantee).** Every build/bug/task skill edits the
+`.stage` source and runs `livestage build` instead of editing `.md`
+directly. `frontmatter-validate.cjs` and every other downstream tool are
+unaffected, they still read the generated `.md`. The real cost is
+retrofitting every MDD skill's doc-writing steps, and deciding how much of
+each doc becomes computed (just the fact-shaped fields, or the full
+document); the real payoff is a doc that cannot regenerate while lying
+about the code.
+
+B is the better long-term answer if this is worth doing at all; A is the
+smaller, reversible first step that proves the value before committing to
+retrofitting every skill.
 
 ## Priority if picking one to build first
 
 1. `.mdd/connections.md` replacement (1a), lowest risk, already proven.
-2. Frontmatter/citation audit tool (Part 2), directly closes a pattern
-   that cost real time this session, repeatedly.
+2. Frontmatter/citation verifier, shape A above, directly closes a pattern
+   that cost real time this session, repeatedly, with no skill retrofit.
 3. `.mdd/.startup.md` auto-generated zone (1b), highest leverage, but
    touches a frequently-used skill; wants a deliberate design pass.
 4. Open-issues report (1c), low risk, smaller win, good complement to #2.
+5. Doc corpus conversion, shape B above: the biggest structural change
+   here, worth revisiting once A has proven the pattern's value and the
+   skill retrofit cost has been scoped for real.
