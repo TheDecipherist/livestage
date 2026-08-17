@@ -1,0 +1,23 @@
+# Unused Exports
+
+Which exported symbols in `src/` are never imported anywhere in this
+repo. Ground truth via ts-morph (a real TypeScript compiler API
+resolver, not regex): resolves barrel re-exports, renamed imports,
+type-only usage, and usage that only appears under `tests/`, none of
+which a grep-based approach gets right by construction.
+
+## Policy grant this example needs
+
+`.livestage/policy.json` in this directory: `code.languages` includes
+`javascript`, nothing else. `@code` can reach for any npm package the
+project already has as a devDependency (ts-morph here), the same policy
+surface as `examples/database/`'s driver script.
+
+## Result
+
+@code language="javascript" src="unused-exports.js" label="dead" visible="false" /
+
+**{{ dead.count }}** exported symbol(s) in `src/` are never imported
+anywhere else in this repo.
+
+{{ dead.table }}

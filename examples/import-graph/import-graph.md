@@ -481,6 +481,7 @@ graph TD
   renderer_formats_table --> renderer_types
   renderer_formats_tree --> renderer_types
   renderer_index --> renderer_renderer
+  renderer_index --> renderer_types
   renderer_renderer --> renderer_formats_bar
   renderer_renderer --> renderer_formats_code
   renderer_renderer --> renderer_formats_inline

@@ -54,8 +54,18 @@ function walkSourceFiles(dir: string): string[] {
 }
 
 // Every import/export ... from '...' clause, single- or multi-line brace
-// lists alike (the brace list is skipped non-greedily up to `from`).
-const FROM_CLAUSE = /(?:^|\n)\s*(?:import|export)(?:\s+type)?\s+(?:\{[\s\S]*?\}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]/g
+// lists alike (the brace list is skipped non-greedily up to `from`), plus
+// a bare `export * from '...'` / `export type * from '...'` re-export-all
+// (no `as name` binding, only legal on the export side, but shared here
+// since the alternative never matches `import * from`, which is not
+// valid syntax). A real gap this alternative closes: found live via the
+// import-graph ground-truth benchmark, src/renderer/index.ts's `export
+// type * from './types.js'` was silently dropped because nothing else in
+// that file also imported from './types.js' to accidentally match the
+// `{...}` alternative instead (src/parser/index.ts has the identical
+// `export type *` line but masked the same gap, a second `export {
+// ParseError } from './types.js'` line right after it happened to match).
+const FROM_CLAUSE = /(?:^|\n)\s*(?:import|export)(?:\s+type)?\s+(?:\{[\s\S]*?\}|\*\s+as\s+\w+|\*|\w+)\s+from\s+['"]([^'"]+)['"]/g
 // Side-effect-only imports: import '...' (no `from`).
 const BARE_IMPORT = /(?:^|\n)\s*import\s+['"]([^'"]+)['"]/g
 // TypeScript's inline type-only form, import('./x.js').SomeType, referencing

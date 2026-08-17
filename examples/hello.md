@@ -58,6 +58,8 @@ Files in this directory:
 │   │   │   ├── policy.json
 │   │   │   └── trace
 │   │   │       └── 2026-08-17.jsonl
+│   │   ├── env-drift-terse.md
+│   │   ├── env-drift-terse.stage
 │   │   ├── env-drift.md
 │   │   ├── env-drift.stage
 │   │   └── sample-project
@@ -70,6 +72,8 @@ Files in this directory:
 │   │   │       └── 2026-08-17.jsonl
 │   │   ├── sample-project
 │   │   │   └── package.json
+│   │   ├── scripts-reference-terse.md
+│   │   ├── scripts-reference-terse.stage
 │   │   ├── scripts-reference.md
 │   │   └── scripts-reference.stage
 │   ├── test-coverage-map
@@ -84,6 +88,10 @@ Files in this directory:
 │   │   │   └── tests
 │   │   │       ├── add.test.ts
 │   │   │       └── subtract.test.ts
+│   │   ├── test-coverage-map-side-by-side.md
+│   │   ├── test-coverage-map-side-by-side.stage
+│   │   ├── test-coverage-map-terse.md
+│   │   ├── test-coverage-map-terse.stage
 │   │   ├── test-coverage-map.md
 │   │   └── test-coverage-map.stage
 │   └── todo-debt
@@ -94,6 +102,8 @@ Files in this directory:
 │       ├── sample-project
 │       │   └── src
 │       │       └── payments.ts
+│       ├── todo-debt-terse.md
+│       ├── todo-debt-terse.stage
 │       ├── todo-debt.md
 │       └── todo-debt.stage
 ├── hello.md
@@ -110,10 +120,11 @@ Files in this directory:
 │   └── check.stage
 ├── import-graph
 │   ├── .livestage
+│   │   ├── cache
+│   │   │   └── c4478d347d2a3a03.md
 │   │   ├── policy.json
 │   │   └── trace
 │   │       └── 2026-08-17.jsonl
-│   ├── import-graph.js
 │   ├── import-graph.md
 │   └── import-graph.stage
 ├── multi-step

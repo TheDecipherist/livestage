@@ -64,6 +64,25 @@ describe('@import-graph', () => {
     expect(out).toContain('a --> types')
   })
 
+  it('resolves a bare `export * from` / `export type * from` re-export-all with no `as name` binding', () => {
+    // The exact bug found live via the import-graph ground-truth benchmark
+    // (benchmarks/import-graph-ground-truth.cjs): FROM_CLAUSE's three
+    // alternatives (a brace list, `* as name`, or a bare identifier) had no
+    // case for a lone `*` with no binding at all, so `export * from './x'`
+    // (and `export type * from './x'`, this project's own src/parser/
+    // index.ts and src/renderer/index.ts both use the type form) was
+    // silently invisible unless some OTHER statement in the same file also
+    // happened to import from the same specifier and accidentally supplied
+    // the edge.
+    writeFileSync(join(dir, 'src', 'a.ts'), `export * from './b.js';\n`)
+    writeFileSync(join(dir, 'src', 'sub', 'c.ts'), `export type * from './d.js';\n`)
+    writeFileSync(join(dir, 'src', 'b.ts'), `export const b = 1;\n`)
+    writeFileSync(join(dir, 'src', 'sub', 'd.ts'), `export type D = string;\n`)
+    const out = render('@import-graph src="src" /')
+    expect(out).toContain('a --> b')
+    expect(out).toContain('sub_c --> sub_d')
+  })
+
   it('resolves a directory import to its index file', () => {
     writeFileSync(join(dir, 'src', 'a.ts'), `import { b } from './sub';\n`)
     writeFileSync(join(dir, 'src', 'sub', 'index.ts'), `export const b = 1;\n`)
