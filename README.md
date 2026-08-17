@@ -341,6 +341,7 @@ lines in a file.
 |---|---|---|
 | `match` | glob pattern | Only count entries whose name matches |
 | `type` | `files` \| `dirs` \| `both` (default `files`) | What kind of entries to count |
+| `depth` | integer | How many directory levels to recurse (unlimited if omitted) |
 
 ### @date
 

@@ -4,7 +4,7 @@ title: Source Directives
 type: COMPONENT
 path: Directives / Sources
 source_files: [src/parser/directives/list.ts, src/parser/directives/read.ts, src/parser/directives/read-frontmatter.ts, src/parser/directives/read-body.ts, src/parser/directives/tree.ts, src/parser/directives/count.ts, src/parser/directives/date.ts, src/parser/directives/env.ts, src/parser/types.ts, src/parser/registry.ts, src/engine/sources.ts, src/engine/read-ops.ts, src/engine/engine.ts, src/engine/engine-interpolate.ts, src/engine/conditions.ts, src/engine/file-access.ts, src/engine/stripper.ts, src/engine/macros.ts]
-test_files: [tests/unit/engine/read-body.test.ts, tests/golden/markdown-out.test.ts, tests/golden/deterministic-snapshots.test.ts, tests/unit/engine/fallback-registry.test.ts, tests/unit/engine/shell-command-chaining.test.ts]
+test_files: [tests/unit/engine/read-body.test.ts, tests/golden/markdown-out.test.ts, tests/golden/deterministic-snapshots.test.ts, tests/unit/engine/fallback-registry.test.ts, tests/unit/engine/shell-command-chaining.test.ts, tests/unit/engine/count-depth.test.ts]
 status: complete
 phase: all
 last_synced: 2026-08-17
@@ -192,6 +192,7 @@ lines in a file.
 |---|---|---|
 | `match` | glob pattern | Only count entries whose name matches |
 | `type` | `files` \| `dirs` \| `both` (default `files`) | What kind of entries to count |
+| `depth` | integer | How many directory levels to recurse (unlimited if omitted) |
 
 ### @date
 
@@ -439,3 +440,18 @@ Fix: `src/engine/sources.ts:456` (executeQuery swapped from
 `interpolatePathSoft` to `interpolateShellSafe`, defined
 `src/engine/engine-include.ts:74,86`) | Regression test:
 tests/unit/engine/shell-command-chaining.test.ts
+
+### B2 (fixed 2026-08-17)
+Symptom: `@count`'s directory counts always recursed unlimited depth,
+ignoring a `depth=` attribute entirely; `@count "src" type="dirs"
+depth="0"` meant to count only top-level directories returned every
+nested directory at every level instead. Found live while building
+feature 52 (Auto CLAUDE.md Generation).
+Cause: `executeCount` (sources.ts) hardcoded `walkDir`'s `maxDepth` to
+`-1`, the only source-directive call site that never read
+`node.args['depth']` at all; `executeList` and `executeTree` both
+already did.
+Fix: `src/engine/sources.ts:374` (`executeCount` now reads `depth=` the
+same way `executeList`/`executeTree` do, defaulting to unlimited when
+unset, no behavior change for any existing call site with no `depth=`
+attribute) | Regression test: tests/unit/engine/count-depth.test.ts

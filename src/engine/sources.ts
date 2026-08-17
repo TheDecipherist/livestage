@@ -380,7 +380,16 @@ export function executeCount(node: CountNode, ctx: EngineContext): string[] {
       const matchPattern = node.args['match']
       const matchRe = matchPattern ? globToRegex(matchPattern) : null
       const typeFilter = node.args['type'] ?? 'files'
-      return [String(walkDir(full, '', matchRe, typeFilter, 0, -1).length)]
+      // depth= mirrors @list/@tree's own convention (executeList above,
+      // buildTree below): unset means unlimited recursion, same as before
+      // this fix. Found missing live (feature 52, 2026-08-17): a
+      // depth="0" call meant to count only a directory's top-level
+      // entries silently recursed unlimited depth instead, since this
+      // was the one source-directive callsite that never read
+      // node.args['depth'] at all.
+      const depthStr = node.args['depth']
+      const maxDepth = depthStr !== undefined ? parseInt(depthStr, 10) : -1
+      return [String(walkDir(full, '', matchRe, typeFilter, 0, maxDepth).length)]
     }
     return [String(readFileSync(full, 'utf8').split('\n').length)]
   } catch { return ['0'] }

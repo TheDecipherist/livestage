@@ -29,6 +29,16 @@ describe('CLAUDE.stage renders CLAUDE.md content live from the project itself', 
     expect(out).not.toContain('SECURITY_ALERT')
   })
 
+  it('the module count matches a live, top-level-only count of src/ (depth="0")', () => {
+    // Regression for the @count depth= fix (feature 52 known_issues, now
+    // closed): before the fix, this would have recursed unlimited depth
+    // and reported every nested directory under src/, not just the 5
+    // top-level modules.
+    const real = execFileSync('bash', ['-c', 'find src -maxdepth 1 -mindepth 1 -type d | wc -l'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+    const out = renderClaudeMd()
+    expect(out).toContain(`${real} internal modules under`)
+  })
+
   it('the directive count matches a live count of src/parser/directives/*.ts', () => {
     const real = execFileSync('bash', ['-c', 'ls src/parser/directives/*.ts | wc -l'], { cwd: repoRoot, encoding: 'utf8' }).trim()
     const out = renderClaudeMd()
