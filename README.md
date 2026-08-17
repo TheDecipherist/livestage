@@ -207,7 +207,7 @@ them. Being written by an LLM the first time bought it nothing; a snapshot
 is a snapshot regardless of who typed it.
 
 Now `CLAUDE.stage` computes 5 modules, 29 directives,
-19 worked examples, and every `npm run` script in this
+20 worked examples, and every `npm run` script in this
 project, live, the same way every number in this sentence was computed at
 render time, not typed by hand.
 
@@ -245,6 +245,11 @@ code in `@code`, renders a table. [`check.stage`](examples/http-health/check.sta
 **[`examples/connections/connections.stage`](examples/connections/connections.stage)** ([rendered](examples/connections/connections.md))
 A project connections index: path tree, dependency graph, source-file
 overlap, all computed, nothing hand-maintained.
+
+**[`examples/import-graph/import-graph.stage`](examples/import-graph/import-graph.stage)** ([rendered](examples/import-graph/import-graph.md))
+`@graph` reads YAML frontmatter, it has no notion of real `import`
+statements; `@code` under policy does, walking this project's own `src/`
+tree into a real Mermaid dependency graph, one node per source file.
 
 **`examples/multi-step/`** - files as steps, frontmatter as state,
 assertions as gates, no workflow engine. [`index.stage`](examples/multi-step/index.stage) ([rendered](examples/multi-step/index.md))

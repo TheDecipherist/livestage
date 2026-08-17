@@ -1,7 +1,7 @@
 ---
 generated: 2026-08-17
-doc_count: 52
-connection_count: 89
+doc_count: 53
+connection_count: 91
 overlap_count: 36
 ---
 
@@ -97,6 +97,8 @@ overlap_count: 36
   └── `46-connections-example` - Connections Example (complete)
 **Examples / Drift**
   └── `51-drift-examples` - Drift Examples (complete)
+**Examples / Import Graph**
+  └── `53-import-graph-example` - Import Graph Example (complete)
 **Examples / Pattern Example**
   └── `40-pattern-example` - Pattern Example (complete)
 **Examples / Reach Via Code**
@@ -174,6 +176,7 @@ graph TD
   50_version_1_0_0_and_license["50-version-1.0.0-and-license"]:::done
   51_drift_examples["51-drift-examples"]:::done
   52_auto_claude_md_generation["52-auto-claude-md-generation"]:::done
+  53_import_graph_example["53-import-graph-example"]:::done
   07_package_skeleton --> 01_seed_script
   07_package_skeleton --> 03_cr2_one_package
   08_boundary_lint --> 07_package_skeleton
@@ -263,6 +266,8 @@ graph TD
   51_drift_examples --> 18_compute_directives
   51_drift_examples --> 22_pipe
   52_auto_claude_md_generation --> 48_auto_readme_generation
+  53_import_graph_example --> 29_code_runners
+  53_import_graph_example --> 34_graph
 ```
 
 ## Source File Overlap

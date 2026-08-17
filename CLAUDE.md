@@ -69,7 +69,7 @@ argument can smuggle a command past policy.
 
 `examples/` is self-verifying documentation, not just sample files:
 `README.stage`, `CLAUDE.stage`, and every `examples/**/*.stage` file
-(19 of them at this render) ships a committed `.md`
+(20 of them at this render) ships a committed `.md`
 rendering next to it, generated (`npm run readme` / `npm run claude-md` /
 `examples:render`) and CI-enforced (`readme:check` / `claude-md:check` /
 `examples:check`, `scripts/check-*.mjs`) never to drift. Some examples are

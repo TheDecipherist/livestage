@@ -37,6 +37,7 @@ const ALL_EXAMPLE_MD_FILES = [
   'examples/showcase/api-reference.md',
   'examples/showcase/report.md',
   'examples/hello.md',
+  'examples/import-graph/import-graph.md',
 ]
 
 describe('every example has a non-empty committed .md', () => {
