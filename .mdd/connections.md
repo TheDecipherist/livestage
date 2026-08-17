@@ -1,6 +1,6 @@
 ---
-generated: 2026-08-03
-doc_count: 49
+generated: 2026-08-17
+doc_count: 50
 connection_count: 85
 overlap_count: 32
 ---
@@ -101,6 +101,8 @@ overlap_count: 32
   └── `44-examples-showcase` - Examples Showcase (complete)
 **Hook / Extension Routing**
   └── `11-extension-routing` - Extension Routing (Hook) (complete)
+**Packaging / Release**
+  └── `50-version-1.0.0-and-license` - Version 1.0.0 and MIT License (complete)
 **Parser / Grammar**
   └── `09-grammar-parser` - Grammar Parser (complete)
 **Renderer / Formats**
@@ -165,6 +167,7 @@ graph TD
   47_reach_via_code["47-reach-via-code"]:::done
   48_auto_readme_generation["48-auto-readme-generation"]:::done
   49_fix_foreach_interpolation_rce["49-fix-foreach-interpolation-rce"]:::done
+  50_version_1_0_0_and_license["50-version-1.0.0-and-license"]:::done
   07_package_skeleton --> 01_seed_script
   07_package_skeleton --> 03_cr2_one_package
   08_boundary_lint --> 07_package_skeleton
@@ -257,7 +260,7 @@ graph TD
 Files referenced by 2+ docs:
 
 - `eslint.config.js` - 07-package-skeleton, 08-boundary-lint
-- `package.json` - 07-package-skeleton, 41-bundle, 48-auto-readme-generation
+- `package.json` - 07-package-skeleton, 41-bundle, 48-auto-readme-generation, 50-version-1.0.0-and-license
 - `src/cli/cli.ts` - 13-cli-router, 35-determinism, 40-pattern-example, 41-bundle
 - `src/cli/commands/assert.ts` - 28-ci-mode, 40-pattern-example
 - `src/cli/commands/render.ts` - 13-cli-router, 35-determinism, 40-pattern-example

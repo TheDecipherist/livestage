@@ -1,1 +1,1 @@
-{"flow":"build","index":7,"total":7,"label":"verify: quality gates, review fan-out","status":"done","ts":1785785244126,"runFlow":"build","runStartTs":1785781442361,"runDoneTs":1785785244126,"runPausedTs":null}
+{"flow":"task","index":3,"total":4,"label":"verifying + committing","status":"running","ts":1786929512689,"runFlow":"task","runStartTs":1786929480293,"runDoneTs":null,"runPausedTs":null}
