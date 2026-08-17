@@ -288,10 +288,18 @@ function updateClientHooks(configPath: string, hookPath: string, sessionStartHoo
   return { alreadyInstalled }
 }
 
-// Seeds <cwd>/.livestage/policy.json with the strict profile (CR-5, business
-// rule 1). A no-op, not an overwrite, when a policy file already exists,
-// consistent with init's idempotence rule (business rule 1, re-run is a
-// no-op).
+// Seeds <cwd>/.livestage/policy.json with the shipped "strict" profile
+// (CR-5, business rule 1, see 06-cr5-deny-by-default.md's Implementation
+// Notes for the full rationale). "Strict" names the ENFORCEMENT MODEL, not
+// "shell is off": every surface not explicitly granted is denied, hard
+// destructive patterns are immutable regardless of policy, @code and HTTP
+// ship empty, and there is no reach outside the project root. Shell itself
+// ships with a curated, read-only allowlist (git/cat/grep/find/the test
+// runners, ~40 patterns), deliberately, not by oversight: without it
+// @query is dead on arrival and @test/@check cannot auto-detect a runner,
+// found and fixed as a real bug during this project's own wave-2 build.
+// A no-op, not an overwrite, when a policy file already exists, consistent
+// with init's idempotence rule (business rule 1, re-run is a no-op).
 function ensureProjectPolicy(cwd: string, undoStack: Undo[]): { seeded: boolean; policyPath: string } {
   const policyPath = join(cwd, '.livestage', 'policy.json')
   if (existsSync(policyPath)) return { seeded: false, policyPath }

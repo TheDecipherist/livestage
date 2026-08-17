@@ -6,12 +6,20 @@ path: Contracts / Deny By Default
 source_files: []
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-1
 depends_on: []
 tags: [contract, security, allowlist, immutable-rules, policy]
 known_issues:
+  - "[gap] Data Model's illustrative shell.allow list is stale: the real
+    defaultSecurityConfig() (config.ts) ships 44 patterns, this example
+    shows 31, missing whoami/id/hostname and several npm/pnpm variants
+    added since this doc was last synced. Found during a pre-launch
+    review, 2026-08-17. Low priority (illustrative example, not a
+    behavior contract violation), deferred; the field name shown
+    (\"allow\") also does not match the real config's allow_patterns,
+    likely predates a rename."
   - "Found and fixed during wave 2 verification (feature 18, Compute Directives): the shipped strict profile's shell.allow_patterns had the pnpm/npx forms of every test-runner pattern (pnpm test*, pnpm run test*, etc.) but was missing the plain npm forms this doc's own Data Model documents (npm test*, npm run test*). Since exec-ops.ts's @test/@check auto-detect always shells out via npm run <script> regardless of the project's actual package manager, this meant @test / with no explicit command= was blocked by default on any project, including this one. Added npm test*, npm run test*, npm run typecheck*, npm run lint*, npm run build* to defaultSecurityConfig() in config.ts."
 ---
 

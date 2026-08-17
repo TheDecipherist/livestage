@@ -87,6 +87,26 @@ describe('README.stage renders README.md content live from the project itself', 
     expect(out).toContain(pkg.version)
   })
 
+  it('does not claim the seeded default is shell-off or "nothing runs by default" (18-compute-directives B2)', () => {
+    // Found during a pre-launch review: the @query section's own prose
+    // said "nothing runs by default," false against the real shipped
+    // defaultSecurityConfig() (shell.enabled: true, ~40 read-only
+    // patterns granted out of the box). Guards against the claim
+    // reappearing anywhere in the generated README.
+    const out = renderReadme()
+    expect(out).not.toMatch(/nothing runs by default/i)
+    expect(out).not.toMatch(/nothing is granted beyond that/i)
+  })
+
+  it('the test-count header line reads as a floor ("N+ tests"), not an exact count', () => {
+    // Found during the same review: scripts/test-baseline.json's number
+    // is a reviewed floor (CR-7), not the live suite count, and was
+    // rendered without any indication of that, reading as an exact,
+    // stale count.
+    const out = renderReadme()
+    expect(out).toMatch(/\*\*\d+\+ tests\*\*/)
+  })
+
   it('the "Drift? What\'s that?" section\'s module/directive/example counts match live, independently-computed values', () => {
     const out = renderReadme()
     const moduleCount = execFileSync('bash', ['-c', 'find src -maxdepth 1 -mindepth 1 -type d | wc -l'], { cwd: repoRoot, encoding: 'utf8' }).trim()
