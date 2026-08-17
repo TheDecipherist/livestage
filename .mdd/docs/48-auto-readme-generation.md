@@ -194,3 +194,18 @@ exact-matched (static fixture); codebase-health.stage/change-review.stage
 are unchecked by design (live git state, genuinely different every
 run). README.stage's new "More examples" section | Regression test:
 tests/e2e/all-examples-rendered.test.ts
+
+### B2 (fixed 2026-08-17, content addition, not a defect)
+Added a "Drift? What's that?" section to `README.stage`, right after
+"Real-world scenarios," making the case for `CLAUDE.stage` (feature 52)
+using this feature's own history as the receipt: the module, directive,
+and example counts are computed live (`@count`) instead of restating
+the two real, hand-typed facts that had already gone stale in the old
+`CLAUDE.md` (a directive count "as of this writing," a dead donor spec
+path). Also credits the `@count` `depth=` fix (17-source-directives B2)
+and the backtick-interpolation trap (the same one fixed in
+`examples/multi-step/index.stage`), both found live while building
+`CLAUDE.stage`.
+Regression test: tests/e2e/readme-generation.test.ts::"the 'Drift?
+What's that?' section's module/directive/example counts match live,
+independently-computed values"
