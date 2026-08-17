@@ -28,7 +28,9 @@
     "test:baseline": "node scripts/check-test-baseline.mjs",
     "test:baseline:update": "node scripts/check-test-baseline.mjs --update",
     "readme": "node dist/cli/cli.js build README.stage -o README.md",
-    "readme:check": "node scripts/check-readme.mjs"
+    "readme:check": "node scripts/check-readme.mjs",
+    "examples:render": "node scripts/render-examples.mjs",
+    "examples:check": "node scripts/check-example-renders.mjs"
   },
   "keywords": [
     "livestage",
