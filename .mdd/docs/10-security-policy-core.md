@@ -22,21 +22,6 @@ known_issues:
     directly, cli-router.test.ts covers the CLI security command."
   - "Found and fixed a real gap while verifying: config, and the cache directory, both defaulted to the user's home directory (~/.livestage/security.json, ~/.livestage/cache), not the project-local .livestage/ the spec calls for (Tech Stack: 'Config home: .livestage/ in the project root: policy.json, schemas/, cache/, trace/'). Fixed config.ts's loadSecurityConfig default path, security.ts's CLI-facing path (also renamed security.json -> policy.json to match the spec), cache.ts's CACHE_DIR, and threaded render.ts's --cwd option through to config resolution. Audit log and error log were left at ~/.livestage/ (not explicitly named in the project-local list, and an operational log surviving outside any one project is defensible)."
   - "The @code carve-out acceptance criterion (an engine-built runner invocation passing despite node -e being always-blocked) cannot be verified: @code does not exist yet, it is feature 29 (Code Runners, wave 4)."
-  - "[gap] B1: checkShellCommand's allow-pattern matching (matchShellPattern
-    in rules.ts) converts a wildcard allow pattern like 'git *' into the
-    fully-anchored regex /^git .*$/, and .* matches shell metacharacters
-    (;, &&, ||, |, backticks, $()) the same as any other character, so a
-    command string containing an injected chained command passes the
-    check as part of an allowed match. Every caller (executeQuery,
-    executeTest/executeCheck, runShell) then hands the same string to a
-    real shell (spawnSync/execSync with shell:true), which does interpret
-    those characters. The allowlist's pattern-matching design is the root
-    cause; interpolatePathSoft resolving {{ }} into command= before this
-    check runs (in each of those callers) and macros.ts's substitution
-    (see 19-composition-directives B1) are the two ways untrusted data
-    reaches it. Found 2026-08-03 during feature 49's Phase 7 review,
-    scoped 2026-08-17. See 17/18/19/22's B1 entries for the other owning
-    files, and 49-fix-foreach-interpolation-rce B1 for the original note."
 integration_contracts:
   - function: checkShellCommand
     when: always
@@ -134,3 +119,28 @@ CR-5 true at runtime).
 ## Known Issues
 
 None.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `checkShellCommand`'s allowlist did not prevent command chaining
+after an allowed prefix (e.g. an allow pattern of `git *` also permitted
+`git log --oneline; touch pwned`).
+Cause: `matchShellPattern`'s wildcard-to-regex conversion (`rules.ts`)
+fully anchors the pattern (`^...$`) but `*` becomes `.*`, which matches
+shell metacharacters (`;`, `&&`, `||`, `|`, backticks, `$()`) the same as
+any other character; a command string containing an injected chained
+command therefore passed the check as part of an allowed match, and the
+caller then handed that same string to a real shell (spawnSync/execSync
+with shell:true), which does interpret those characters. Two ways
+untrusted data reached this: ordinary `{{ }}` interpolation resolving
+into command= before the check ran (executeQuery/executeTest/
+executeCheck), and `@foreach`/`@call` macro substitution (macros.ts).
+Fix: no change to `checkShellCommand`/`matchShellPattern` themselves,
+the allowlist still permits exactly the same commands it always did; the
+fix quotes the VALUE before it ever reaches the check. See
+17-source-directives B1 and 18-compute-directives B1
+(`interpolateShellSafe`, `src/engine/engine-include.ts:74,86`) and
+19-composition-directives B1 (`subStrShellSafe`,
+`src/engine/macros.ts:86`) | Regression test:
+tests/unit/engine/shell-command-chaining.test.ts

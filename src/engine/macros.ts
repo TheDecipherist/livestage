@@ -4,6 +4,7 @@ import type {
   QueryNode, DateNode, RenderNode, CallNode, SwitchNode, CodeNode,
 } from 'livestage/parser'
 import { scanInterpolations } from 'livestage/parser'
+import { shellQuote } from './engine-include.js'
 
 export function substituteParams(body: ASTNode[], args: Record<string, string>): ASTNode[] {
   return body.map(node => substituteNode(node, args))
@@ -71,6 +72,27 @@ function subArgsExceptWhere(a: Record<string, string>, args: Record<string, stri
   return Object.fromEntries(Object.entries(a).map(([k, v]) => [k, k === 'where' ? v : subStr(v, args)]))
 }
 
+// Security (bug B1, 2026-08-17): @query/@test/@check's command= and a
+// pipe's shell stage command are the fields that reach a real shell
+// (spawnSync/execSync with shell:true). subStr's brace-escaping defends
+// against {{ }} re-evaluation, but that is not the vector here:
+// checkShellCommand's allowlist only validates the fully-resolved command
+// STRING against a pattern, it never parses shell syntax, so a bound
+// value spliced in as plain text (even with zero braces) that contains a
+// shell metacharacter (;, &&, ||, |, backticks, $()) chains a further
+// command after an allowed prefix once the real shell runs it. Shell-
+// quoting the bound value (same technique as interpolateShellSafe in
+// engine-include.ts) makes it an inert literal argument instead.
+function subStrShellSafe(s: string, args: Record<string, string>): string {
+  let r = s
+  for (const [k, v] of Object.entries(args)) {
+    const escapedKey = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const safeValue = shellQuote(v).replace(/\$/g, '$$$$')
+    r = r.replace(new RegExp(`\\{\\{\\s*${escapedKey}\\s*\\}\\}`, 'g'), safeValue)
+  }
+  return r
+}
+
 function substituteNode(node: ASTNode, args: Record<string, string>): ASTNode {
   switch (node.type) {
     case 'markdown': {
@@ -124,7 +146,7 @@ function substituteNode(node: ASTNode, args: Record<string, string>): ASTNode {
     case 'count':
       return { ...node as CountNode, path: subStr(node.path, args), args: subArgs(node.args, args) }
     case 'query':
-      return { ...node as QueryNode, command: subStr(node.command, args), args: subArgs(node.args, args) }
+      return { ...node as QueryNode, command: subStrShellSafe(node.command, args), args: subArgs(node.args, args) }
     case 'date':
       return { ...node as DateNode, args: subArgs(node.args, args) }
     case 'update-frontmatter':
@@ -153,7 +175,7 @@ function substituteNode(node: ASTNode, args: Record<string, string>): ASTNode {
     case 'check':
       return {
         ...node,
-        command: node.command === null ? null : subStr(node.command, args),
+        command: node.command === null ? null : subStrShellSafe(node.command, args),
         args: subArgs(node.args, args),
       }
     case 'hash':
@@ -215,8 +237,11 @@ function substituteNode(node: ASTNode, args: Record<string, string>): ASTNode {
     case 'pipe': {
       const stages: PipeStage[] = node.stages.map(s => {
         if (s.type === 'source') return { ...s, node: substituteNode(s.node, args) }
+        // 'builtin' (grep/sort/head/tail/uniq/wc/count-by) never spawns a
+        // process, no shell to inject into, plain brace-escaping is enough.
         if (s.type === 'builtin') return { ...s, command: subStr(s.command, args) }
-        if (s.type === 'shell') return { ...s, command: subStr(s.command, args) }
+        // 'shell' reaches a real shell (runShell -> execSync), see B1.
+        if (s.type === 'shell') return { ...s, command: subStrShellSafe(s.command, args) }
         if (s.type === 'sink') return { ...s, node: { ...s.node, args: subArgs(s.node.args, args) } }
         return s
       })

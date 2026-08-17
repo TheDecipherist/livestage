@@ -4,10 +4,10 @@ title: Source Directives
 type: COMPONENT
 path: Directives / Sources
 source_files: [src/parser/directives/list.ts, src/parser/directives/read.ts, src/parser/directives/read-frontmatter.ts, src/parser/directives/read-body.ts, src/parser/directives/tree.ts, src/parser/directives/count.ts, src/parser/directives/date.ts, src/parser/directives/env.ts, src/parser/types.ts, src/parser/registry.ts, src/engine/sources.ts, src/engine/read-ops.ts, src/engine/engine.ts, src/engine/engine-interpolate.ts, src/engine/conditions.ts, src/engine/file-access.ts, src/engine/stripper.ts, src/engine/macros.ts]
-test_files: [tests/unit/engine/read-body.test.ts, tests/golden/markdown-out.test.ts, tests/golden/deterministic-snapshots.test.ts, tests/unit/engine/fallback-registry.test.ts]
+test_files: [tests/unit/engine/read-body.test.ts, tests/golden/markdown-out.test.ts, tests/golden/deterministic-snapshots.test.ts, tests/unit/engine/fallback-registry.test.ts, tests/unit/engine/shell-command-chaining.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-03
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [09-grammar-parser, 11-extension-routing, 10-security-policy-core]
@@ -22,15 +22,6 @@ known_issues:
     primitives documentation anywhere in the corpus. Found while adding
     read_body/@read-body in the same family. Backfilling them needs its
     own scoped pass, not a side effect of this build."
-  - "[gap] B1: executeQuery (sources.ts) resolves {{ }} via
-    interpolatePathSoft into command= BEFORE checkShellCommand runs, so a
-    resolved value containing shell metacharacters (;, &&, |, backticks,
-    $()) passes the allowlist check as part of an allowed match (see
-    10-security-policy-core B1 for the matching-logic root cause) and is
-    then executed by execSync with a real shell, arbitrary command
-    chaining after an allowed prefix. Found 2026-08-03, scoped 2026-08-17.
-    See 18-compute-directives B1 (same pattern in executeTest/
-    executeCheck) and 22-pipe B1 (runShell)."
 primitives:
   - name: "@list"
     kind: directive
@@ -434,3 +425,17 @@ left out of this build's scope.
 - `sources.ts` and `read-ops.ts` are shared with feature 18 (Compute
   Directives): `@query`'s engine implementation lives here, and `@hash`'s
   is in `read-ops.ts`, not in 18's `exec-ops.ts`.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `executeQuery` (sources.ts) resolved `{{ }}` into `command=`
+before `checkShellCommand` ran, so a resolved value containing shell
+metacharacters (`;`, `&&`, `|`, backticks, `$()`) passed the allowlist
+check as part of an allowed match and then ran through a real shell,
+chaining a further command after an allowed prefix.
+Cause: shared root cause, see 10-security-policy-core B1.
+Fix: `src/engine/sources.ts:456` (executeQuery swapped from
+`interpolatePathSoft` to `interpolateShellSafe`, defined
+`src/engine/engine-include.ts:74,86`) | Regression test:
+tests/unit/engine/shell-command-chaining.test.ts

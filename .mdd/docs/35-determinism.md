@@ -12,7 +12,7 @@ source_files: [src/engine/determinism.ts, src/engine/context.ts, src/engine/engi
 test_files: [tests/golden/deterministic-snapshots.test.ts, tests/golden/fixtures.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-5
 depends_on: [21-cache, 18-compute-directives]
@@ -178,3 +178,23 @@ all six source-shaped directives, replacing the dead donor multi-token
 @cache syntax; the golden-snapshot suite now exists); the fourth
 (env-overridable paths interpreted narrowly to the frozen clock and seeded
 uuid) stands as a scope note, not a gap.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: N/A to this doc's own concern (determinism, golden snapshots,
+clock/uuid seeding). Recorded here per the fix's diff reconciliation:
+this doc owns `src/engine/engine-include.ts` and `src/engine/sources.ts`,
+both of which changed as part of closing the shell-command-chaining bug
+(security/allowlist concern, see 10-security-policy-core B1).
+Cause: N/A.
+Fix: additive only, two new exported functions in engine-include.ts
+(`shellQuote`, `interpolateShellSafe`) and one call-site swap in
+sources.ts's `executeQuery` (`interpolatePathSoft` -> `interpolateShellSafe`
+for the `command=` field only; every other `interpolatePathSoft` call
+site, including this doc's own path-interpolation concerns, is
+unchanged). No change to cache keys, snapshot output shape, or the
+frozen clock/seeded uuid. See 17-source-directives B1 for the actual
+fix | Regression test: tests/golden/deterministic-snapshots.test.ts
+still passes unchanged; tests/unit/engine/shell-command-chaining.test.ts
+covers the actual fix.

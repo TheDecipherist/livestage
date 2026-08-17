@@ -4,7 +4,7 @@ title: Compute Directives
 type: COMPONENT
 path: Directives / Compute
 source_files: [src/parser/directives/hash.ts, src/parser/directives/query.ts, src/parser/directives/test.ts, src/parser/directives/check.ts, src/engine/exec-ops.ts]
-test_files: [tests/unit/engine/hash.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/engine/test-check.test.ts]
+test_files: [tests/unit/engine/hash.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/engine/test-check.test.ts, tests/unit/engine/shell-command-chaining.test.ts]
 status: complete
 phase: all
 last_synced: 2026-08-17
@@ -20,12 +20,6 @@ known_issues:
     dedicated per-directive test files (others reference @hash/@query/
     @test/@check incidentally while testing unrelated features, not as
     primary coverage)."
-  - "[gap] B1: executeTest/executeCheck (exec-ops.ts) resolve {{ }} via
-    interpolatePathSoft into command= BEFORE checkShellCommand runs, the
-    same shell-command-chaining vulnerability as 17-source-directives B1
-    (executeQuery) and 22-pipe B1 (runShell); root cause is the
-    allowlist's matching design, see 10-security-policy-core B1. Found
-    2026-08-03, scoped 2026-08-17."
 primitives:
   - name: "@hash"
     kind: directive
@@ -209,3 +203,16 @@ read-ops patterns for file-based hashing).
   never influenced by document content. Narrow and non-interpolated, but
   worth a second look when feature 42 (Contract Scans) builds the real
   security matrix.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `executeTest`/`executeCheck` (exec-ops.ts) resolved `{{ }}` into
+`command=` before `checkShellCommand` ran, the same shell-command-
+chaining vulnerability as 17-source-directives B1 (executeQuery) and
+22-pipe B1 (runShell).
+Cause: shared root cause, see 10-security-policy-core B1.
+Fix: `src/engine/exec-ops.ts:130,153` (executeTest/executeCheck swapped
+from `interpolatePathSoft` to `interpolateShellSafe`, defined
+`src/engine/engine-include.ts:74,86`) | Regression test:
+tests/unit/engine/shell-command-chaining.test.ts

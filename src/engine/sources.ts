@@ -6,7 +6,7 @@ import type { EngineContext } from './context.js'
 import { checkDataPath } from './security/filesystem.js'
 import { checkShellCommand } from './security/shell.js'
 import { expandPattern } from './security/path-expand.js'
-import { interpolatePathSoft } from './engine-include.js'
+import { interpolatePathSoft, interpolateShellSafe } from './engine-include.js'
 import { globToRegex, walkDir, listJson, listCsv, readEnvFile, hasGlobChars, resolveGlobTargets, whereMatches } from './sources-file-utils.js'
 import { parseFrontmatterRow, extractFrontmatter } from './frontmatter-utils.js'
 import { withDirectiveCache } from './directive-cache.js'
@@ -449,9 +449,11 @@ export function executeQuery(node: QueryNode, ctx: EngineContext): string[] {
   // Resolve {{ expr }} interpolations and ${VAR} expansions in the command
   // string before checking security + executing. Without this, flows that
   // use `@query "ls *{{ feature_slug }}*"` would run literal "{{ }}" text
-  // as a shell glob (no match, silent miss). interpolatePathSoft handles
-  // the {{ }}; expandPattern handles ${CWD}/${HOME}/${VAR}.
-  const interpolated = interpolatePathSoft(node.command, ctx)
+  // as a shell glob (no match, silent miss). interpolateShellSafe handles
+  // the {{ }} (shell-quoting the resolved value, see B1: an unquoted
+  // splice let a resolved value chain further commands past an allowed
+  // allowlist prefix); expandPattern handles ${CWD}/${HOME}/${VAR}.
+  const interpolated = interpolateShellSafe(node.command, ctx)
   const command = expandPattern(interpolated, {
     env: { ...ctx.env, ...ctx.envFiles },
     skillDir: ctx.skillContext?.skillDir ?? '',

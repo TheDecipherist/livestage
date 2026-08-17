@@ -4,37 +4,15 @@ title: Fix Foreach Interpolation RCE
 type: COMPONENT
 path: Engine / Security
 source_files: [src/engine/macros.ts, src/parser/types.ts, src/engine/engine.ts, src/engine/write-ops.ts]
-test_files: [tests/unit/engine/foreach-interpolation-rce.test.ts]
+test_files: [tests/unit/engine/foreach-interpolation-rce.test.ts, tests/unit/engine/shell-command-chaining.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-03
+last_synced: 2026-08-17
 initiative: livestage
 depends_on: [19-composition-directives]
 tags: [security, rce, foreach, macros, interpolation, sandbox-escape]
 data_flow: .mdd/audits/flow-foreach-interpolation-rce-2026-08-03.md
 known_issues:
-  - "[gap] B1: CRITICAL, pre-existing, NOT fixed by this build: @query/@test/
-    @check's command= and a pipe's shell stage command are still
-    substituted by @foreach/@call (macros.ts's 'query'/'test'/'check'/
-    'pipe' cases, unchanged by this fix), and checkShellCommand's
-    allowlist (security/rules.ts) matches by PREFIX (e.g. 'git *' compiles
-    to /^git .*/), so a substituted value can chain further shell commands
-    after an allowed prefix (e.g. `@query \"git log {{ x }}\"` with x =
-    `--oneline; touch pwned` runs the injected command). This predates
-    this build entirely (subStr already substituted command= before any
-    change here) and is a different root cause (the allowlist's
-    pattern-matching design, not macros.ts's substitution mechanism), so
-    it needs its own dedicated fix, not a bundled patch inside this one.
-    Found during this build's Phase 7 follow-up security review
-    (2026-08-03). Confirmed 2026-08-17 to be broader than macro
-    substitution alone: executeQuery/executeTest/executeCheck/runShell
-    all resolve {{ }} via interpolatePathSoft into command= before the
-    allowlist check runs too, so ordinary interpolation of untrusted file
-    content reaches the same hole. Tracked jointly with
-    10-security-policy-core B1, 17-source-directives B1,
-    18-compute-directives B1, 19-composition-directives B1, and
-    22-pipe B1 (same root cause, six owning docs); see /bug
-    bug/shell-command-chaining for the fix."
   - "[gap] substituteNode has no case for 'assert' or 'interpolation' node
     types, so @assert inside @foreach/@call/@template crashes with
     'unhandled AST node type' rather than running. Not a security issue
@@ -250,3 +228,19 @@ dedicated follow-up build) and the `@assert` missing-case gap (low
 priority, loud not silent). Also see `19-composition-directives.md`'s
 known_issues for the original `[gap]` entry this fix resolves (moved to
 that doc's `## Fixed Issues` on this build's completion).
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: the shell-command-chaining gap this doc's own known_issues
+carried (`@query`/`@test`/`@check`'s command= and a pipe's shell stage,
+substituted by `@foreach`/`@call`, could chain further shell commands
+past an allowed allowlist prefix) is fixed.
+Cause: `checkShellCommand`'s allowlist matching (`matchShellPattern`)
+fully regex-matches a wildcard pattern (`git *` -> `/^git .*$/`), and
+`.*` matches shell metacharacters (`;`, `&&`, `||`, `|`, backticks,
+`$()`) the same as any other character; a substituted value containing
+one passed the check and then ran through a real shell, chaining.
+Fix: see 19-composition-directives B1 (macros.ts's substitution side,
+the vector this doc's own known_issues entry described) | Regression
+test: tests/unit/engine/shell-command-chaining.test.ts
