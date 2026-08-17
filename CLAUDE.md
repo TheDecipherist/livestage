@@ -7,10 +7,12 @@ This file is generated, the same way `README.md` is: every count, list, and comm
 below is read live from the project itself by `CLAUDE.stage`, never hand-typed. Run
 `npm run claude-md` to regenerate `CLAUDE.md`; `npm run claude-md:check` fails if it
 would produce a different file than what is currently committed, and that check runs
-in CI. See "How this file stays current" at the bottom. The reason this exists: an
-earlier hand-typed version of this file said "29 directives, as of this writing" and
-a separate line referenced a donor spec path that had already stopped existing, both
-caught only because someone happened to grep for them. A file every session reads
+in CI. See "How this file stays current" at the bottom. The reason this exists: this
+file was written once, by Claude Code's own `/init` command, and never regenerated
+after: a static snapshot that said "29 directives, as of this writing" and referenced
+a donor spec path that had already stopped existing, both caught only because someone
+happened to grep for them. Being written by an LLM the first time bought it nothing;
+a snapshot is a snapshot regardless of who typed it, and a file every session reads
 first should not be the one place in the project drift is allowed to hide.
 
 ## What this project is

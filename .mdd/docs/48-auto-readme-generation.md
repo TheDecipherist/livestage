@@ -200,12 +200,22 @@ Added a "Drift? What's that?" section to `README.stage`, right after
 "Real-world scenarios," making the case for `CLAUDE.stage` (feature 52)
 using this feature's own history as the receipt: the module, directive,
 and example counts are computed live (`@count`) instead of restating
-the two real, hand-typed facts that had already gone stale in the old
-`CLAUDE.md` (a directive count "as of this writing," a dead donor spec
-path). Also credits the `@count` `depth=` fix (17-source-directives B2)
-and the backtick-interpolation trap (the same one fixed in
-`examples/multi-step/index.stage`), both found live while building
-`CLAUDE.stage`.
+the two real facts that had already gone stale in the old, once-generated-
+then-static `CLAUDE.md` (a directive count "as of this writing," a dead
+donor spec path).
+
+Two corrections made to this section after the user reviewed it, both
+now folded into the text above rather than left as a separate note:
+(1) the old `CLAUDE.md` was NOT hand-typed, it was written once by
+Claude Code's own `/init` command and never regenerated after, a
+distinction that matters (an LLM writing something once and a document
+staying live are not the same property, and the section originally
+conflated them); (2) the paragraph crediting two engine bugs found
+while building `CLAUDE.stage` (`@count`'s `depth=` fix, the backtick-
+interpolation trap) was cut entirely, the user's call: those are fixed,
+and a user-facing pitch dwelling on "we found bugs building this" is
+the wrong place for that level of detail, the MDD doc corpus (17-source-
+directives B2, 40-pattern-example B2) is.
 Regression test: tests/e2e/readme-generation.test.ts::"the 'Drift?
 What's that?' section's module/directive/example counts match live,
 independently-computed values"

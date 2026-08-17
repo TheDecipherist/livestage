@@ -173,21 +173,19 @@ checked by `npm run claude-md:check` on every CI run, the exact
 `readme`/`readme:check` pattern above, applied to the file that actually
 onboards the agent.
 
-Before that existed, `CLAUDE.md` was hand-typed like any other doc, and it
-drifted like one: it claimed a directive count "as of this writing" (a
-number nothing kept honest) and pointed at a donor spec file that had
-already stopped existing in this repo. Both sat there, wrong, until someone
-happened to grep for them.
+Before that existed, `CLAUDE.md` was written once, by Claude Code's own
+`/init` command, and never regenerated after: a one-time snapshot, not a
+live document. It drifted exactly like any static snapshot does. It
+claimed a directive count "as of this writing" (a number nothing kept
+honest) and pointed at a donor spec file that had already stopped existing
+in this repo. Both sat there, wrong, until someone happened to grep for
+them. Being written by an LLM the first time bought it nothing; a snapshot
+is a snapshot regardless of who typed it.
 
 Now `CLAUDE.stage` computes 5 modules, 29 directives,
 19 worked examples, and every `npm run` script in this
 project, live, the same way every number in this sentence was computed at
-render time, not typed by hand. Building it caught two more real bugs on
-the way in: `@count` itself had no `depth=` support (fixed,
-`src/engine/sources.ts`), and a first draft wrapped a computed value in
-backticks, the exact interpolation-inside-a-code-span trap documented in
-[`CLAUDE.md`](CLAUDE.md)'s own Key Constraints, which the file caught in
-itself before it ever reached a commit.
+render time, not typed by hand.
 
 ## More examples
 
