@@ -45,3 +45,4 @@ tests/conformance/
 /MDs/
 /waveplan.md
 .worktrees/
+.mdd/*.tmp
