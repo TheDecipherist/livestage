@@ -4,7 +4,7 @@ title: Security Policy Core
 type: COMPONENT
 path: Security / Policy Core
 source_files: [src/engine/security/config.ts, src/engine/security/rules.ts, src/engine/security/shell.ts, src/engine/security/filesystem.ts, src/engine/security/masking.ts, src/engine/security/audit.ts, src/engine/security/path-expand.ts, src/engine/security/modes.ts, src/cli/commands/security.ts, src/cli/cli-register-security.ts]
-test_files: [tests/unit/engine/security-config.test.ts, tests/unit/engine/security-filesystem.test.ts, tests/unit/engine/security-masking-shell.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/cli/cli-router.test.ts]
+test_files: [tests/unit/engine/security-config.test.ts, tests/unit/engine/security-filesystem.test.ts, tests/unit/engine/security-masking-shell.test.ts, tests/unit/engine/security-compound-commands.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/cli/cli-router.test.ts]
 status: complete
 phase: all
 last_synced: 2026-08-17
@@ -144,3 +144,31 @@ fix quotes the VALUE before it ever reaches the check. See
 19-composition-directives B1 (`subStrShellSafe`,
 `src/engine/macros.ts:86`) | Regression test:
 tests/unit/engine/shell-command-chaining.test.ts
+
+### B2 (fixed 2026-08-17)
+Symptom: B1 above closed the interpolation route into command chaining
+but explicitly left `checkShellCommand`/`matchShellPattern` unchanged,
+reasoning untrusted data could only reach the check via interpolation
+or macro substitution. That left the STATIC route open: a `.stage`
+file's own literal, non-interpolated `@query "git status && rm -rf /"`
+still matches allow pattern `git *` as one whole-string regex match
+(`.*` matches `;`/`&&`/`||`/`|` the same as any other character), since
+nothing ever validated a compound command per subcommand. The threat
+model here is a malicious `.stage` file itself (e.g. one arriving via a
+cloned repo alongside a permissive committed policy.json), not an
+interpolated value; the author of the file needs no interpolation at
+all to write the chain directly. Found while implementing the Claude
+Code permission-inheritance feature, whose spec explicitly calls out
+that Claude Code's own matcher checks each subcommand of a chain
+independently and ours should too.
+Cause: `checkShellCommand` never split a compound command before
+matching; the allowlist/deny/immutable-block checks all ran once
+against the full string.
+Fix: added `splitCompoundCommand` (`rules.ts`), a quote-aware splitter
+on `&&`/`||`/`;`/single `|` (careful to treat a backslash-escaped
+operator, and `shellQuote()`'s own close-escape-reopen embedded-quote
+idiom, as staying inside the logical span rather than as two separate
+quoted regions). `checkShellCommand` now recurses per subcommand when
+there is more than one, denying on the first subcommand that fails,
+with no behavior change for a simple (non-chained) command | Regression
+test: tests/unit/engine/security-compound-commands.test.ts

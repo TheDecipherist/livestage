@@ -1,5 +1,5 @@
 import type { ShellSecurityConfig } from './config.js'
-import { SHELL_ALWAYS_BLOCK, SHELL_ALWAYS_ALERT, matchGlob, matchShellPattern } from './rules.js'
+import { SHELL_ALWAYS_BLOCK, SHELL_ALWAYS_ALERT, matchGlob, matchShellPattern, splitCompoundCommand } from './rules.js'
 
 export type ShellCheckTier = 'always_block' | 'always_alert' | 'deny_pattern' | 'not_allowed' | 'allowed'
 
@@ -11,6 +11,21 @@ export interface ShellCheckResult {
 
 export function checkShellCommand(command: string, config: ShellSecurityConfig): ShellCheckResult {
   const cmd = command.trim()
+
+  // Compound commands (&&, ||, ;, |) are checked per subcommand: an
+  // allowed wildcard prefix like 'git *' must not let a chained '&& rm -rf
+  // /' ride through unchecked (see splitCompoundCommand's own comment).
+  // Only recurse when there's actually more than one subcommand, so a
+  // simple command falls straight through to the tier checks below with no
+  // behavior change and no extra recursion.
+  const subcommands = splitCompoundCommand(cmd)
+  if (subcommands.length > 1) {
+    for (const sub of subcommands) {
+      const result = checkShellCommand(sub, config)
+      if (!result.allowed) return result
+    }
+    return { allowed: true, tier: 'allowed', reason: 'In allowlist (every subcommand of the chain checked independently)' }
+  }
 
   // 1. Built-in always_block — immutable, no config can override
   for (const pattern of SHELL_ALWAYS_BLOCK) {

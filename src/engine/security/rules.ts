@@ -130,3 +130,67 @@ export function matchShellPattern(pattern: string, command: string): boolean {
     .replace(/\*/g, '.*')
   return new RegExp(`^${re}$`).test(command)
 }
+
+// Splits a shell command on top-level &&, ||, ;, and | (single pipe, not
+// part of ||), quote-aware so an operator character inside a quoted string
+// is never treated as a chain boundary. Used to check a compound command
+// per subcommand rather than as one string: matchShellPattern's '*' ->
+// '.*' matches shell metacharacters the same as any other character, so a
+// literal, statically-authored '@query "git status && rm -rf /"' fully
+// regex-matches the allowlist pattern 'git *' as one string, letting
+// anything after the allowed prefix ride through unchecked. Claude Code's
+// own permission matcher checks each subcommand of a chain independently;
+// this gives checkShellCommand the same property. Deliberately does not
+// parse $() / backtick command substitution or subshells, only the
+// operator characters themselves; that remains a documented gap, not a
+// silent one (see security/shell.ts).
+export function splitCompoundCommand(command: string): string[] {
+  const parts: string[] = []
+  let current = ''
+  let quote: string | null = null
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i]
+    if (quote) {
+      current += ch
+      if (ch === quote) quote = null
+      continue
+    }
+    // Outside any quote, a backslash escapes the next character: it is
+    // never a chain operator even unquoted (find . -name foo \; -print is
+    // a literal semicolon in real bash), and critically, shellQuote()'s own
+    // embedded-quote escaping ('it's -> 'it'\''s) closes, escapes, and
+    // reopens a single-quoted span using exactly this sequence. Without
+    // treating \' as one literal unit here, this tokenizer sees two
+    // separate quote-open/close events around the backslash and reads
+    // whatever sits between them (the rest of the shell-quoted value,
+    // metacharacters included) as unquoted, which is the one case this
+    // function most needs to get right, that being the whole reason it
+    // exists. Found live: this exact case broke
+    // tests/unit/engine/shell-command-chaining.test.ts's embedded-quote
+    // regression test.
+    if (ch === '\\' && i + 1 < command.length) {
+      current += ch + command[i + 1]
+      i++
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch
+      current += ch
+      continue
+    }
+    if ((ch === '&' && command[i + 1] === '&') || (ch === '|' && command[i + 1] === '|')) {
+      parts.push(current)
+      current = ''
+      i++
+      continue
+    }
+    if (ch === ';' || ch === '|') {
+      parts.push(current)
+      current = ''
+      continue
+    }
+    current += ch
+  }
+  parts.push(current)
+  return parts.map(p => p.trim()).filter(p => p.length > 0)
+}
