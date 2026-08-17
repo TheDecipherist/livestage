@@ -3,8 +3,8 @@ id: 10-security-policy-core
 title: Security Policy Core
 type: COMPONENT
 path: Security / Policy Core
-source_files: [src/engine/security/config.ts, src/engine/security/rules.ts, src/engine/security/shell.ts, src/engine/security/filesystem.ts, src/engine/security/masking.ts, src/engine/security/audit.ts, src/engine/security/path-expand.ts, src/engine/security/modes.ts, src/cli/commands/security.ts, src/cli/cli-register-security.ts]
-test_files: [tests/unit/engine/security-config.test.ts, tests/unit/engine/security-filesystem.test.ts, tests/unit/engine/security-masking-shell.test.ts, tests/unit/engine/security-compound-commands.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/cli/cli-router.test.ts]
+source_files: [src/engine/security/config.ts, src/engine/security/rules.ts, src/engine/security/shell.ts, src/engine/security/filesystem.ts, src/engine/security/masking.ts, src/engine/security/audit.ts, src/engine/security/path-expand.ts, src/engine/security/modes.ts, src/engine/security/claude-settings.ts, src/engine/security/trust.ts, src/cli/commands/security.ts, src/cli/commands/trust.ts, src/cli/cli-register-security.ts]
+test_files: [tests/unit/engine/security-config.test.ts, tests/unit/engine/security-filesystem.test.ts, tests/unit/engine/security-masking-shell.test.ts, tests/unit/engine/security-compound-commands.test.ts, tests/unit/engine/security-claude-settings.test.ts, tests/unit/engine/security-trust.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/engine/query-permission-inheritance.test.ts, tests/unit/cli/cli-router.test.ts, tests/unit/cli/trust.test.ts]
 status: complete
 phase: all
 last_synced: 2026-08-17
@@ -118,7 +118,61 @@ CR-5 true at runtime).
 
 ## Known Issues
 
-None.
+The workspace-trust mechanism (`security/trust.ts`, `livestage trust`)
+gates livestage's OWN `.livestage/policy.json` grants (a cloned repo's
+policy file must not be trusted automatically), but is deliberately NOT
+yet wired into `loadSecurityConfig`'s default call path: that function is
+called from many places across the engine with no `homeDir` concept
+threaded through today, and retrofitting every call site to check trust is
+separate, larger, higher-risk work than the session that added it had
+scope for. The store and CLI verb are complete, tested infrastructure a
+caller can use directly; only the "every policy.json load checks trust"
+wiring is outstanding. `[gap]`, not a defect: nothing regresses, the new
+mechanism simply isn't load-bearing everywhere yet.
+
+## Feature Addition: inherit the user's Claude Code permissions (2026-08-17)
+
+Two hand-maintained allowlists (Claude Code's `settings.json`
+`permissions` block and this project's own `.livestage/policy.json`)
+describing the same intent, drifting apart, was exactly the problem this
+tool exists to solve. Added `security/claude-settings.ts`: parses
+`Tool(specifier)` rules (including the `Tool(cmd:*)` == `Tool(cmd *)`
+shorthand), reads and merges Claude Code's settings across scopes
+(managed, project-local, project-shared, user), and
+`checkShellCommandWithSettings`, the composed check.
+
+The direction rule, and it is the whole design: inherit `deny` and `ask`
+always (they only restrict); never auto-inherit `allow` at render time (an
+`allow` rule was granted for an interactive context where a human can be
+prompted; a `.stage` render is automatic and unsupervised, so treating
+`allow` as an automatic grant would be a privilege escalation). Effective
+permission is livestage's own policy narrowed by `settings.allow`, never
+widened, and the narrowing only applies when settings actually carries a
+relevant Bash rule; an empty/no-opinion `settings.allow` (the common case)
+leaves livestage's policy as sole authority, confirmed by direct
+instruction before building on it, since a literal
+intersect-with-empty-set reading would make `@query`/`@test`/`@check` dead
+on arrival for almost every real user.
+
+Wired into `@query`'s real execution path (`sources.ts`'s `executeQuery`)
+behind a new opt-in `ShellSecurityConfig` field,
+`shell.inherit_claude_permissions` (default unset/false). Discovered live
+why this needs to default OFF: this repo's own `.claude/settings.json`
+carries a genuinely narrow Bash allow list (a handful of git/node patterns
+for its own hooks), and turning inheritance on unconditionally silently
+broke `query-policy.test.ts` and `pipe-shell-stage.test.ts` (both plain
+`echo`, which that settings.json never granted). A behavior change with
+that blast radius ships opt-in first, not defaulted on. Not yet wired into
+`exec-ops.ts`'s `@test`/`@check` or `engine-interpolate.ts`, `@query` is
+the proof-of-integration call site; the others are follow-up.
+
+`init` gained `--seed-from-permissions` (`31-init.md`): derives suggested
+`shell.allow_patterns` from the caller's Claude Code settings.allow Bash
+rules and prints them before writing, in place of the interactive y/N
+prompt the spec described (readline plus an async CLI action bootstrap
+change was assessed as more complexity/risk than the remaining session
+budget justified; typing the flag itself is the deliberate, explicit
+confirmation instead, never defaulted on).
 
 ## Bug Fixes
 

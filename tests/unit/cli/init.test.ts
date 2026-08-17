@@ -99,6 +99,40 @@ describe('runInit', () => {
     expect(policy.http.enabled).toBe(false)
   })
 
+  // "inherit the user's Claude Code permissions", point 3: init reads
+  // settings.allow to SEED a suggested policy, it never auto-writes one.
+  // runInit itself stays a pure function; the CLI layer (cli.ts's
+  // --seed-from-permissions flag) is what derives the seed and passes it
+  // in via policySeed, tested here at the library boundary.
+  it('policySeed overrides the strict default when the caller supplies one', () => {
+    const result = runInit({
+      client: 'claude-code', homeDir, cwd: projectDir,
+      policySeed: {
+        shell: { enabled: true, allow_patterns: ['git status', 'echo *'], deny_patterns: [], allow_network: false, require_confirmation: false, audit_log: true },
+        http: { enabled: false, allowed_domains: [], denied_domains: [], allowed_methods: ['GET'], max_response_size: 1_048_576, timeout: 10_000 },
+        db: {},
+        filesystem: { allowed_source_paths: [], allowed_data_paths: [], additional_block_paths: [], additional_block_patterns: [], allow_unmasked_paths: [], allow_unmasked_patterns: [], user_masking_patterns: [] },
+        event: { allowed_transports: [], allow_env_interpolation: false, max_value_length: 500, onError: 'silence' },
+        code: { languages: [], timeout: 30_000, runners: {} },
+      },
+    })
+    expect(result.success).toBe(true)
+    const policy = JSON.parse(readFileSync(join(projectDir, '.livestage', 'policy.json'), 'utf8')) as {
+      shell: { enabled: boolean; allow_patterns: string[] }
+    }
+    expect(policy.shell.enabled).toBe(true)
+    expect(policy.shell.allow_patterns).toEqual(['git status', 'echo *'])
+  })
+
+  it('without policySeed, the strict default is unaffected by an unrelated caller-supplied option', () => {
+    const result = runInit({ client: 'claude-code', homeDir, cwd: projectDir })
+    const policy = JSON.parse(readFileSync(join(projectDir, '.livestage', 'policy.json'), 'utf8')) as {
+      shell: { enabled: boolean }
+    }
+    expect(result.success).toBe(true)
+    expect(policy.shell.enabled).toBe(false)
+  })
+
   it('running init twice is idempotent: does not overwrite an existing policy or duplicate the hook entry', () => {
     runInit({ client: 'claude-code', homeDir, cwd: projectDir })
     const policyPath = join(projectDir, '.livestage', 'policy.json')

@@ -135,6 +135,24 @@ Known Issues).
 10-security-policy-core (seeds the policy), 11-extension-routing (registers
 the hook), 30-doctor (verification target for a successful install).
 
+## Feature Addition: --seed-from-permissions (2026-08-17)
+
+`runInit` gained a `policySeed?: SecurityJsonConfig` option (default
+unset, seeds the strict profile as before): when supplied, `ensureProjectPolicy`
+writes it instead of `strictSecurityConfig()`. `runInit` itself stays a
+pure function with no prompt of its own. The confirmation lives in the
+CLI layer (`cli.ts`'s `--seed-from-permissions` flag, not part of this
+doc's own `source_files`, see `10-security-policy-core.md`'s Feature
+Addition entry for the full inheritance model): it derives suggested
+`shell.allow_patterns` from the caller's Claude Code settings.allow Bash
+rules via `deriveShellAllowPatternsFromSettings`, prints them, and builds
+the `policySeed` only when the flag itself was passed, which is the
+confirmation (see 10-security-policy-core.md for why an interactive y/N
+readline prompt was scoped out this session). Also added: a `livestage
+trust` CLI verb (`src/cli/commands/trust.ts`, owned by
+10-security-policy-core.md alongside the trust store it wraps), unrelated
+to `init` itself but part of the same feature.
+
 ## Known Issues
 
 See the frontmatter `known_issues` above for the full detail: the wrong-hook

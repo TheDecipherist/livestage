@@ -2,7 +2,9 @@
 import { program } from 'commander'
 import { writeFileSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { readClaudeSettingsScopes, mergeScopePermissions, deriveShellAllowPatternsFromSettings, strictSecurityConfig } from 'livestage/engine'
 import { runRender } from './commands/render.js'
 import { runValidate } from './commands/validate.js'
 import { runParse, runParseCheck } from './commands/parse.js'
@@ -18,6 +20,7 @@ import { runWatch } from './commands/watch.js'
 import { runEngineTrace } from './commands/engine-trace.js'
 import { runAssert } from './commands/assert.js'
 import { runDoctor, runDoctorRulesFor } from './commands/doctor.js'
+import { runTrust } from './commands/trust.js'
 import { expandFileGlob } from './glob-expand.js'
 import { registerSecurity } from './cli-register-security.js'
 import { getAvailableDirectives } from 'livestage/parser'
@@ -168,6 +171,27 @@ universalOptions(
   process.exit(health.healthy ? 0 : 1)
 })
 
+program
+  .command('trust [dir]')
+  .description('trust a project directory so its .livestage/policy.json grants (shell, @code, http) take effect (default: current directory)')
+  .option('--list', 'list all trusted directories')
+  .option('--remove', 'remove a directory from the trust store instead of adding it')
+  .option('--cwd <path>', 'override working directory')
+  .option('--home-dir <path>', 'override the home directory used for the trust store (testing only)')
+  .action((dirArg: string | undefined, opts: Record<string, string | boolean | undefined>) => {
+    const cwd = typeof opts['cwd'] === 'string' ? opts['cwd'] : process.cwd()
+    const homeDir = typeof opts['homeDir'] === 'string' ? opts['homeDir'] : undefined
+    const result = runTrust({
+      ...(dirArg !== undefined ? { dir: dirArg } : {}),
+      cwd,
+      ...(homeDir !== undefined ? { homeDir } : {}),
+      list: opts['list'] === true,
+      remove: opts['remove'] === true,
+    })
+    process.stdout.write(result.message + '\n')
+    process.exit(0)
+  })
+
 const parser = program.command('parser').description('inspect the .stage grammar (ast, directives, imports, macros)')
 
 universalOptions(
@@ -281,9 +305,24 @@ universalOptions(
     .option('--client <type>', 'client type: claude-code, cursor (auto-detects if omitted)')
     .option('--global-claude-md', 'add LiveStage instructions to ~/.claude/CLAUDE.md')
     .option('--update', 'replace an existing LiveStage section with the current version')
-).action((opts: Record<string, string | undefined>) => {
+    .option('--seed-from-permissions', 'seed .livestage/policy.json shell.allow_patterns from your Claude Code settings\' Bash allow rules instead of the empty strict profile (prints the derived rules; passing this flag IS the confirmation, typed once per invocation, not defaulted)')
+).action((opts: Record<string, string | boolean | undefined>) => {
     const clientOpt = opts['client'] as import('./commands/init.js').ClientType | undefined
-    const result = runInit(clientOpt ? { client: clientOpt } : {})
+    const cwd = typeof opts['cwd'] === 'string' ? opts['cwd'] : process.cwd()
+    let policySeed: import('livestage/engine').SecurityJsonConfig | undefined
+    if (opts['seedFromPermissions']) {
+      const merged = mergeScopePermissions(readClaudeSettingsScopes({ cwd, homeDir: homedir() }))
+      const derived = deriveShellAllowPatternsFromSettings(merged)
+      if (derived.length > 0) {
+        process.stdout.write(`Seeding shell.allow_patterns from ${derived.length} Claude Code settings Bash allow rule(s):\n`)
+        for (const p of derived) process.stdout.write(`  - ${p}\n`)
+        const seed = strictSecurityConfig()
+        policySeed = { ...seed, shell: { ...seed.shell, enabled: true, allow_patterns: derived } }
+      } else {
+        process.stdout.write('--seed-from-permissions: no Bash allow rules found in your Claude Code settings; seeding the strict profile instead.\n')
+      }
+    }
+    const result = runInit({ ...(clientOpt ? { client: clientOpt } : {}), cwd, ...(policySeed ? { policySeed } : {}) })
     if (result.alreadyInstalled) {
       process.stdout.write(`ℹ ${result.message}\n`)
     } else {

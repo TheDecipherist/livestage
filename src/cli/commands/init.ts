@@ -18,6 +18,20 @@ export interface InitOptions {
    * ~/.livestage/. Defaults to `os.homedir()`.
    */
   homeDir?: string
+  /**
+   * Overrides the strict-profile default ensureProjectPolicy seeds a
+   * fresh project with. The CLI layer (cli.ts's init action) builds this
+   * from Claude Code's settings.allow Bash rules, after printing the
+   * derived rules and getting the user's confirmation in an interactive
+   * session ("inherit the user's Claude Code permissions", point 3: init
+   * reads allow to SEED a suggested policy, it never auto-grants it).
+   * runInit itself stays a pure function with no prompt of its own; the
+   * confirmation step lives in the CLI action, and the non-interactive
+   * default (no override supplied) is always the strict profile, no
+   * permissions read, matching Claude Code's own non-interactive parity
+   * (point 5: claude -p / SDK sessions don't use allow rules either).
+   */
+  policySeed?: SecurityJsonConfig
 }
 
 export interface InitResult {
@@ -392,7 +406,7 @@ export function runInit(options: InitOptions = {}): InitResult {
       // still get their own rollback below, same as any other failure.
       throw new Error(result.error)
     }
-    policyResult = ensureProjectPolicy(cwd, undoStack)
+    policyResult = ensureProjectPolicy(cwd, undoStack, options.policySeed ?? strictSecurityConfig())
   } catch (err) {
     for (const undo of undoStack.reverse()) {
       try { undo() } catch { /* best-effort rollback; the original error is what gets reported */ }

@@ -30,6 +30,7 @@ graph TD
   cli_commands_renderer_preview["cli/commands/renderer-preview"]
   cli_commands_security["cli/commands/security"]
   cli_commands_strip["cli/commands/strip"]
+  cli_commands_trust["cli/commands/trust"]
   cli_commands_validate["cli/commands/validate"]
   cli_commands_watch["cli/commands/watch"]
   cli_env_loader["cli/env-loader"]
@@ -144,9 +145,11 @@ graph TD
   cli_cli --> cli_commands_render
   cli_cli --> cli_commands_renderer_preview
   cli_cli --> cli_commands_strip
+  cli_cli --> cli_commands_trust
   cli_cli --> cli_commands_validate
   cli_cli --> cli_commands_watch
   cli_cli --> cli_glob_expand
+  cli_cli --> engine_index
   cli_cli --> parser_index
   cli_cli_register_security --> cli_commands_security
   cli_commands_assert --> cli_commands_render
@@ -184,6 +187,7 @@ graph TD
   cli_commands_strip --> cli_env_loader
   cli_commands_strip --> engine_index
   cli_commands_strip --> parser_index
+  cli_commands_trust --> engine_index
   cli_commands_validate --> engine_assert_liveness
   cli_commands_validate --> engine_index
   cli_commands_validate --> parser_index
