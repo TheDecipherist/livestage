@@ -2,7 +2,7 @@
 
 Live-document renderer and verifier for AI agents.
 
-**Version 1.0.1** | **1239+ tests** | MIT
+**Version 1.0.2** | **1239+ tests** | MIT
 
 This README is generated. Every fact in it (the directive reference below,
 the version and test count above, the three worked examples) is read live
@@ -209,7 +209,7 @@ them. Being written by an LLM the first time bought it nothing; a snapshot
 is a snapshot regardless of who typed it.
 
 Now `CLAUDE.stage` computes 5 modules, 30 directives,
-20 worked examples, and every `npm run` script in this
+25 worked examples, and every `npm run` script in this
 project, live, the same way every number in this sentence was computed at
 render time, not typed by hand.
 
