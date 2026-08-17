@@ -87,6 +87,21 @@ describe('README.stage renders README.md content live from the project itself', 
     expect(out).toContain(pkg.version)
   })
 
+  it('the "Drift? What\'s that?" section\'s module/directive/example counts match live, independently-computed values', () => {
+    const out = renderReadme()
+    const moduleCount = execFileSync('bash', ['-c', 'find src -maxdepth 1 -mindepth 1 -type d | wc -l'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+    const directiveCount = execFileSync('bash', ['-c', 'ls src/parser/directives/*.ts | wc -l'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+    const exampleCount = execFileSync('bash', ['-c', 'find examples -iname "*.stage" | wc -l'], { cwd: repoRoot, encoding: 'utf8' }).trim()
+    expect(out).toContain(`computes ${moduleCount} modules, ${directiveCount} directives`)
+    expect(out).toContain(`${exampleCount} worked examples`)
+    // Regression: {{ }} interpolated adjacent to backticks silently
+    // vanishes (scanInterpolations skips inline code spans), the exact
+    // bug found live while building CLAUDE.stage and referenced in this
+    // section's own prose. None of this section's computed values are
+    // backtick-wrapped; confirm the literal syntax never leaks through.
+    expect(out).not.toMatch(/`\{\{\s*cmd_\w+\s*\}\}`/)
+  })
+
   it('embeds the three examples/agent-briefs/ files\' real source (read live, not retyped)', () => {
     const out = renderReadme()
     // read_section() reads a file's actual text, it does not EXECUTE a
