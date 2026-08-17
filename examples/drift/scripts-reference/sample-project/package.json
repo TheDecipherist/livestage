@@ -1,0 +1,10 @@
+{
+  "name": "sample-project",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint ."
+  }
+}

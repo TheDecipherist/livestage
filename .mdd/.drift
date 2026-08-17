@@ -321,3 +321,5 @@
 17-source-directives
 36-frontmatter-query
 50-version-1.0.0-and-license
+06-cr5-deny-by-default
+48-auto-readme-generation

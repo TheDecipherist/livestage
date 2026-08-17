@@ -3,6 +3,9 @@ node_modules/
 .env
 .env.*
 .env.local
+# Deliberate exception: a secret-free, checked-in fixture for the
+# env-drift example (feature 51), not a real env file.
+!examples/drift/env-drift/sample-project/.env.example
 dist/
 
 # Root-level LiveStage dev config/cache, generated + local only. Anchored to

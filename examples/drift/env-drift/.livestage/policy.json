@@ -1,0 +1,13 @@
+{
+  "shell": {
+    "enabled": true,
+    "allow_patterns": [
+      "grep -rn process.env. sample-project/src",
+      "cat sample-project/.env.example"
+    ],
+    "deny_patterns": [],
+    "allow_network": false,
+    "require_confirmation": false,
+    "audit_log": false
+  }
+}
