@@ -17,7 +17,14 @@ source_files: [examples/drift/env-drift/env-drift.stage,
   examples/drift/test-coverage-map/sample-project/tests/subtract.test.ts,
   examples/drift/todo-debt/todo-debt.stage,
   examples/drift/todo-debt/.livestage/policy.json,
-  examples/drift/todo-debt/sample-project/src/payments.ts]
+  examples/drift/todo-debt/sample-project/src/payments.ts,
+  examples/drift/env-drift/env-drift.md,
+  examples/drift/scripts-reference/scripts-reference.md,
+  examples/drift/test-coverage-map/test-coverage-map.md,
+  examples/drift/todo-debt/todo-debt.md,
+  scripts/example-render-targets.mjs,
+  scripts/render-examples.mjs,
+  scripts/check-example-renders.mjs]
 test_files: [tests/e2e/drift-examples.test.ts]
 status: complete
 phase: all
@@ -119,6 +126,9 @@ N/A new directive; every example composes existing directives
       planted markers. `tests/e2e/drift-examples.test.ts`.
 - [x] Every shell-backed example's `allow_patterns` contains only
       exact-string entries, no wildcard. `tests/e2e/drift-examples.test.ts`.
+- [x] Every example ships a committed `.md` rendering, CI-verified against
+      a fresh render via `npm run examples:check` (mirrors `readme:check`).
+      `tests/e2e/drift-examples.test.ts` (B1).
 
 ## Dependencies
 
@@ -128,3 +138,29 @@ N/A new directive; every example composes existing directives
 ## Known Issues
 
 See frontmatter `known_issues`.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: none of the four examples shipped a rendered `.md` output
+committed alongside their `.stage` source, unlike the top-level
+`README.stage`/`README.md` pair. A reader browsing `examples/drift/` on
+GitHub had no way to see what any example actually produces without
+cloning, building, and running the CLI. Found by the user immediately
+after this feature's initial completion.
+Cause: the top-level README's generate/check/CI pattern
+(`npm run readme`, `npm run readme:check`, `scripts/check-readme.mjs`,
+wired into CI) was never generalized to per-example output.
+Fix: `scripts/example-render-targets.mjs` (shared `{cwd, stage, md}`
+list), `scripts/render-examples.mjs` (`npm run examples:render`, writes),
+`scripts/check-example-renders.mjs` (`npm run examples:check`, never
+writes, mirrors `check-readme.mjs`'s exact non-mutating shape), wired
+into `.github/workflows/ci.yml` alongside `readme:check`. Rendered and
+committed `env-drift.md`, `scripts-reference.md`,
+`test-coverage-map.md`, `todo-debt.md`. The identical gap exists in
+48-auto-readme-generation's own three `examples/agent-briefs/` files
+(and every other pre-existing example directory); recorded there as its
+own open B1, deliberately NOT fixed here, out of this fix's scope, a
+separate decision for the user | Regression test:
+tests/e2e/drift-examples.test.ts (13 tests, including a deliberate-
+staleness proof that `examples:check` is not vacuous)

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
 // Drift Examples (feature 51): four worked examples under examples/drift/,
@@ -65,6 +65,58 @@ describe('every shell-backed drift example ships only exact-string allow_pattern
     expect(policy.shell.enabled).toBe(true)
     for (const pattern of policy.shell.allow_patterns as string[]) {
       expect(pattern).not.toContain('*')
+    }
+  })
+})
+
+// Bug B1 (feature 51 / feature 48, 2026-08-17): every example ships a
+// committed .md rendering, checked by scripts/check-example-renders.mjs
+// (mirrors scripts/check-readme.mjs exactly, wired into CI alongside it).
+const checkExampleRendersScript = join(repoRoot, 'scripts', 'check-example-renders.mjs')
+
+function runCheckExampleRenders(): void {
+  execFileSync('node', [checkExampleRendersScript], { cwd: repoRoot, encoding: 'utf8' })
+}
+
+describe('every drift example ships a committed .md matching its live render', () => {
+  it.each([
+    'env-drift/env-drift.md',
+    'scripts-reference/scripts-reference.md',
+    'test-coverage-map/test-coverage-map.md',
+    'todo-debt/todo-debt.md',
+  ])('%s exists and is not empty', (relPath) => {
+    const full = join(repoRoot, 'examples', 'drift', relPath)
+    const content = readFileSync(full, 'utf8')
+    expect(content.trim().length).toBeGreaterThan(0)
+  })
+
+  it('examples:check passes when every committed .md is current', () => {
+    // Trusts the actual committed .md files (this feature's own build
+    // generated them via `npm run examples:render`, and they are checked
+    // into this branch) rather than regenerating them here, so this test
+    // never writes to a tracked file.
+    expect(runCheckExampleRenders).not.toThrow()
+  })
+
+  it('examples:check FAILS when a committed .md is stale (proves the check is not vacuous)', () => {
+    const mdPath = join(repoRoot, 'examples', 'drift', 'env-drift', 'env-drift.md')
+    const original = readFileSync(mdPath, 'utf8')
+    try {
+      writeFileSync(mdPath, 'deliberately stale content for this test\n')
+      expect(runCheckExampleRenders).toThrow()
+    } finally {
+      writeFileSync(mdPath, original)
+    }
+  })
+
+  it('examples:check FAILS when a committed .md is missing entirely', () => {
+    const mdPath = join(repoRoot, 'examples', 'drift', 'todo-debt', 'todo-debt.md')
+    const original = readFileSync(mdPath, 'utf8')
+    try {
+      rmSync(mdPath)
+      expect(runCheckExampleRenders).toThrow()
+    } finally {
+      writeFileSync(mdPath, original)
     }
   })
 })
