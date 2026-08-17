@@ -139,13 +139,18 @@ function emitDegradedTrace(filePath: string, ms: number, exit: number): void {
  * calls) can actually be killed at the timeout rather than just outlasting
  * an in-process deadline check.
  */
-export function renderViaCli(filePath: string, timeoutMs: number = RENDER_TIMEOUT_MS): { output: string; degraded: boolean } {
+export function renderViaCli(filePath: string, timeoutMs: number = RENDER_TIMEOUT_MS, homeDir?: string): { output: string; degraded: boolean } {
   // Explicit --cwd: the spawned process's own cwd is wherever the hook
   // itself launched from (the installed package, not the caller's project),
   // so without this the child would resolve .livestage/policy.json against
   // the wrong directory and silently apply the wrong grants.
+  // homeDir defaults to unset, which the CLI itself then resolves to the
+  // real os.homedir() (the real user's real workspace-trust store); tests
+  // override it to isolate trust state without touching that store.
   const startedAt = Date.now()
-  const result = spawnSync(process.execPath, [cliEntryPath(), 'render', filePath, '--cwd', dirname(filePath), '--silent'], {
+  const args = [cliEntryPath(), 'render', filePath, '--cwd', dirname(filePath), '--silent']
+  if (homeDir) args.push('--home-dir', homeDir)
+  const result = spawnSync(process.execPath, args, {
     encoding: 'utf8',
     timeout: timeoutMs,
   })

@@ -32,6 +32,11 @@ export interface RenderOptions {
   deterministic?: boolean
   // Feature 13 (CLI Router): wall-clock deadline in ms for the whole render.
   timeout?: number
+  // Overrides the home directory loadSecurityConfig uses to resolve the
+  // workspace-trust store (~/.livestage/trust.json). Defaults to the real
+  // os.homedir() when unset, the real user's real trust store; tests
+  // override it to isolate trust state without touching that store.
+  homeDir?: string
 }
 
 export interface SkillContextOptions {
@@ -131,7 +136,7 @@ function applyBudget(output: string, budget: number): string {
 
 export function buildSecurityConfig(options: RenderOptions, resolved: string): SecurityConfig {
   if (options.securityConfig) return options.securityConfig
-  const json = loadSecurityConfig(undefined, options.cwd)
+  const json = loadSecurityConfig(undefined, options.cwd, options.homeDir)
   // CLI default: data ops jail to the document's directory (matches v1.x and the
   // ergonomic expectation of `livestage render foo.stage` finding files near
   // foo.stage). Skill mode (--skill-args set, or invoked via MCP read_file)

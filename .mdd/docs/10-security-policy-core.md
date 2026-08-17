@@ -118,17 +118,34 @@ CR-5 true at runtime).
 
 ## Known Issues
 
-The workspace-trust mechanism (`security/trust.ts`, `livestage trust`)
-gates livestage's OWN `.livestage/policy.json` grants (a cloned repo's
-policy file must not be trusted automatically), but is deliberately NOT
-yet wired into `loadSecurityConfig`'s default call path: that function is
-called from many places across the engine with no `homeDir` concept
-threaded through today, and retrofitting every call site to check trust is
-separate, larger, higher-risk work than the session that added it had
-scope for. The store and CLI verb are complete, tested infrastructure a
-caller can use directly; only the "every policy.json load checks trust"
-wiring is outstanding. `[gap]`, not a defect: nothing regresses, the new
-mechanism simply isn't load-bearing everywhere yet.
+RESOLVED (2026-08-17): the workspace-trust mechanism (`security/trust.ts`,
+`livestage trust`) is now wired into `loadSecurityConfig`'s own default
+call path. `loadSecurityConfig` gained an optional third `homeDir`
+parameter, defaulting to the real `os.homedir()` when unset, so every
+existing call site is trust-gated automatically with no signature change
+forced on it. A real policy.json (not `defaultSecurityConfig()`'s own
+fallback, only a file a project actually shipped) whose directory is not
+explicitly trusted now grants nothing for `shell`, `code`, or `http`;
+`deny_patterns` and the immutable always-block rules are untouched, trust
+gates grants, never restrictions. All four real production call sites
+covered: `render.ts` (plus a new `--home-dir` CLI flag and
+`renderViaCli`'s own homeDir parameter, for tests/automation to isolate
+trust state without touching a real trust store), `validate.ts` (library-
+level `homeDir` option, no CLI flag yet, `[gap]`), `doctor.ts` (already had
+`homeDir` threaded for its hook checks, now shares it with the policy
+check), and `security.ts` (correct by construction, no changes needed).
+This project's own CI-facing example scripts (`render-examples.mjs`,
+`check-example-renders.mjs`) now explicitly trust every example directory
+they render, in an isolated throwaway home directory (never a real
+developer's real trust store), the same deliberate, explicit action a
+human reviewer would take once for a corpus already reviewed
+(`scripts/lib/trust-examples.mjs`).
+
+`[gap]`, not closed further this session: `livestage validate` and
+`livestage assert` both resolve `homeDir` correctly by default (the real
+user's real trust store) but have no `--home-dir` CLI flag for
+tests/automation to override it, unlike `render`/`doctor`/`trust`. Neither
+bypasses trust; both are just less test-ergonomic than the others.
 
 ## Feature Addition: inherit the user's Claude Code permissions (2026-08-17)
 
@@ -173,6 +190,20 @@ prompt the spec described (readline plus an async CLI action bootstrap
 change was assessed as more complexity/risk than the remaining session
 budget justified; typing the flag itself is the deliberate, explicit
 confirmation instead, never defaulted on).
+
+Follow-up (2026-08-17): the scope cut above, trust not wired into
+`loadSecurityConfig`'s default path, closed. See the frontmatter
+`known_issues` RESOLVED entry for the full detail. 22 existing tests broke
+on first wiring (every e2e test rendering a committed example directory
+with real shell/code grants); fixed by trusting each one explicitly in an
+isolated test-only home directory (`tests/helpers/trust.ts`), not by
+weakening the trust check, and this project's own example-generation
+scripts needed the same treatment (`scripts/lib/trust-examples.mjs`). Also
+found live while fixing this: `renderViaCli` prefers the esbuild bundle
+(`dist/livestage.js`) over the tsc `dist/` tree when both exist, so a new
+CLI flag is invisible to it until `npm run bundle` re-runs, not just
+`npm run build`, a real trap for anyone adding a CLI option and testing it
+only through the unbundled path.
 
 ## Bug Fixes
 

@@ -9,15 +9,18 @@
 // always-block rules, and everything else that only restricts are
 // unaffected: trust gates GRANTS, never restrictions.
 //
-// Deliberately NOT yet wired into loadSecurityConfig's own default call
-// path (see this feature's known_issues / the delivery report): that
-// function is called from many places across the engine with no homeDir
-// concept threaded through today, and retrofitting every call site is a
-// larger, separate, higher-risk change than this session's scope. This
-// module is complete, tested, working infrastructure that a caller can
-// use directly (isTrusted/trustDirectory), and IS wired into
-// checkShellCommandWithSettings's caller in sources.ts's executeQuery, the
-// proof-of-integration call site for this feature.
+// RESOLVED (2026-08-17): now wired into loadSecurityConfig's own default
+// call path (src/engine/security/config.ts). Every one of its four real
+// production call sites (render.ts, validate.ts, doctor.ts, security.ts)
+// is covered: loadSecurityConfig's new optional homeDir parameter
+// defaults to the real os.homedir() when unset, so every existing call
+// site is trust-gated with no signature change forced on it, and
+// render.ts additionally exposes --home-dir on the CLI itself (and
+// renderViaCli in the hook) for tests and automation to isolate trust
+// state without touching a real developer machine's real
+// ~/.livestage/trust.json. Also wired into checkShellCommandWithSettings's
+// caller in sources.ts's executeQuery, per the earlier session's
+// proof-of-integration work.
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 

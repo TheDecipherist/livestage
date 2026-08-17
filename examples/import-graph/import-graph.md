@@ -305,6 +305,7 @@ graph TD
   engine_security_claude_settings --> engine_security_config
   engine_security_claude_settings --> engine_security_rules
   engine_security_claude_settings --> engine_security_shell
+  engine_security_config --> engine_security_trust
   engine_security_filesystem --> engine_security_config
   engine_security_filesystem --> engine_security_rules
   engine_security_masking --> engine_security_config

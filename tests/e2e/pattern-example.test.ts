@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync } f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { renderViaCli } from '../../src/hook/pretooluse.js'
+import { setupTrustedHome } from '../helpers/trust.js'
 
 // F-PATTERN (feature 40): the worked multi-step example proves multi-step
 // agent work is a shipped pattern (files as steps, frontmatter as state,
@@ -97,6 +98,7 @@ describe('F-PATTERN: stale-state is detected and reported', () => {
 
 describe('F-PATTERN: degraded render leaves a recoverable state', () => {
   let slowDir: string
+  let trusted: ReturnType<typeof setupTrustedHome>
 
   beforeEach(() => {
     slowDir = mkdtempSync(join(tmpdir(), 'ls-pattern-slow-'))
@@ -105,6 +107,7 @@ describe('F-PATTERN: degraded render leaves a recoverable state', () => {
       code: { languages: ['javascript'], timeout: 30_000, runners: {} },
       filesystem: { write_enabled: true, write_root: 'cwd' },
     }))
+    trusted = setupTrustedHome(slowDir) // the @code grant above needs trust to take effect
     writeFileSync(join(slowDir, 'state.stage'), '---\nstep: "0"\n---\n\n# State\n')
     // Mimics a real step's shape: work first, state write last, so a
     // render killed mid-way (a hook timeout) never reaches the write.
@@ -115,11 +118,12 @@ describe('F-PATTERN: degraded render leaves a recoverable state', () => {
 
   afterEach(() => {
     rmSync(slowDir, { recursive: true, force: true })
+    trusted.cleanup()
   })
 
   it('a render killed by a short timeout never reaches the state write, state stays valid', () => {
     const filePath = join(slowDir, 'slow-step.stage')
-    const result = renderViaCli(filePath, 200) // shorter than the step's 1.5s of work
+    const result = renderViaCli(filePath, 200, trusted.homeDir) // shorter than the step's 1.5s of work
     expect(result.degraded).toBe(true)
     const content = readFileSync(join(slowDir, 'state.stage'), 'utf8')
     expect(content).toMatch(/step:\s*"0"/)
@@ -127,8 +131,8 @@ describe('F-PATTERN: degraded render leaves a recoverable state', () => {
 
   it('re-running the same step with no time pressure completes and updates state, no manual repair needed', () => {
     const filePath = join(slowDir, 'slow-step.stage')
-    renderViaCli(filePath, 200) // first attempt: killed, degraded
-    const result = renderViaCli(filePath, 10_000) // recovery: plenty of time
+    renderViaCli(filePath, 200, trusted.homeDir) // first attempt: killed, degraded
+    const result = renderViaCli(filePath, 10_000, trusted.homeDir) // recovery: plenty of time
     expect(result.degraded).toBe(false)
     const content = readFileSync(join(slowDir, 'state.stage'), 'utf8')
     expect(content).toMatch(/step:\s*1/)

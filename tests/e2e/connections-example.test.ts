@@ -1,8 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, cpSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { setupTrustedHome } from '../helpers/trust.js'
+import { trustDirectory } from '../../src/engine/security/trust.js'
 
 // Connections Example (feature 46): the doc that proves "generated file" is
 // a category LiveStage deletes. Composes a header (@date/@count), a path
@@ -17,8 +19,12 @@ const repoRoot = join(import.meta.dirname, '..', '..')
 const cliEntry = join(repoRoot, 'dist', 'cli', 'cli.js')
 const exampleSrc = join(repoRoot, 'examples', 'connections')
 
+let trusted: ReturnType<typeof setupTrustedHome>
+beforeAll(() => { trusted = setupTrustedHome(exampleSrc) })
+afterAll(() => trusted.cleanup())
+
 function render(cwd: string): string {
-  return execFileSync('node', [cliEntry, 'render', 'connections.stage'], { cwd, encoding: 'utf8' })
+  return execFileSync('node', [cliEntry, 'render', 'connections.stage', '--home-dir', trusted.homeDir], { cwd, encoding: 'utf8' })
 }
 
 describe('connections example against the checked-in fixture corpus (planted broken edge + overlap)', () => {
@@ -49,6 +55,7 @@ describe('removing the plants flips both sections back (proves the sections are 
     const workDir = mkdtempSync(join(tmpdir(), 'ls-connections-'))
     try {
       cpSync(exampleSrc, workDir, { recursive: true })
+      trustDirectory(workDir, trusted.homeDir) // a fresh copy is a new, distinct directory to trust
       // Fix the planted broken edge.
       writeFileSync(join(workDir, 'corpus', '05-hook.md'),
         '---\nid: 05-hook\npath: Build / Hook\nstatus: planned\ndepends_on: [04-cli]\nsource_files: [src/hook/pretooluse.ts]\n---\n\n# Hook\n')

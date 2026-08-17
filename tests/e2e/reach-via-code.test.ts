@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { setupTrustedHome } from '../helpers/trust.js'
 
 // Reach Via Code (feature 47): there is no @db or @http directive; external
 // reach is @code under policy. Two worked examples prove it, each with the
@@ -9,8 +10,14 @@ import { join } from 'node:path'
 const repoRoot = join(import.meta.dirname, '..', '..')
 const cliEntry = join(repoRoot, 'dist', 'cli', 'cli.js')
 
+let trusted: ReturnType<typeof setupTrustedHome>
+beforeAll(() => {
+  trusted = setupTrustedHome(join(repoRoot, 'examples', 'database'), join(repoRoot, 'examples', 'http-health'))
+})
+afterAll(() => trusted.cleanup())
+
 function render(cwd: string, file: string): string {
-  return execFileSync('node', [cliEntry, 'render', file], { cwd, encoding: 'utf8' })
+  return execFileSync('node', [cliEntry, 'render', file, '--home-dir', trusted.homeDir], { cwd, encoding: 'utf8' })
 }
 
 describe('database example: driver code in @code, doc only renders the output', () => {

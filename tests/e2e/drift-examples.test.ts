@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import { setupTrustedHome } from '../helpers/trust.js'
 
 // Drift Examples (feature 51): four worked examples under examples/drift/,
 // each replacing a specific kind of hand-maintained doc/config that
@@ -11,8 +12,20 @@ import { join } from 'node:path'
 const repoRoot = join(import.meta.dirname, '..', '..')
 const cliEntry = join(repoRoot, 'dist', 'cli', 'cli.js')
 
+// env-drift and todo-debt carry real shell grants; the other two are
+// filesystem-only and need no trust at all, but trusting them too is
+// harmless and keeps this list simple.
+let trusted: ReturnType<typeof setupTrustedHome>
+beforeAll(() => {
+  trusted = setupTrustedHome(
+    join(repoRoot, 'examples', 'drift', 'env-drift'),
+    join(repoRoot, 'examples', 'drift', 'todo-debt'),
+  )
+})
+afterAll(() => trusted.cleanup())
+
 function render(cwd: string, file: string): string {
-  return execFileSync('node', [cliEntry, 'render', file], { cwd, encoding: 'utf8' })
+  return execFileSync('node', [cliEntry, 'render', file, '--home-dir', trusted.homeDir], { cwd, encoding: 'utf8' })
 }
 
 describe('env-drift: cross-references process.env usage in code against .env.example', () => {

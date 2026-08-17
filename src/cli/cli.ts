@@ -50,6 +50,7 @@ universalOptions(
     .option('--skill-effort <level>', 'Claude effort level ($CLAUDE_EFFORT): low|medium|high|xhigh|max')
     .option('--args <string>', 'raw argument string, exposed as {{ args }} / {{ arg0 }}..{{ arg3 }}')
     .option('--var <k=v>', 'a named value, exposed as {{ vars.k }} (repeatable)', (v: string, prev: string[]) => [...prev, v], [] as string[])
+    .option('--home-dir <path>', 'override the home directory used to resolve the workspace-trust store (testing only)')
 ).action((file: string, opts: Record<string, string | number | string[] | boolean | undefined>) => {
   const renderOpts: Parameters<typeof runRender>[1] = {
     ...opts,

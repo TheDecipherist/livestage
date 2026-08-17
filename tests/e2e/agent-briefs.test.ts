@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { setupTrustedHome } from '../helpers/trust.js'
 
 // Auto README Generation (feature 48): three real, runnable examples
 // demonstrating the pattern the README itself argues for, replace N
@@ -13,8 +14,16 @@ const briefsDir = join(repoRoot, 'examples', 'agent-briefs')
 
 const DIRECTIVE_RE = /(^|[^`\w])@[a-z][a-z-]*(\s|"|\/|$)/m
 
+// This directory's own committed .livestage/policy.json grants shell for
+// exact git commands; workspace trust (see tests/helpers/trust.ts) must
+// explicitly trust it before those grants apply, the same as a real user
+// would after cloning.
+let trusted: ReturnType<typeof setupTrustedHome>
+beforeAll(() => { trusted = setupTrustedHome(briefsDir) })
+afterAll(() => trusted.cleanup())
+
 function render(file: string): string {
-  return execFileSync('node', [cliEntry, 'render', file], { cwd: briefsDir, encoding: 'utf8' })
+  return execFileSync('node', [cliEntry, 'render', file, '--home-dir', trusted.homeDir], { cwd: briefsDir, encoding: 'utf8' })
 }
 
 describe('examples/agent-briefs/ ships exactly the policy grant it needs', () => {

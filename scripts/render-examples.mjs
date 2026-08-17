@@ -7,6 +7,7 @@ import { writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { EXAMPLE_RENDER_TARGETS } from './example-render-targets.mjs'
+import { trustAllExampleDirs } from './lib/trust-examples.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(here, '..')
@@ -17,11 +18,13 @@ if (!existsSync(cliEntry)) {
   process.exit(2)
 }
 
+const trustHomeDir = await trustAllExampleDirs(repoRoot, EXAMPLE_RENDER_TARGETS)
+
 let failed = false
 for (const { cwd, stage, md } of EXAMPLE_RENDER_TARGETS) {
   const fullCwd = join(repoRoot, cwd)
   try {
-    const rendered = execFileSync('node', [cliEntry, 'render', stage], { cwd: fullCwd, encoding: 'utf8' })
+    const rendered = execFileSync('node', [cliEntry, 'render', stage, '--home-dir', trustHomeDir], { cwd: fullCwd, encoding: 'utf8' })
     writeFileSync(join(fullCwd, md), rendered.trim() + '\n', 'utf8')
     console.log(`render-examples: wrote ${cwd}/${md}`)
   } catch (err) {

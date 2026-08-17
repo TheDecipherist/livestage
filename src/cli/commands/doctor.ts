@@ -110,9 +110,9 @@ function checkDocsParse(cwd: string): DoctorCheck {
   return { name: 'docsParsed', healthy: true, detail: `${files.length}/${files.length} .stage files parse cleanly` }
 }
 
-function checkPolicy(cwd: string): DoctorCheck {
+function checkPolicy(cwd: string, homeDir: string): DoctorCheck {
   try {
-    const config = loadSecurityConfig(undefined, cwd)
+    const config = loadSecurityConfig(undefined, cwd, homeDir)
     const detail = `shell=${config.shell.enabled} http=${config.http.enabled} code=[${config.code.languages.join(',')}]`
     return { name: 'policy', healthy: true, detail }
   } catch (err) {
@@ -180,7 +180,7 @@ export function runDoctor(options: DoctorOptions = {}): DoctorHealth {
   const checks: DoctorCheck[] = [
     checkHooksRegistered(homeDir),
     checkDocsParse(cwd),
-    checkPolicy(cwd),
+    checkPolicy(cwd, homeDir),
     checkTraceWritable(cwd),
     checkAssertionLiveness(cwd),
     checkSchemas(cwd),
