@@ -303,10 +303,17 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
         // is the first (and only) line. For multi-line sources (read, list,
         // tree, query) keep the full content joined so labels can carry the
         // whole output for substring tests, foreach sources, etc.
+        //
+        // join= (feature 17, 2026-08-17): opt-in override of the '\n'
+        // separator, for a label meant to read as prose ({{ label }} mid-
+        // sentence) rather than feed @foreach (which splits its source on
+        // '\n', iter-ops.ts) or a substring test. Defaulting to '\n' keeps
+        // every existing call site, including @foreach-as-source, unchanged.
         const scalarShaped = node.type === 'count' || node.type === 'date'
+        const joinSep = sourceArgs?.['join'] ?? '\n'
         ctx.envFiles[label] = scalarShaped
           ? (lines[0]?.trim() ?? '')
-          : lines.join('\n').trim()
+          : lines.join(joinSep).trim()
       }
       // visible="false" or silent="true" suppresses inline output (useful
       // when label= captures the data and inline rendering would just dump

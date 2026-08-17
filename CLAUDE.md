@@ -50,15 +50,7 @@ corpus.
   immutable rules, masking), cache, stripper, code runners, assert operators,
   schema engine, args, determinism, trace.
 - `src/renderer/formats` - the markdown shapes a pipeline can render into:
-src/renderer/formats/bar.ts
-src/renderer/formats/code.ts
-src/renderer/formats/inline.ts
-src/renderer/formats/json.ts
-src/renderer/formats/links.ts
-src/renderer/formats/list.ts
-src/renderer/formats/numbered.ts
-src/renderer/formats/table.ts
-src/renderer/formats/tree.ts
+  src/renderer/formats/bar.ts, src/renderer/formats/code.ts, src/renderer/formats/inline.ts, src/renderer/formats/json.ts, src/renderer/formats/links.ts, src/renderer/formats/list.ts, src/renderer/formats/numbered.ts, src/renderer/formats/table.ts, src/renderer/formats/tree.ts.
 - `src/cli` - the verb router; `cli render` is the single code path the hook
   also calls.
 - `src/hook` - PreToolUse (extension match -> render -> substitute) and
@@ -66,15 +58,7 @@ src/renderer/formats/tree.ts
 - `src/parser/directives/` - one file per directive (`@list`, `@foreach`,
   `@code`, etc.), 29 as of this render. `src/engine/security/`
   - the per-surface policy checks, one file per surface, not one unified gate
-  function:
-src/engine/security/audit.ts
-src/engine/security/config.ts
-src/engine/security/filesystem.ts
-src/engine/security/masking.ts
-src/engine/security/modes.ts
-src/engine/security/path-expand.ts
-src/engine/security/rules.ts
-src/engine/security/shell.ts
+  function: src/engine/security/audit.ts, src/engine/security/config.ts, src/engine/security/filesystem.ts, src/engine/security/masking.ts, src/engine/security/modes.ts, src/engine/security/path-expand.ts, src/engine/security/rules.ts, src/engine/security/shell.ts.
 
 Config lives in `.livestage/` per project (`policy.json`, `schemas/`, `cache/`,
 `trace/`). Every execution surface (filesystem, shell, code) is deny-by-default,
@@ -103,22 +87,22 @@ single-file bundle to `dist/livestage.js`.
 Every `npm run` script, read live from `package.json` so a rename or removal
 shows up here on the next render instead of silently going stale:
 
-| script               | command                                                                                                                                                                                                                                                                               |
-|----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| build                | tsc -p tsconfig.build.json && node -e "require('fs').copyFileSync('src/engine/stdlib.md', 'dist/engine/stdlib.md')"                                                                                                                                                                   |
-| bundle               | esbuild src/cli/cli.ts --bundle --platform=node --format=esm --outfile=dist/livestage.js --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" && node -e "require('fs').copyFileSync('src/engine/stdlib.md', 'dist/stdlib.md')" |
-| typecheck            | tsc --noEmit                                                                                                                                                                                                                                                                          |
-| lint                 | eslint .                                                                                                                                                                                                                                                                              |
-| test                 | vitest run                                                                                                                                                                                                                                                                            |
-| test:unit            | vitest run tests/unit                                                                                                                                                                                                                                                                 |
-| test:baseline        | node scripts/check-test-baseline.mjs                                                                                                                                                                                                                                                  |
-| test:baseline:update | node scripts/check-test-baseline.mjs --update                                                                                                                                                                                                                                         |
-| readme               | node dist/cli/cli.js build README.stage -o README.md                                                                                                                                                                                                                                  |
-| readme:check         | node scripts/check-readme.mjs                                                                                                                                                                                                                                                         |
-| claude-md            | node dist/cli/cli.js build CLAUDE.stage -o CLAUDE.md                                                                                                                                                                                                                                  |
-| claude-md:check      | node scripts/check-claude-md.mjs                                                                                                                                                                                                                                                      |
-| examples:render      | node scripts/render-examples.mjs                                                                                                                                                                                                                                                      |
-| examples:check       | node scripts/check-example-renders.mjs                                                                                                                                                                                                                                                |
+| script | command |
+|---|---|
+| build | tsc -p tsconfig.build.json && node -e "require('fs').copyFileSync('src/engine/stdlib.md', 'dist/engine/stdlib.md')" |
+| bundle | esbuild src/cli/cli.ts --bundle --platform=node --format=esm --outfile=dist/livestage.js --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" && node -e "require('fs').copyFileSync('src/engine/stdlib.md', 'dist/stdlib.md')" |
+| typecheck | tsc --noEmit |
+| lint | eslint . |
+| test | vitest run |
+| test:unit | vitest run tests/unit |
+| test:baseline | node scripts/check-test-baseline.mjs |
+| test:baseline:update | node scripts/check-test-baseline.mjs --update |
+| readme | node dist/cli/cli.js build README.stage -o README.md |
+| readme:check | node scripts/check-readme.mjs |
+| claude-md | node dist/cli/cli.js build CLAUDE.stage -o CLAUDE.md |
+| claude-md:check | node scripts/check-claude-md.mjs |
+| examples:render | node scripts/render-examples.mjs |
+| examples:check | node scripts/check-example-renders.mjs |
 
 Notes that don't fit a one-line command table:
 - `build` compiles `src/` to `dist/` via `tsconfig.build.json` (declarations +

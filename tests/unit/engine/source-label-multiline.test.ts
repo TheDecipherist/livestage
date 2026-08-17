@@ -106,6 +106,36 @@ project does not use typescript
     expect(result.output).toContain('project uses typescript')
   })
 
+  it('join= overrides the default newline separator for prose-friendly interpolation', () => {
+    // Found live (feature 17, 2026-08-17) while building CLAUDE.stage:
+    // {{ label }} for a multi-line source always joined with '\n', so a
+    // short file list interpolated mid-sentence rendered as a bare
+    // multi-line dump instead of reading as prose. join="..." is opt-in;
+    // the default stays '\n' so @foreach sources (below) are unaffected.
+    mkdirSync(join(projectDir, 'docs'), { recursive: true })
+    writeFileSync(join(projectDir, 'docs/a.md'), '', 'utf8')
+    writeFileSync(join(projectDir, 'docs/b.md'), '', 'utf8')
+    writeFileSync(join(projectDir, 'docs/c.md'), '', 'utf8')
+    const result = render(
+      `@list ./docs/ match="*.md" label=files join=", " visible="false" /
+list: {{ files }}
+`,
+    )
+    expect(result.output).toContain('list: ./docs/a.md, ./docs/b.md, ./docs/c.md')
+  })
+
+  it('omitting join= still joins with newlines, unchanged default behavior', () => {
+    mkdirSync(join(projectDir, 'docs'), { recursive: true })
+    writeFileSync(join(projectDir, 'docs/a.md'), '', 'utf8')
+    writeFileSync(join(projectDir, 'docs/b.md'), '', 'utf8')
+    const result = render(
+      `@list ./docs/ match="*.md" label=files visible="false" /
+list: {{ files }}
+`,
+    )
+    expect(result.output).toContain('list: ./docs/a.md\n./docs/b.md')
+  })
+
   it('multi-line label feeds @foreach as a source', () => {
     writeFileSync(join(projectDir, 'list.txt'), 'apple\nbanana\ncherry\n', 'utf8')
     const result = render(

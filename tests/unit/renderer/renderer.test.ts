@@ -54,6 +54,45 @@ describe('Renderer', () => {
       expect(out).toContain('| Name')
       expect(out).toContain('| carol')
     })
+
+    it('pads every cell to its column\'s max width by default (existing behavior, unchanged)', () => {
+      const out = render({
+        type: 'table',
+        data: ['short\tx', 'a\tvery-long-outlier-value-here'],
+        columns: ['col1', 'col2'],
+      })
+      const lines = out.split('\n')
+      // Every data/header/separator line in a column-aligned table has the
+      // same total length (each row padded to the widest cell per column).
+      const lengths = new Set(lines.map(l => l.length))
+      expect(lengths.size).toBe(1)
+    })
+
+    it('compact="true" skips column-width padding: no long outlier bloats short rows', () => {
+      // Feature 20 B1 (2026-08-17): found live in CLAUDE.md's own Commands
+      // table, a wide outlier cell (bundle's long esbuild command) padded
+      // every other row's command to match, hundreds of trailing spaces
+      // per line, pure noise when the file is read as raw text (exactly
+      // how Claude Code consumes CLAUDE.md), not through a markdown viewer.
+      const out = render({
+        type: 'table',
+        data: ['short\tx', 'a\tvery-long-outlier-value-here'],
+        columns: ['col1', 'col2'],
+        options: { compact: 'true' },
+      })
+      const lines = out.split('\n')
+      const shortRow = lines.find(l => l.includes('short'))
+      expect(shortRow).toBeDefined()
+      // A padded table would make this row's length match the long-outlier
+      // row's length; compact mode must not.
+      const longRow = lines.find(l => l.includes('very-long-outlier'))
+      expect(shortRow!.length).toBeLessThan(longRow!.length)
+      // Still a valid GFM table: header, separator, both data rows present.
+      expect(out).toContain('col1')
+      expect(out).toContain('|---')
+      expect(out).toContain('short')
+      expect(out).toContain('very-long-outlier-value-here')
+    })
   })
 
   describe('code format', () => {

@@ -285,6 +285,7 @@ file when the path ends in `.json`/`.csv`.
 | `where` | expression | Keep only rows/items matching the expression |
 | `column` | name (CSV only) | Return a single column instead of full rows |
 | `label` | name | Capture the result into a variable instead of (or as well as) printing it |
+| `join` | separator string (default `\n`) | For multi-line results, the separator used when the label is later read via `{{ }}` (a bare newline-joined label still feeds `@foreach` as a source; `join=", "` reads as prose instead) |
 
 ### @read
 
@@ -302,6 +303,7 @@ CSV file when `path=`/`column=` is given.
 | `where` | expression | Keep only rows/items matching the expression |
 | `column` | name (CSV only) | Return a single column instead of full rows |
 | `label` | name | Capture the result into a variable |
+| `join` | separator string (default `\n`) | Same as `@list`'s `join=`, for multi-line results |
 | `visible` / `silent` | `false` / `true` | Suppress the inline print, useful when only the captured `label=` value is needed |
 
 ### @read-frontmatter
@@ -689,6 +691,7 @@ itself is shorthand for `| @render type="type"`.
 | `type` | `table` \| `tree` \| `list` \| `numbered` \| `bar` \| `code` \| `json` \| `inline` \| `links` | Which markdown shape to produce |
 | `columns` | `col1,col2` | Column headers, for `table` |
 | `lang` | language name | Fence language, for `code` |
+| `compact` | `true`, for `table` | Skip column-width padding: no alignment, one space per cell, for output read as raw text rather than through a markdown viewer |
 
 ### Pipe
 

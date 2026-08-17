@@ -3,8 +3,8 @@
 @read "package.json" path="engines.node" label="node_engine" visible="false" /
 @count "src/parser/directives" match="*.ts" label="directive_count" visible="false" /
 @count "src" type="dirs" depth="0" label="module_count" visible="false" /
-@list "src/renderer/formats" match="*.ts" label="renderer_formats" visible="false" /
-@list "src/engine/security" match="*.ts" label="security_files" visible="false" /
+@list "src/renderer/formats" match="*.ts" label="renderer_formats" join=", " visible="false" /
+@list "src/engine/security" match="*.ts" label="security_files" join=", " visible="false" /
 @count ".mdd/waves" label="wave_count" visible="false" /
 @count "examples" match="**/*.stage" label="example_count" visible="false" /
 
@@ -60,7 +60,7 @@ corpus.
   immutable rules, masking), cache, stripper, code runners, assert operators,
   schema engine, args, determinism, trace.
 - `src/renderer/formats` - the markdown shapes a pipeline can render into:
-{{ renderer_formats }}
+  {{ renderer_formats }}.
 - `src/cli` - the verb router; `cli render` is the single code path the hook
   also calls.
 - `src/hook` - PreToolUse (extension match -> render -> substitute) and
@@ -68,8 +68,7 @@ corpus.
 - `src/parser/directives/` - one file per directive (`@list`, `@foreach`,
   `@code`, etc.), {{ directive_count }} as of this render. `src/engine/security/`
   - the per-surface policy checks, one file per surface, not one unified gate
-  function:
-{{ security_files }}
+  function: {{ security_files }}.
 
 Config lives in `.livestage/` per project (`policy.json`, `schemas/`, `cache/`,
 `trace/`). Every execution surface (filesystem, shell, code) is deny-by-default,
@@ -98,7 +97,7 @@ single-file bundle to `dist/livestage.js`.
 Every `npm run` script, read live from `package.json` so a rename or removal
 shows up here on the next render instead of silently going stale:
 
-@list "package.json" path="scripts" mode="entries" | @render type="table" columns="script,command" /
+@list "package.json" path="scripts" mode="entries" | @render type="table" columns="script,command" compact="true" /
 
 Notes that don't fit a one-line command table:
 - `build` compiles `src/` to `dist/` via `tsconfig.build.json` (declarations +

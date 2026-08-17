@@ -4,14 +4,19 @@ title: Render Formats
 type: COMPONENT
 path: Renderer / Formats
 source_files: [src/renderer/formats/table.ts, src/renderer/formats/tree.ts, src/renderer/formats/list.ts, src/renderer/formats/numbered.ts, src/renderer/formats/bar.ts, src/renderer/formats/code.ts, src/renderer/formats/json.ts, src/renderer/formats/inline.ts, src/renderer/formats/links.ts]
+test_files: [tests/unit/renderer/renderer.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [19-composition-directives, 16-cr11-markdown-out]
 tags: [render-formats, pipe-sink, gfm-table, mermaid, plain-markdown]
-known_issues: []
+known_issues:
+  - "test_files was never backfilled (found empty 2026-08-17 during an
+    unrelated fix's frontmatter validation); corrected above to
+    tests/unit/renderer/renderer.test.ts, the real coverage for every
+    format module in this doc."
 primitives:
   - name: "@render"
     kind: directive
@@ -58,6 +63,7 @@ itself is shorthand for `| @render type="type"`.
 | `type` | `table` \| `tree` \| `list` \| `numbered` \| `bar` \| `code` \| `json` \| `inline` \| `links` | Which markdown shape to produce |
 | `columns` | `col1,col2` | Column headers, for `table` |
 | `lang` | language name | Fence language, for `code` |
+| `compact` | `true`, for `table` | Skip column-width padding: no alignment, one space per cell, for output read as raw text rather than through a markdown viewer |
 
 ## Architecture
 
@@ -122,3 +128,19 @@ The real registry-iterating CR-11 test (every format, asserting zero `@`-
 prefixed syntax survives) is deferred to feature 42; a manual spot-check of
 all nine formats against a live render found nothing, but it is not
 permanent test coverage.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `@render type="table"` always padded every cell to its column's
+max width, valid GFM alignment that any markdown viewer collapses
+visually, but pure noise (hundreds of trailing spaces per line) when the
+rendered file is read as raw text rather than through a viewer, exactly
+how `CLAUDE.md` is consumed by Claude Code. A single wide outlier cell
+(the `bundle` script's long esbuild command, in `CLAUDE.md`'s own
+Commands table) padded every other row to match. Found live, 2026-08-17.
+Cause: `table.ts` had no opt-out of its `widths`/`padEnd` alignment step.
+Fix: `src/renderer/formats/table.ts` (`compact="true"` skips padding
+entirely: one space per cell, `---` separator, still valid GFM; default
+behavior, every other existing table render, unchanged) | Regression
+test: tests/unit/renderer/renderer.test.ts
