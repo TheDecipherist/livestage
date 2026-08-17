@@ -56,6 +56,18 @@ describe('import-graph.stage graphs this project\'s real src/ tree via @code, no
     expect(out).toMatch(/engine_macros\s*-->\s*engine_engine_include/)
   })
 
+  it('captures TypeScript\'s inline type-only import form, not just import-from statements', () => {
+    // Found live, asked directly "is this actually complete?": a first
+    // draft's regex only matched `import {...} from '...'` / bare
+    // `import '...'`, missing TypeScript's `import('./x.js').Type` inline
+    // form entirely. context.ts's dependency on determinism.ts (`{{ }}`
+    // determinism: import('./determinism.js').DeterminismState) exists
+    // ONLY this way, no top-level import captures it anywhere else in
+    // that file, confirmed by grep before fixing.
+    const out = render()
+    expect(out).toMatch(/engine_context\s*-->\s*engine_determinism/)
+  })
+
   it('needs only code.languages=[javascript], the exact minimal grant', () => {
     const raw = readFileSync(join(exampleDir, '.livestage', 'policy.json'), 'utf8')
     const policy = JSON.parse(raw) as { code?: { languages?: string[] }; shell?: unknown; http?: unknown }

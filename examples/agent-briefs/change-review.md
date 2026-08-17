@@ -17,19 +17,20 @@ strings this file uses below in `allow_patterns`, no wildcard.
 
 ### Diff stat
 .mdd/.drift                              |  1 +
- examples/agent-briefs/codebase-health.md | 13 +++----------
- scripts/example-render-targets.mjs       |  6 ++++++
- 3 files changed, 10 insertions(+), 10 deletions(-)
+ examples/agent-briefs/codebase-health.md |  8 ++++----
+ examples/import-graph/import-graph.js    |  7 +++++++
+ tests/e2e/import-graph-example.test.ts   | 12 ++++++++++++
+ 4 files changed, 24 insertions(+), 4 deletions(-)
 
 ### Recent commits
+076f098 Merge branch 'feat/import-graph-example'
+4c4dfe4 feat: add examples/import-graph/, a real src/ Mermaid dependency graph
 89f6723 Merge branch 'bug/strict-profile-comment-clarity'
 224aa0d docs: clarify what the shipped 'strict' security profile means
 b149d96 Merge branch 'chore/version-1.0.1'
-05743da chore: bump version to 1.0.1
-ca18fc9 Merge branch 'chore/gitignore-improvements-doc'
 
 ### Working tree status
 M ../../.mdd/.drift
  M codebase-health.md
- M ../../scripts/example-render-targets.mjs
-?? ../import-graph/
+ M ../import-graph/import-graph.js
+ M ../../tests/e2e/import-graph-example.test.ts
