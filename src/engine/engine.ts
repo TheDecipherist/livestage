@@ -23,6 +23,7 @@ import { evaluateAssert } from './assert/operators.js'
 import { formatAssertResult } from './assert/results.js'
 import { executeCode } from './code-runners.js'
 import { executeGraph } from './graph.js'
+import { executeImportGraph } from './import-graph.js'
 import { buildDeterminism } from './determinism.js'
 import { parseTraceConfig } from './trace/config.js'
 import { emitRecord } from './trace/emit.js'
@@ -273,6 +274,7 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
     // contributes nothing to output, same as the retired header node used to.
     case 'passthrough': return node.raw
     case 'graph': return executeGraph(node, ctx)
+    case 'import-graph': return executeImportGraph(node, ctx)
     case 'markdown': {
       const resolved = resolveInterpolations(node.text, node.interpolations, ctx, node.shellInlines)
       // Only nodes macro substitution touched (see macros.ts) carry

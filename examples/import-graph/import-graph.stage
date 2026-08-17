@@ -2,14 +2,18 @@
 
 `@graph` reads YAML frontmatter (see `examples/connections/connections.stage`);
 it has no notion of TypeScript `import` statements, so it cannot graph real
-source code directly. This is the `@code`-under-policy answer to the same
-question, walking this project's own real `src/` tree.
+source code directly. `@import-graph` does: it walks a real source tree,
+parses `import`/`export ... from` statements (including TypeScript's inline
+type-only form), and resolves them to real files.
 
 ## Policy grant this example needs
 
-`.livestage/policy.json` in this directory: `code.languages` includes
-`javascript`, nothing else.
+`.livestage/policy.json` in this directory: `filesystem.allowed_data_paths`
+grants reach to this project's own `src/` tree, two directories up from
+here. No shell or `@code` grant of any kind, unlike the version of this
+example that used to run a script under policy: `@import-graph` is a
+filesystem-read directive, the same jail `@list`/`@tree` already use.
 
 ## Result
 
-@code language="javascript" src="import-graph.js" | @render type="code" lang="mermaid" /
+@import-graph src="../../src" /

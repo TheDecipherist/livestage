@@ -27,6 +27,7 @@ import template from './directives/template.js'
 import data from './directives/data.js'
 import assert from './directives/assert.js'
 import code from './directives/code.js'
+import importGraph from './directives/import-graph.js'
 
 const modules: ParseModule[] = [
   include, importDir, env, define, call,
@@ -35,6 +36,7 @@ const modules: ParseModule[] = [
   foreach, setDir, switchDir,
   render, ifDir, graph, pipe,
   template, data, assert, code,
+  importGraph,
 ]
 
 const registry = new Map<string, ParseModule>(

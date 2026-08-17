@@ -208,7 +208,7 @@ in this repo. Both sat there, wrong, until someone happened to grep for
 them. Being written by an LLM the first time bought it nothing; a snapshot
 is a snapshot regardless of who typed it.
 
-Now `CLAUDE.stage` computes 5 modules, 29 directives,
+Now `CLAUDE.stage` computes 5 modules, 30 directives,
 20 worked examples, and every `npm run` script in this
 project, live, the same way every number in this sentence was computed at
 render time, not typed by hand.
@@ -250,8 +250,9 @@ overlap, all computed, nothing hand-maintained.
 
 **[`examples/import-graph/import-graph.stage`](examples/import-graph/import-graph.stage)** ([rendered](examples/import-graph/import-graph.md))
 `@graph` reads YAML frontmatter, it has no notion of real `import`
-statements; `@code` under policy does, walking this project's own `src/`
-tree into a real Mermaid dependency graph, one node per source file.
+statements; `@import-graph` does, walking a source tree (`src="./src"`)
+into a real Mermaid dependency graph, one node per source file, no
+shell/`@code` grant needed.
 
 **`examples/multi-step/`** - files as steps, frontmatter as state,
 assertions as gates, no workflow engine. [`index.stage`](examples/multi-step/index.stage) ([rendered](examples/multi-step/index.md))

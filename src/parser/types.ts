@@ -283,6 +283,11 @@ export interface CodeNode extends ASTNodeBase {
   cache: CacheConfig | null // mock= populates { mode: 'mock', mockPath }, feature 35
 }
 
+export interface ImportGraphNode extends ASTNodeBase {
+  type: 'import-graph'
+  src: string  // directory to walk, resolved through the data-path jail like @list/@tree
+}
+
 export interface AssertNode extends ASTNodeBase {
   type: 'assert'
   operator: string           // file-exists | contains | some-contains | contains-if-present | absent | json-key
@@ -326,6 +331,7 @@ export type ASTNode =
   | DataNode
   | AssertNode
   | CodeNode
+  | ImportGraphNode
 
 export interface ParseResult {
   isLiveStage: boolean

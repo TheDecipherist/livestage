@@ -101,6 +101,12 @@ exports[`golden snapshots under --deterministic: every registered directive > if
 
 exports[`golden snapshots under --deterministic: every registered directive > import 1`] = `""`;
 
+exports[`golden snapshots under --deterministic: every registered directive > import-graph 1`] = `
+"\`\`\`mermaid
+graph TD
+\`\`\`"
+`;
+
 exports[`golden snapshots under --deterministic: every registered directive > include 1`] = `
 "---
 status: draft

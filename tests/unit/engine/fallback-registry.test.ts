@@ -27,6 +27,7 @@ const FIXTURES: Record<string, string> = {
   hash: '@hash path="package.json" /',
   if: '@if true\nbody\n@if-end',
   import: '@import ./x.md /',
+  'import-graph': '@import-graph src="./" /',
   include: '@include ./x.md /',
   list: '@list ./ /',
   pipe: '@list ./ | @render type="list" /',

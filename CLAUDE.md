@@ -60,7 +60,7 @@ corpus.
   PreToolUse cannot substitute a Read call's returned content, only
   PostToolUse can) and SessionStart (brief injection).
 - `src/parser/directives/` - one file per directive (`@list`, `@foreach`,
-  `@code`, etc.), 29 as of this render. `src/engine/security/`
+  `@code`, etc.), 30 as of this render. `src/engine/security/`
   - the per-surface policy checks, one file per surface, not one unified gate
   function: src/engine/security/audit.ts, src/engine/security/claude-settings.ts, src/engine/security/config.ts, src/engine/security/filesystem.ts, src/engine/security/masking.ts, src/engine/security/modes.ts, src/engine/security/path-expand.ts, src/engine/security/rules.ts, src/engine/security/shell.ts, src/engine/security/trust.ts.
 
