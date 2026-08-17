@@ -1,8 +1,8 @@
 ---
 generated: 2026-08-17
-doc_count: 51
-connection_count: 88
-overlap_count: 35
+doc_count: 52
+connection_count: 89
+overlap_count: 36
 ---
 
 # MDD Connections
@@ -69,6 +69,8 @@ overlap_count: 35
   └── `17-source-directives` - Source Directives (complete)
 **Directives / Update Frontmatter**
   └── `33-update-frontmatter` - Update Frontmatter (complete)
+**Docs / CLAUDE.md Generation**
+  └── `52-auto-claude-md-generation` - Auto CLAUDE.md Generation (complete)
 **Docs / README Generation**
   └── `48-auto-readme-generation` - Auto README Generation (complete)
 **Docs / User Guide**
@@ -171,6 +173,7 @@ graph TD
   49_fix_foreach_interpolation_rce["49-fix-foreach-interpolation-rce"]:::done
   50_version_1_0_0_and_license["50-version-1.0.0-and-license"]:::done
   51_drift_examples["51-drift-examples"]:::done
+  52_auto_claude_md_generation["52-auto-claude-md-generation"]:::done
   07_package_skeleton --> 01_seed_script
   07_package_skeleton --> 03_cr2_one_package
   08_boundary_lint --> 07_package_skeleton
@@ -259,14 +262,16 @@ graph TD
   51_drift_examples --> 17_source_directives
   51_drift_examples --> 18_compute_directives
   51_drift_examples --> 22_pipe
+  52_auto_claude_md_generation --> 48_auto_readme_generation
 ```
 
 ## Source File Overlap
 
 Files referenced by 2+ docs:
 
+- `.github/workflows/ci.yml` - 48-auto-readme-generation, 52-auto-claude-md-generation
 - `eslint.config.js` - 07-package-skeleton, 08-boundary-lint
-- `package.json` - 07-package-skeleton, 41-bundle, 48-auto-readme-generation, 50-version-1.0.0-and-license
+- `package.json` - 07-package-skeleton, 41-bundle, 48-auto-readme-generation, 50-version-1.0.0-and-license, 52-auto-claude-md-generation
 - `scripts/check-example-renders.mjs` - 48-auto-readme-generation, 51-drift-examples
 - `scripts/example-render-targets.mjs` - 48-auto-readme-generation, 51-drift-examples
 - `scripts/render-examples.mjs` - 48-auto-readme-generation, 51-drift-examples

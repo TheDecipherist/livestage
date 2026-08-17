@@ -29,6 +29,8 @@
     "test:baseline:update": "node scripts/check-test-baseline.mjs --update",
     "readme": "node dist/cli/cli.js build README.stage -o README.md",
     "readme:check": "node scripts/check-readme.mjs",
+    "claude-md": "node dist/cli/cli.js build CLAUDE.stage -o CLAUDE.md",
+    "claude-md:check": "node scripts/check-claude-md.mjs",
     "examples:render": "node scripts/render-examples.mjs",
     "examples:check": "node scripts/check-example-renders.mjs"
   },

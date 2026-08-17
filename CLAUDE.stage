@@ -1,3 +1,12 @@
+@read "package.json" path="name" label="pkg_name" visible="false" /
+@read "package.json" path="bin.livestage" label="pkg_bin" visible="false" /
+@read "package.json" path="engines.node" label="node_engine" visible="false" /
+@count "src/parser/directives" match="*.ts" label="directive_count" visible="false" /
+@list "src/renderer/formats" match="*.ts" label="renderer_formats" visible="false" /
+@list "src/engine/security" match="*.ts" label="security_files" visible="false" /
+@count ".mdd/waves" label="wave_count" visible="false" /
+@count "examples" match="**/*.stage" label="example_count" visible="false" /
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code
@@ -23,9 +32,9 @@ that moment and returns pure markdown, with zero directive syntax remaining. The
 directive syntax exists only at rest, for authors; the agent consuming a render
 needs no knowledge of LiveStage at all.
 
-The deliverable is one npm package, livestage (npm livestage,
+The deliverable is one npm package, {{ pkg_name }} (npm {{ pkg_name }},
 livestage.dev), with internal modules under `src/` (parser, engine, renderer,
-cli, hook, each described below), one bin (dist/livestage.js), and a self-contained
+cli, hook, each described below), one bin ({{ pkg_bin }}), and a self-contained
 single-file bundle. There is no server. The integration surface is a PreToolUse
 hook that renders `.stage` reads inline, a SessionStart hook that injects
 designated briefs, and a CLI that behaves identically in an agent session and
@@ -51,31 +60,16 @@ corpus.
   immutable rules, masking), cache, stripper, code runners, assert operators,
   schema engine, args, determinism, trace.
 - `src/renderer/formats` - the markdown shapes a pipeline can render into:
-src/renderer/formats/bar.ts
-src/renderer/formats/code.ts
-src/renderer/formats/inline.ts
-src/renderer/formats/json.ts
-src/renderer/formats/links.ts
-src/renderer/formats/list.ts
-src/renderer/formats/numbered.ts
-src/renderer/formats/table.ts
-src/renderer/formats/tree.ts
+{{ renderer_formats }}
 - `src/cli` - the verb router; `cli render` is the single code path the hook
   also calls.
 - `src/hook` - PreToolUse (extension match -> render -> substitute) and
   SessionStart (brief injection).
 - `src/parser/directives/` - one file per directive (`@list`, `@foreach`,
-  `@code`, etc.), 29 as of this render. `src/engine/security/`
+  `@code`, etc.), {{ directive_count }} as of this render. `src/engine/security/`
   - the per-surface policy checks, one file per surface, not one unified gate
   function:
-src/engine/security/audit.ts
-src/engine/security/config.ts
-src/engine/security/filesystem.ts
-src/engine/security/masking.ts
-src/engine/security/modes.ts
-src/engine/security/path-expand.ts
-src/engine/security/rules.ts
-src/engine/security/shell.ts
+{{ security_files }}
 
 Config lives in `.livestage/` per project (`policy.json`, `schemas/`, `cache/`,
 `trace/`). Every execution surface (filesystem, shell, code) is deny-by-default,
@@ -84,7 +78,7 @@ argument can smuggle a command past policy.
 
 `examples/` is self-verifying documentation, not just sample files:
 `README.stage`, `CLAUDE.stage`, and every `examples/**/*.stage` file
-(19 of them at this render) ships a committed `.md`
+({{ example_count }} of them at this render) ships a committed `.md`
 rendering next to it, generated (`npm run readme` / `npm run claude-md` /
 `examples:render`) and CI-enforced (`readme:check` / `claude-md:check` /
 `examples:check`, `scripts/check-*.mjs`) never to drift. Some examples are
@@ -94,7 +88,7 @@ environment-dependent directory) rather than byte-diffed, see
 
 ## Tech stack
 
-TypeScript strict mode, no `any` in new code. Node.js >=22, ESM. npm,
+TypeScript strict mode, no `any` in new code. Node.js {{ node_engine }}, ESM. npm,
 single package, no workspaces. Vitest for tests (one merged config, golden-file
 snapshots for the render surface, a fixture-based security matrix). esbuild
 single-file bundle to `dist/livestage.js`.
@@ -104,22 +98,7 @@ single-file bundle to `dist/livestage.js`.
 Every `npm run` script, read live from `package.json` so a rename or removal
 shows up here on the next render instead of silently going stale:
 
-| script               | command                                                                                                                                                                                                                                                                               |
-|----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| build                | tsc -p tsconfig.build.json && node -e "require('fs').copyFileSync('src/engine/stdlib.md', 'dist/engine/stdlib.md')"                                                                                                                                                                   |
-| bundle               | esbuild src/cli/cli.ts --bundle --platform=node --format=esm --outfile=dist/livestage.js --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" && node -e "require('fs').copyFileSync('src/engine/stdlib.md', 'dist/stdlib.md')" |
-| typecheck            | tsc --noEmit                                                                                                                                                                                                                                                                          |
-| lint                 | eslint .                                                                                                                                                                                                                                                                              |
-| test                 | vitest run                                                                                                                                                                                                                                                                            |
-| test:unit            | vitest run tests/unit                                                                                                                                                                                                                                                                 |
-| test:baseline        | node scripts/check-test-baseline.mjs                                                                                                                                                                                                                                                  |
-| test:baseline:update | node scripts/check-test-baseline.mjs --update                                                                                                                                                                                                                                         |
-| readme               | node dist/cli/cli.js build README.stage -o README.md                                                                                                                                                                                                                                  |
-| readme:check         | node scripts/check-readme.mjs                                                                                                                                                                                                                                                         |
-| claude-md            | node dist/cli/cli.js build CLAUDE.stage -o CLAUDE.md                                                                                                                                                                                                                                  |
-| claude-md:check      | node scripts/check-claude-md.mjs                                                                                                                                                                                                                                                      |
-| examples:render      | node scripts/render-examples.mjs                                                                                                                                                                                                                                                      |
-| examples:check       | node scripts/check-example-renders.mjs                                                                                                                                                                                                                                                |
+@list "package.json" path="scripts" mode="entries" | @render type="table" columns="script,command" /
 
 Notes that don't fit a one-line command table:
 - `build` compiles `src/` to `dist/` via `tsconfig.build.json` (declarations +
@@ -145,7 +124,7 @@ Notes that don't fit a one-line command table:
 This project's build is tracked in `.mdd/`. The feature docs in `.mdd/docs/` are
 numbered in build order (`depends_on` only ever points to a lower id): read a
 doc's id before touching its files, the number tells you what has to exist
-first. Docs are grouped into waves under `.mdd/waves/` (7 waves,
+first. Docs are grouped into waves under `.mdd/waves/` ({{ wave_count }} waves,
 mirroring the spec's own wave numbering) inside the `livestage` initiative. The
 spec's own reuse rule is load-bearing for every wave: before writing anything,
 open the donor copy-map row for the feature, read the donor source and its
