@@ -1,8 +1,8 @@
 <!-- livestage:generated
 livestage_source: README.stage
-livestage_updated_at: 2026-08-17T15:37:20.555Z
+livestage_updated_at: 2026-08-17T22:19:33.421Z
 livestage_version: 1.0.2
-livestage_content_hash: 53e17201482b11f4783dfce60dacfe493b6f95c729916318f6eae25b0d38dca7
+livestage_content_hash: 68cd76923ff522e1b4ade196ff1131dd0cc5612ba48c20feac0a4f2dba06b782
 livestage_hash_inputs: .mdd/docs/*.md,package.json,scripts/test-baseline.json,examples/agent-briefs/*.stage,README.stage
 livestage_degraded: false
 -->
@@ -40,7 +40,10 @@ it makes four changes:
   `dist/hook/pretooluse.js`, so reading a `.stage` file with the normal file
   tool already returns the rendered result, no separate render step.
   (PreToolUse can only allow/deny/rewrite a tool's arguments; only
-  PostToolUse can substitute what a Read call actually returns.)
+  PostToolUse can substitute what a Read call actually returns.) The same
+  hook also watches reads of any `.md` file stamped with the
+  `livestage:generated` contract, see "Keep a generated `.md` honest at
+  read time" below.
 - Installs a **SessionStart** hook script to `~/.livestage/hooks/sessionStart.mjs`.
   It renders `<project>/CLAUDE-LiveStage.stage` (if that file exists) and
   injects the result into the session, a live, self-updating brief instead of
@@ -221,6 +224,55 @@ Now `CLAUDE.stage` computes 5 modules, 30 directives,
 25 worked examples, and every `npm run` script in this
 project, live, the same way every number in this sentence was computed at
 render time, not typed by hand.
+
+## Keep a generated `.md` honest at read time
+
+`README.md` and `CLAUDE.md` above are this project's own; the same
+guarantee is available for any `.md` a `.stage` file in your project
+produces. Add `--stamp-metadata` to a `livestage build` call and the
+generator writes a small HTML comment block at the top of the output:
+
+```
+<!-- livestage:generated
+livestage_source: docs/api.stage
+livestage_updated_at: 2026-08-17T15:46:01.385Z
+livestage_version: 1.0.2
+livestage_content_hash: 53e17201482b...
+livestage_hash_inputs: src/**/*.ts,package.json,docs/api.stage
+livestage_regenerate_on_read: true
+livestage_degraded: false
+-->
+```
+
+An HTML comment, not YAML frontmatter, on purpose: GitHub renders a leading
+`---` block ugly (or Jekyll-interprets it) at the top of a repo's own
+README; a comment renders as nothing and is equally machine-readable.
+`--hash-inputs` (optional, comma-separated globs, relative to the source
+file's own directory) names every file the render actually depends on;
+without it, the hash covers only the `.stage` source itself. Presence of
+the block, not filename, is what opts a file into the contract: a `.md`
+with no block is passed through untouched, hook installed or not.
+
+The PostToolUse hook `init` installs watches reads of any stamped `.md`.
+It hashes the declared inputs first; unchanged means the committed file is
+served as-is, no render at all. Only a changed hash triggers work, and
+`livestage_regenerate_on_read`, a field only you set, decides what happens
+next:
+
+- **absent** (the default): committed content is served, with a notice
+  prepended naming what's stale and the exact regen command. Drift gets
+  surfaced; content does not change under the reader.
+- **`true`**: a fresh render is served instead, with a notice stating
+  plainly that what follows is a live render of the source, not the file's
+  committed bytes.
+- **`false`**: committed content is served, no notice, no comparison. An
+  explicit opt-out is honored as one.
+
+If the render itself fails or times out, the committed file is served
+unchanged with a "could not verify, may be stale" notice. A read through
+this hook never fails and never serves a fresh render silently, at any
+setting: a stale file being wrong is recoverable, a stale file that looks
+current to the one reader who could have caught it is not.
 
 ## More examples
 
