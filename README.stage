@@ -16,6 +16,46 @@ from the project itself by `README.stage`, never hand-typed. Run
 if it would produce a different file than what is currently committed, and
 that check runs in CI. See "How this README stays current" at the bottom.
 
+## Install
+
+```
+npm install --save-dev livestage
+```
+
+Then wire it into an AI coding assistant's hooks:
+
+```
+npx livestage init
+```
+
+`init` is idempotent (safe to run again, a no-op if already installed) and
+transactional (a partial failure rolls back everything it wrote). Concretely,
+it makes four changes:
+
+- Registers a **PreToolUse** hook, pointed at the installed package's own
+  `dist/hook/pretooluse.js`, so reading a `.stage` file with the normal file
+  tool already returns the rendered result, no separate render step.
+- Installs a **SessionStart** hook script to `~/.livestage/hooks/sessionStart.mjs`.
+  It renders `<project>/CLAUDE-LiveStage.stage` (if that file exists) and
+  injects the result into the session, a live, self-updating brief instead of
+  a static `CLAUDE.md` section; it makes zero filesystem writes and never
+  blocks session start on failure.
+- Both hooks are registered in the detected client's own settings file
+  (`~/.claude/settings.json` for Claude Code, `~/.cursor/settings.json` for
+  Cursor, auto-detected, or pass `--client`).
+- Seeds `<project>/.livestage/policy.json` with the strict, deny-by-default
+  profile, only if one does not already exist.
+
+Nothing is granted beyond that: every directive that touches the filesystem,
+shell, or `@code` still needs an explicit policy grant, same as any other
+project.
+
+Or use it standalone, no hook required:
+
+```
+npx livestage render some-doc.stage
+```
+
 ## What LiveStage is
 
 A `.stage` file mixes prose with executable directives instead of storing
@@ -31,25 +71,6 @@ chooses; it resolves deterministic data and hands it back as markdown.
 Every directive declares a static fallback, so a `.stage` file read
 without the engine (or after a timeout) is still a usable, honest document
 that says it is degraded.
-
-## Install
-
-```
-npm install --save-dev livestage
-```
-
-Then wire it into an AI coding assistant's hooks (a PreToolUse hook renders
-`.stage` reads inline; a SessionStart hook can inject a designated brief):
-
-```
-npx livestage init
-```
-
-Or use it standalone, no hook required:
-
-```
-npx livestage render some-doc.stage
-```
 
 ## A minimal example
 
