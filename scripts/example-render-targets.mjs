@@ -68,4 +68,10 @@ export const EXAMPLE_RENDER_TARGETS = [
   // directory, genuinely different by design. No owning doc claims this
   // file; recorded here anyway so a reader still sees something.
   { cwd: 'examples', stage: 'hello.stage', md: 'hello.md', checked: false },
+
+  // feature 53, import graph: @code walks this project's own real src/
+  // tree (not a fixture), exact-matched, a pure function of the checked-in
+  // source (no time/random elements); genuinely goes stale, correctly,
+  // whenever src/ actually changes.
+  { cwd: 'examples/import-graph', stage: 'import-graph.stage', md: 'import-graph.md' },
 ]

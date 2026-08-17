@@ -1,0 +1,15 @@
+# Source Import Graph
+
+`@graph` reads YAML frontmatter (see `examples/connections/connections.stage`);
+it has no notion of TypeScript `import` statements, so it cannot graph real
+source code directly. This is the `@code`-under-policy answer to the same
+question, walking this project's own real `src/` tree.
+
+## Policy grant this example needs
+
+`.livestage/policy.json` in this directory: `code.languages` includes
+`javascript`, nothing else.
+
+## Result
+
+@code language="javascript" src="import-graph.js" | @render type="code" lang="mermaid" /

@@ -1,6 +1,6 @@
 # Project Report
 
-Generated 2026-08-17T02:07:37.365Z, not maintained: every number below is computed
+Generated 2026-08-17T05:05:18.887Z, not maintained: every number below is computed
 from the checkout this render happened against, not typed in by hand.
 
 ## Showcase directory contents
@@ -15,6 +15,7 @@ from the checkout this render happened against, not typed in by hand.
 ├── cli-reference.json
 ├── index.md
 ├── index.stage
+├── report.md
 └── report.stage
 
 ## CLI verb count

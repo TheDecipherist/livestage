@@ -19,16 +19,9 @@ See that file directly for the exact JSON.
 ## Result
 
 
-- Branch: bug/all-examples-rendered-output
-- Last commit: c6cc81b Merge branch 'bug/example-rendered-output'
+- Branch: feat/import-graph-example
+- Last commit: 89f6723 Merge branch 'bug/strict-profile-comment-clarity'
 - Uncommitted files:
 M ../../.mdd/.drift
- M ../../.mdd/.statusbar.json
- M ../../.mdd/docs/40-pattern-example.md
- M ../../.mdd/docs/44-examples-showcase.md
- M ../../.mdd/docs/46-connections-example.md
- M ../../.mdd/docs/47-reach-via-code.md
- M ../multi-step/index.stage
- M ../../scripts/check-example-renders.mjs
  M ../../scripts/example-render-targets.mjs
-?? onboarding-brief.md
+?? ../import-graph/

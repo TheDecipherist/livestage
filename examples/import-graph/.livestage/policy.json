@@ -1,0 +1,7 @@
+{
+  "code": {
+    "languages": ["javascript"],
+    "timeout": 15000,
+    "runners": {}
+  }
+}
