@@ -1,0 +1,12 @@
+{
+  "shell": {
+    "enabled": true,
+    "allow_patterns": [
+      "grep -rnE 'TODO|FIXME|HACK' sample-project/src"
+    ],
+    "deny_patterns": [],
+    "allow_network": false,
+    "require_confirmation": false,
+    "audit_log": false
+  }
+}

@@ -1,7 +1,7 @@
 ---
 generated: 2026-08-17
-doc_count: 50
-connection_count: 85
+doc_count: 51
+connection_count: 88
 overlap_count: 32
 ---
 
@@ -93,6 +93,8 @@ overlap_count: 32
   └── `49-fix-foreach-interpolation-rce` - Fix Foreach Interpolation RCE (complete)
 **Examples / Connections**
   └── `46-connections-example` - Connections Example (complete)
+**Examples / Drift**
+  └── `51-drift-examples` - Drift Examples (complete)
 **Examples / Pattern Example**
   └── `40-pattern-example` - Pattern Example (complete)
 **Examples / Reach Via Code**
@@ -168,6 +170,7 @@ graph TD
   48_auto_readme_generation["48-auto-readme-generation"]:::done
   49_fix_foreach_interpolation_rce["49-fix-foreach-interpolation-rce"]:::done
   50_version_1_0_0_and_license["50-version-1.0.0-and-license"]:::done
+  51_drift_examples["51-drift-examples"]:::done
   07_package_skeleton --> 01_seed_script
   07_package_skeleton --> 03_cr2_one_package
   08_boundary_lint --> 07_package_skeleton
@@ -253,6 +256,9 @@ graph TD
   48_auto_readme_generation --> 20_render_formats
   48_auto_readme_generation --> 36_frontmatter_query
   49_fix_foreach_interpolation_rce --> 19_composition_directives
+  51_drift_examples --> 17_source_directives
+  51_drift_examples --> 18_compute_directives
+  51_drift_examples --> 22_pipe
 ```
 
 ## Source File Overlap
