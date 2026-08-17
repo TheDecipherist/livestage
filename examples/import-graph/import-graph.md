@@ -30,6 +30,7 @@ graph TD
   cli_commands_renderer_preview["cli/commands/renderer-preview"]
   cli_commands_security["cli/commands/security"]
   cli_commands_strip["cli/commands/strip"]
+  cli_commands_trust["cli/commands/trust"]
   cli_commands_validate["cli/commands/validate"]
   cli_commands_watch["cli/commands/watch"]
   cli_env_loader["cli/env-loader"]
@@ -64,6 +65,7 @@ graph TD
   engine_schema_loader["engine/schema/loader"]
   engine_schema_validate["engine/schema/validate"]
   engine_security_audit["engine/security/audit"]
+  engine_security_claude_settings["engine/security/claude-settings"]
   engine_security_config["engine/security/config"]
   engine_security_filesystem["engine/security/filesystem"]
   engine_security_masking["engine/security/masking"]
@@ -71,6 +73,7 @@ graph TD
   engine_security_path_expand["engine/security/path-expand"]
   engine_security_rules["engine/security/rules"]
   engine_security_shell["engine/security/shell"]
+  engine_security_trust["engine/security/trust"]
   engine_shell["engine/shell"]
   engine_sources["engine/sources"]
   engine_sources_file_utils["engine/sources-file-utils"]
@@ -142,9 +145,11 @@ graph TD
   cli_cli --> cli_commands_render
   cli_cli --> cli_commands_renderer_preview
   cli_cli --> cli_commands_strip
+  cli_cli --> cli_commands_trust
   cli_cli --> cli_commands_validate
   cli_cli --> cli_commands_watch
   cli_cli --> cli_glob_expand
+  cli_cli --> engine_index
   cli_cli --> parser_index
   cli_cli_register_security --> cli_commands_security
   cli_commands_assert --> cli_commands_render
@@ -182,6 +187,7 @@ graph TD
   cli_commands_strip --> cli_env_loader
   cli_commands_strip --> engine_index
   cli_commands_strip --> parser_index
+  cli_commands_trust --> engine_index
   cli_commands_validate --> engine_assert_liveness
   cli_commands_validate --> engine_index
   cli_commands_validate --> parser_index
@@ -301,11 +307,13 @@ graph TD
   engine_index --> engine_context
   engine_index --> engine_engine
   engine_index --> engine_pipe
+  engine_index --> engine_security_claude_settings
   engine_index --> engine_security_config
   engine_index --> engine_security_filesystem
   engine_index --> engine_security_masking
   engine_index --> engine_security_rules
   engine_index --> engine_security_shell
+  engine_index --> engine_security_trust
   engine_index --> engine_stripper
   engine_index --> engine_trace_config
   engine_index --> engine_trace_emit
@@ -328,6 +336,9 @@ graph TD
   engine_read_ops --> parser_index
   engine_schema_validate --> engine_schema_loader
   engine_security_audit --> engine_security_rules
+  engine_security_claude_settings --> engine_security_config
+  engine_security_claude_settings --> engine_security_rules
+  engine_security_claude_settings --> engine_security_shell
   engine_security_filesystem --> engine_security_config
   engine_security_filesystem --> engine_security_rules
   engine_security_masking --> engine_security_config
@@ -341,6 +352,7 @@ graph TD
   engine_sources --> engine_directive_cache
   engine_sources --> engine_engine_include
   engine_sources --> engine_frontmatter_utils
+  engine_sources --> engine_security_claude_settings
   engine_sources --> engine_security_filesystem
   engine_sources --> engine_security_path_expand
   engine_sources --> engine_security_shell

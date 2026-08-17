@@ -138,7 +138,11 @@ describe('CLAUDE_MD_SECTION', () => {
 
   it('contains the manual-render fallback guidance for when the hook is not installed', () => {
     expect(CLAUDE_MD_SECTION).toContain('livestage render')
-    expect(CLAUDE_MD_SECTION).toContain('PreToolUse hook')
+    expect(CLAUDE_MD_SECTION).toContain('render-substitution hook')
+    // Never claims PreToolUse does the substitution: PreToolUse can only
+    // allow/deny/rewrite tool ARGUMENTS, it cannot substitute what a Read
+    // call returns (see doc 11/31's known_issues).
+    expect(CLAUDE_MD_SECTION).not.toContain('PreToolUse hook')
   })
 
   it('does not contain em dashes', () => {

@@ -24,8 +24,11 @@ document, and exits. Rendering is pure: the only sanctioned write is
 needs to touch the world goes through a policy-granted `@code` script,
 where the write is visible and traced, never hidden inside a directive.
 Every execution surface, shell commands, HTTP, database access, `@code`
-languages, is off until a project's `.livestage/policy.json` explicitly
-grants it.
+languages, is gated by a project's `.livestage/policy.json`: HTTP and
+`@code` ship off until you grant them, and shell ships with a curated
+read-only allowlist so `@query`/`@test`/`@check` work out of the box (a
+fresh `livestage init` seeds the strict profile instead, shell off too,
+until you add your own grants).
 
 ## Getting started
 
@@ -34,7 +37,7 @@ npx livestage render examples/hello.stage
 ```
 
 renders a `.stage` file to markdown on stdout. `livestage init` registers a
-PreToolUse hook (Claude Code, or any client with an equivalent hook
+PostToolUse hook (Claude Code, or any client with an equivalent hook
 mechanism) so that reading a `.stage` file with the normal file-read tool
 already returns the rendered result, no separate render step. `livestage
 validate <file|glob>` checks a document (or a directory) for structural and

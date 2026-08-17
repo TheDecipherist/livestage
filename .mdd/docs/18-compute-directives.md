@@ -63,8 +63,13 @@ These four directives run something and hand back the result: a shell
 command, a content hash, or your project's test/check scripts. `@query` is
 the general-purpose escape hatch for allowlisted shell commands; `@test`
 and `@check` are the same idea shaped specifically for pass/fail results
-you can branch on. Nothing here runs unless your project's security policy
-explicitly allows it.
+you can branch on. Every one of them is gated by your project's
+`.livestage/policy.json` allowlist, not by nothing running until you grant
+it: the shipped default already grants a curated set of read-only commands
+(`git *`, `cat *`, `grep *`, `find *`, the test runners, and more), so
+`@query`/`@test`/`@check` work out of the box; a fresh `livestage init`
+seeds the strict profile instead (shell off, no patterns granted) until you
+add your own.
 
 | Name | What it does |
 |---|---|
@@ -239,3 +244,21 @@ none exists); `README.md` regenerated | Regression test: none added;
 this is prose accuracy, not directive behavior, no existing test
 mechanism asserts doc prose against `defaultSecurityConfig()`'s real
 values. Worth a `[gap]` if this class of drift recurs.
+
+### B3 (fixed 2026-08-17)
+Symptom: B2 above fixed the `### @query` subsection's "nothing runs by
+default" claim but missed a near-identical sentence one section up, in
+this doc's own `## Interface Overview` intro paragraph ("Nothing here
+runs unless your project's security policy explicitly allows it"),
+which `README.stage` also renders into `README.md` (via
+`read_body`/`read_section` over this doc). Exactly the `[gap]` B2
+flagged as a risk: no mechanism checks doc prose against
+`defaultSecurityConfig()`'s real values, so the same false claim shipped
+twice in one doc and both copies reached the README.
+Cause: same as B2, hand-written prose duplicating a claim in two
+places, only one of which got corrected.
+Fix: `.mdd/docs/18-compute-directives.md`'s `## Interface Overview`
+intro paragraph (same correction as B2: names the curated default grant
+and the strict-profile alternative `init` now seeds, see 31-init.md's
+B3); `README.md` regenerated | Regression test: none added, same gap
+B2 already flagged; still worth closing generally, not done here.

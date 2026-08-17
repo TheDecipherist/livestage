@@ -66,16 +66,21 @@ function checkHooksRegistered(homeDir: string): DoctorCheck {
   if (!existsSync(settingsPath)) {
     return { name: 'hooks', healthy: false, detail: `not installed: ${settingsPath} does not exist (run livestage init)` }
   }
-  let settings: { hooks?: { PreToolUse?: Array<{ hooks?: Array<{ command?: string }> }> } }
+  let settings: { hooks?: { PostToolUse?: Array<{ hooks?: Array<{ command?: string }> }> } }
   try {
     settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as typeof settings
   } catch (err) {
     return { name: 'hooks', healthy: false, detail: `cannot parse ${settingsPath}: ${String(err)}` }
   }
-  const commands = (settings.hooks?.PreToolUse ?? []).flatMap(e => e.hooks ?? []).map(h => h.command ?? '')
+  // Must match the key init.ts actually registers under (PostToolUse, not
+  // PreToolUse: only PostToolUse's hookSpecificOutput.updatedToolOutput can
+  // substitute what a Read call returns). See doc 31's Bug Fixes B2, this
+  // check pinned the wrong key with a passing test the same way init.test.ts
+  // did until that fix.
+  const commands = (settings.hooks?.PostToolUse ?? []).flatMap(e => e.hooks ?? []).map(h => h.command ?? '')
   const hookCommand = commands.find(c => c.includes('pretooluse.js'))
   if (!hookCommand) {
-    return { name: 'hooks', healthy: false, detail: 'PreToolUse hook not registered (run livestage init)' }
+    return { name: 'hooks', healthy: false, detail: 'PostToolUse hook not registered (run livestage init)' }
   }
   const hookPath = hookCommand.replace(/^node\s+/, '').trim()
   if (!existsSync(hookPath)) {

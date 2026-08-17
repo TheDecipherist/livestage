@@ -8,6 +8,22 @@ export interface ShellSecurityConfig {
   allow_network: boolean
   require_confirmation: boolean
   audit_log: boolean
+  // Opt-in (default false/unset): inherit the user's Claude Code
+  // permissions.{deny,ask,allow} into @query's shell check (see
+  // src/engine/security/claude-settings.ts for the full model: deny/ask
+  // always apply, allow only narrows what this policy already grants).
+  // Defaults OFF rather than on: this project's OWN .claude/settings.json
+  // carries a genuinely narrow Bash allow list (a handful of git/node
+  // patterns for its own hooks), and enabling this unconditionally for
+  // every render would silently narrow @query in every project whose real
+  // Claude Code settings happen to carry ANY Bash allow rule, not just an
+  // empty/no-opinion one, a live example being this very repo's own test
+  // suite (confirmed: turning this on unconditionally broke
+  // query-policy.test.ts and pipe-shell-stage.test.ts, both `echo`, which
+  // this repo's settings.json never granted for Claude Code and had no
+  // reason to). A behavior change with that blast radius ships opt-in
+  // first, not silently defaulted on.
+  inherit_claude_permissions?: boolean
 }
 
 export interface HttpSecurityConfig {
@@ -181,6 +197,31 @@ export function defaultSecurityConfig(): SecurityJsonConfig {
       languages: [],
       timeout: 30_000,
       runners: {},
+    },
+  }
+}
+
+// The actual "strict" profile: CR-5 business rule 1 promises deny-by-default,
+// but defaultSecurityConfig() above ships shell ENABLED with a ~40-pattern
+// wildcard allowlist (git *, cat *, grep *, ...), because it also has to
+// serve as the fallback for a project with no policy file at all, where
+// @query/@test/@check need to work out of the box. `init` used to seed that
+// same permissive config verbatim while its own comment claimed it was
+// seeding "the strict profile" - a real gap between what shipped and what
+// was documented, since every fresh `livestage init` silently granted ~40
+// shell patterns nobody reviewed. strictSecurityConfig() is what "strict"
+// actually means: shell off, no patterns granted, everything else matching
+// defaultSecurityConfig()'s already-deny-by-default posture (@code and http
+// stay off in both profiles). `init` seeds THIS now; defaultSecurityConfig()
+// remains the fallback for a missing/unreadable policy file everywhere else.
+export function strictSecurityConfig(): SecurityJsonConfig {
+  const defaults = defaultSecurityConfig()
+  return {
+    ...defaults,
+    shell: {
+      ...defaults.shell,
+      enabled: false,
+      allow_patterns: [],
     },
   }
 }

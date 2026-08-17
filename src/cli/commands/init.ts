@@ -4,7 +4,8 @@ import { homedir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CLAUDE_MD_SECTION, SECTION_START_MARKER, SECTION_END_MARKER } from '../templates/claude-section.js'
-import { checkAbsolutePath, defaultSecurityConfig } from 'livestage/engine'
+import { checkAbsolutePath, strictSecurityConfig } from 'livestage/engine'
+import type { SecurityJsonConfig } from 'livestage/engine'
 
 export type ClientType = 'claude-code' | 'cursor' | 'auto'
 
@@ -17,6 +18,20 @@ export interface InitOptions {
    * ~/.livestage/. Defaults to `os.homedir()`.
    */
   homeDir?: string
+  /**
+   * Overrides the strict-profile default ensureProjectPolicy seeds a
+   * fresh project with. The CLI layer (cli.ts's init action) builds this
+   * from Claude Code's settings.allow Bash rules, after printing the
+   * derived rules and getting the user's confirmation in an interactive
+   * session ("inherit the user's Claude Code permissions", point 3: init
+   * reads allow to SEED a suggested policy, it never auto-grants it).
+   * runInit itself stays a pure function with no prompt of its own; the
+   * confirmation step lives in the CLI action, and the non-interactive
+   * default (no override supplied) is always the strict profile, no
+   * permissions read, matching Claude Code's own non-interactive parity
+   * (point 5: claude -p / SDK sessions don't use allow rules either).
+   */
+  policySeed?: SecurityJsonConfig
 }
 
 export interface InitResult {
@@ -31,13 +46,15 @@ export interface InitResult {
 }
 
 /**
- * The PreToolUse hook is a single built module (src/hook/pretooluse.ts,
- * feature 11): it fires on a pure .stage extension match and substitutes
- * the rendered document, no content sniffing. Init registers the INSTALLED
- * package's own dist/hook/pretooluse.js directly rather than writing a
- * separate wrapper script under ~/.livestage/hooks/, there is nothing for
- * a wrapper to do that the built module doesn't already do, and a wrapper
- * would be a second copy of the hook that could drift from the real one.
+ * The render-substitution hook is a single built module (src/hook/pretooluse.ts,
+ * feature 11, named for the spec's file layout though it registers as a
+ * PostToolUse hook, see updateClientHooks below): it fires on a pure .stage
+ * extension match and substitutes the rendered document, no content
+ * sniffing. Init registers the INSTALLED package's own dist/hook/pretooluse.js
+ * directly rather than writing a separate wrapper script under
+ * ~/.livestage/hooks/, there is nothing for a wrapper to do that the built
+ * module doesn't already do, and a wrapper would be a second copy of the
+ * hook that could drift from the real one.
  */
 function resolvePretoolUseHookPath(): string {
   const here = dirname(fileURLToPath(import.meta.url))
@@ -251,20 +268,46 @@ function updateClientHooks(configPath: string, hookPath: string, sessionStartHoo
   }
   const hooks = (config['hooks'] as Record<string, unknown> | undefined) ?? {}
 
-  // PreToolUse: render .stage documents in place of the raw Read (feature 11).
-  const preEntries = Array.isArray(hooks['PreToolUse']) ? hooks['PreToolUse'] as unknown[] : []
-  const preAlreadyInstalled = preEntries.some((entry: unknown) => {
+  // PostToolUse: render .stage documents in place of the raw Read (feature 11).
+  // The module is named pretooluse.ts to match the spec's file layout (see
+  // doc 11's known_issues), but it must register as a PostToolUse hook:
+  // PreToolUse can only allow/deny/rewrite tool ARGUMENTS (updatedInput), it
+  // cannot substitute the content a Read call returns. Only PostToolUse's
+  // hookSpecificOutput.updatedToolOutput can do that (confirmed against
+  // Claude Code's Agent SDK hooks reference, /docs/en/agent-sdk/hooks: "To
+  // replace the tool's output before Claude sees it, set updatedToolOutput,
+  // which works for any tool in both SDKs" - not MCP-only, and the older
+  // updatedMCPToolOutput field is deprecated). A prior version of this
+  // function registered the entry under 'PreToolUse' instead, so a live
+  // session read the raw .stage source with directive syntax intact, never
+  // the render: the inverse of this tool's core promise. Fixed here.
+  const matchesThisHook = (entry: unknown): boolean => {
     const e = entry as Record<string, unknown>
     const subhooks = Array.isArray(e['hooks']) ? e['hooks'] as Array<Record<string, unknown>> : []
     // Match against the real hook path being registered, not a guessed
     // substring: a prior version checked for the literal text "preToolUse"
     // (camelCase), but the actual command references pretooluse.js (all
     // lowercase, the built module's real filename), so the check never
-    // matched and every init call duplicated the PreToolUse entry.
+    // matched and every init call duplicated the entry.
     return subhooks.some(h => typeof h['command'] === 'string' && h['command'].includes(hookPath))
-  })
-  if (!preAlreadyInstalled) {
-    hooks['PreToolUse'] = [...preEntries, { matcher: 'Read', hooks: [{ type: 'command', command: `node ${hookPath}` }] }]
+  }
+
+  // Migrate first: an installation from before this fix may already carry
+  // this exact hook command registered under the wrong 'PreToolUse' key.
+  // Strip it so re-running init after upgrading doesn't leave the
+  // substitution attempt sitting under both keys, one of which (PreToolUse)
+  // never actually substitutes anything.
+  const stalePreEntries = Array.isArray(hooks['PreToolUse']) ? hooks['PreToolUse'] as unknown[] : []
+  const migratedPreEntries = stalePreEntries.filter(entry => !matchesThisHook(entry))
+  const migrated = migratedPreEntries.length !== stalePreEntries.length
+  if (migrated) {
+    hooks['PreToolUse'] = migratedPreEntries
+  }
+
+  const postEntries = Array.isArray(hooks['PostToolUse']) ? hooks['PostToolUse'] as unknown[] : []
+  const postAlreadyInstalled = postEntries.some(matchesThisHook)
+  if (!postAlreadyInstalled) {
+    hooks['PostToolUse'] = [...postEntries, { matcher: 'Read', hooks: [{ type: 'command', command: `node ${hookPath}` }] }]
   }
 
   // SessionStart: render CLAUDE-LiveStage.stage and inject as additionalContext
@@ -278,7 +321,7 @@ function updateClientHooks(configPath: string, hookPath: string, sessionStartHoo
     hooks['SessionStart'] = [...startEntries, { hooks: [{ type: 'command', command: `node ${sessionStartHookPath}` }] }]
   }
 
-  const alreadyInstalled = preAlreadyInstalled && startAlreadyInstalled
+  const alreadyInstalled = postAlreadyInstalled && startAlreadyInstalled && !migrated
   if (!alreadyInstalled) {
     config['hooks'] = hooks
     mkdirSync(dirname(configPath), { recursive: true })
@@ -288,24 +331,32 @@ function updateClientHooks(configPath: string, hookPath: string, sessionStartHoo
   return { alreadyInstalled }
 }
 
-// Seeds <cwd>/.livestage/policy.json with the shipped "strict" profile
-// (CR-5, business rule 1, see 06-cr5-deny-by-default.md's Implementation
-// Notes for the full rationale). "Strict" names the ENFORCEMENT MODEL, not
-// "shell is off": every surface not explicitly granted is denied, hard
-// destructive patterns are immutable regardless of policy, @code and HTTP
-// ship empty, and there is no reach outside the project root. Shell itself
-// ships with a curated, read-only allowlist (git/cat/grep/find/the test
-// runners, ~40 patterns), deliberately, not by oversight: without it
-// @query is dead on arrival and @test/@check cannot auto-detect a runner,
-// found and fixed as a real bug during this project's own wave-2 build.
+// Seeds <cwd>/.livestage/policy.json with the actual strict profile (CR-5,
+// business rule 1, see 06-cr5-deny-by-default.md's Implementation Notes for
+// the full rationale): shell OFF, allow_patterns EMPTY, same as @code and
+// http, no surface granted until the project's own policy file says so.
+// This used to write defaultSecurityConfig() instead, while this very
+// comment claimed it seeded "the strict profile" - defaultSecurityConfig()
+// is deliberately permissive (shell enabled, ~40 wildcard allow_patterns
+// covering git/cat/grep/the test runners), because it doubles as the
+// fallback for a project with NO policy file at all, where @query/@test/
+// @check need to work with zero setup. That fallback role is right for a
+// missing file; it is wrong for what a fresh `init` hands a user who has
+// never reviewed a shell allowlist. strictSecurityConfig() is the real
+// strict profile; defaultSecurityConfig() keeps its fallback job in
+// loadSecurityConfig() everywhere else. See "inherit the user's Claude
+// Code permissions" (feature-51-permission-inheritance) for the richer
+// seed path: when the client's settings carry `permissions.allow` rules,
+// runInit derives a suggested, narrower policy from them and asks for
+// confirmation before writing, in place of this empty baseline.
 // A no-op, not an overwrite, when a policy file already exists, consistent
 // with init's idempotence rule (business rule 1, re-run is a no-op).
-function ensureProjectPolicy(cwd: string, undoStack: Undo[]): { seeded: boolean; policyPath: string } {
+function ensureProjectPolicy(cwd: string, undoStack: Undo[], seed: SecurityJsonConfig = strictSecurityConfig()): { seeded: boolean; policyPath: string } {
   const policyPath = join(cwd, '.livestage', 'policy.json')
   if (existsSync(policyPath)) return { seeded: false, policyPath }
   mkdirSync(dirname(policyPath), { recursive: true })
   undoStack.push(snapshotFile(policyPath))
-  writeFileSync(policyPath, JSON.stringify(defaultSecurityConfig(), null, 2) + '\n', 'utf8')
+  writeFileSync(policyPath, JSON.stringify(seed, null, 2) + '\n', 'utf8')
   return { seeded: true, policyPath }
 }
 
@@ -355,7 +406,7 @@ export function runInit(options: InitOptions = {}): InitResult {
       // still get their own rollback below, same as any other failure.
       throw new Error(result.error)
     }
-    policyResult = ensureProjectPolicy(cwd, undoStack)
+    policyResult = ensureProjectPolicy(cwd, undoStack, options.policySeed ?? strictSecurityConfig())
   } catch (err) {
     for (const undo of undoStack.reverse()) {
       try { undo() } catch { /* best-effort rollback; the original error is what gets reported */ }

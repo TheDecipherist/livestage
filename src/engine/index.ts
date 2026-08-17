@@ -3,7 +3,7 @@ export type { TraceConfig } from './trace/config.js'
 export { parseTraceConfig } from './trace/config.js'
 export type { TraceSpan, RenderRecord, TraceRecord } from './trace/span.js'
 export { emitRecord } from './trace/emit.js'
-export { defaultSecurityConfig, loadSecurityConfig } from './security/config.js'
+export { defaultSecurityConfig, strictSecurityConfig, loadSecurityConfig } from './security/config.js'
 export type { SecurityJsonConfig, ShellSecurityConfig, HttpSecurityConfig, DbSecurityConfig, FilesystemSecurityConfig, DbConnectionSecurityConfig, EventSecurityConfig, EventTransportConfig } from './security/config.js'
 export { makeContext, resolveEnv } from './context.js'
 export { isBuiltin, runBuiltin } from './pipe.js'
@@ -23,4 +23,12 @@ export type { FilesystemCheckResult, FilesystemCheckLevel } from './security/fil
 export { applyMasking } from './security/masking.js'
 export { checkShellCommand } from './security/shell.js'
 export type { ShellCheckResult, ShellCheckTier } from './security/shell.js'
-export { FILESYSTEM_ALWAYS_BLOCK_PATHS, matchGlob } from './security/rules.js'
+export { FILESYSTEM_ALWAYS_BLOCK_PATHS, matchGlob, splitCompoundCommand } from './security/rules.js'
+export {
+  parsePermissionRule, readClaudeSettingsScopes, mergeScopePermissions,
+  checkShellCommandWithSettings, deriveShellAllowPatternsFromSettings,
+  MANAGED_SETTINGS_PATH_BY_PLATFORM,
+} from './security/claude-settings.js'
+export type { PermissionRule, ClaudeSettingsPermissions, SettingsScope, SettingsScopeLabel } from './security/claude-settings.js'
+export { isTrusted, trustDirectory, untrustDirectory, listTrustedDirectories } from './security/trust.js'
+export type { TrustStore } from './security/trust.js'

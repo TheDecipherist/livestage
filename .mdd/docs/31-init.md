@@ -135,6 +135,24 @@ Known Issues).
 10-security-policy-core (seeds the policy), 11-extension-routing (registers
 the hook), 30-doctor (verification target for a successful install).
 
+## Feature Addition: --seed-from-permissions (2026-08-17)
+
+`runInit` gained a `policySeed?: SecurityJsonConfig` option (default
+unset, seeds the strict profile as before): when supplied, `ensureProjectPolicy`
+writes it instead of `strictSecurityConfig()`. `runInit` itself stays a
+pure function with no prompt of its own. The confirmation lives in the
+CLI layer (`cli.ts`'s `--seed-from-permissions` flag, not part of this
+doc's own `source_files`, see `10-security-policy-core.md`'s Feature
+Addition entry for the full inheritance model): it derives suggested
+`shell.allow_patterns` from the caller's Claude Code settings.allow Bash
+rules via `deriveShellAllowPatternsFromSettings`, prints them, and builds
+the `policySeed` only when the flag itself was passed, which is the
+confirmation (see 10-security-policy-core.md for why an interactive y/N
+readline prompt was scoped out this session). Also added: a `livestage
+trust` CLI verb (`src/cli/commands/trust.ts`, owned by
+10-security-policy-core.md alongside the trust store it wraps), unrelated
+to `init` itself but part of the same feature.
+
 ## Known Issues
 
 See the frontmatter `known_issues` above for the full detail: the wrong-hook
@@ -175,3 +193,74 @@ not claim the seeded default is shell-off or 'nothing runs by
 default'". No behavior change; `ensureProjectPolicy` still seeds
 exactly `defaultSecurityConfig()`, confirmed via a live `init` run
 diffed against the function's own output.
+
+### B2 (fixed 2026-08-17)
+Symptom: the render-substitution hook (`src/hook/pretooluse.ts`, feature
+11) was registered under `hooks['PreToolUse']` in the client's
+`settings.json`, while the hook itself emits `hookEventName: 'PostToolUse'`
+at runtime. Confirmed against Claude Code's Agent SDK hooks reference
+(`/docs/en/agent-sdk/hooks`): "For `PostToolUse` hooks... To replace the
+tool's output before Claude sees it, set `updatedToolOutput`, which works
+for any tool in both SDKs. The older `updatedMCPToolOutput` field replaces
+MCP tool output only and is deprecated." `PreToolUse` can only allow/deny/
+rewrite a tool's ARGUMENTS (`updatedInput`); it has no mechanism to
+substitute what a `Read` call returns. A user running a live session with
+this registration got the raw `.stage` source back, directive syntax
+intact, never the render: the inverse of this project's core promise. Doc
+11's own `known_issues` had flagged this exact risk as SETTLED-but-unverified
+("worth flagging to whoever wires init.ts's hook installation"); it shipped
+anyway. Not caught by the existing suite: `tests/unit/hook/pretooluse.test.ts`
+calls `handlePostToolUse()` directly, never through real dispatch, and the
+old `tests/unit/cli/init.test.ts` asserted the entry landed under
+`PreToolUse`, pinning the bug with a passing test.
+Cause: `updateClientHooks` in `src/cli/commands/init.ts` hardcoded the
+`hooks['PreToolUse']` key for this registration; nothing checked it against
+what the hook module itself emits.
+Fix: `updateClientHooks` now writes the entry under `hooks['PostToolUse']`,
+and migrates a stale `PreToolUse` registration of the same hook command
+(matched by command path, not key) to `PostToolUse` on the next `init` run
+rather than leaving a dead duplicate. `tests/unit/cli/init.test.ts` gained
+an invariant test that reads the emitted `hookEventName` straight out of
+`pretooluse.ts`'s source and asserts the registered key matches it, so key
+and emitted event can't diverge again silently, plus a migration test and a
+"never under PreToolUse" test | Regression test:
+`tests/unit/cli/init.test.ts`::"the registered hook key matches the
+hookEventName the hook module itself emits", ::"running init after
+upgrading migrates a stale PreToolUse registration...". Also added
+`tests/e2e/hook-dispatch.test.ts`, which spawns the real built
+`dist/hook/pretooluse.js` (and the installed `sessionStart.mjs`) with a
+realistic stdin payload, the dispatch path `handlePostToolUse()`-only unit
+tests never exercised.
+
+### B3 (fixed 2026-08-17)
+Symptom: `ensureProjectPolicy` seeded `defaultSecurityConfig()` (shell
+enabled, ~44 wildcard `allow_patterns`) into every fresh project, so every
+user running `livestage init` inherited a broad shell allowlist they never
+authored or reviewed. B1 above investigated the same complaint and
+concluded it was a naming/communication issue, not a behavior change,
+explicitly rejecting a second, more restrictive profile.
+Cause: reassessed on direct instruction. B1's reasoning (the allowlist is
+tested and load-bearing for this project's own `@query`/`@test`/`@check`
+usage) is true but answers the wrong question: `defaultSecurityConfig()`'s
+permissiveness is right for its OTHER job, the fallback `loadSecurityConfig()`
+returns when no policy file exists at all, but wrong as what a first-run
+`init` hands a user who has reviewed nothing. A hostile `.stage` file
+shipped inside a cloned repo (`docs/status.stage` next to a committed
+`docs/.livestage/policy.json`) executes on read the moment that policy
+grants shell, since the hook spawns its render with `--cwd
+dirname(filePath)` (`pretooluse.ts`); a wide default allowlist widens that
+blast radius for every project that never edited its seeded policy.
+Fix: added `strictSecurityConfig()` (`src/engine/security/config.ts`):
+shell off, `allow_patterns` empty, identical to `defaultSecurityConfig()`
+everywhere else (`@code`/http stay off in both). `ensureProjectPolicy` now
+seeds this instead of `defaultSecurityConfig()`, which keeps its original
+job as `loadSecurityConfig()`'s missing-file fallback, unchanged. This
+supersedes B1's rejection of a second profile; B1's naming clarification
+(what "strict" means, in `06-cr5-deny-by-default.md` and the comments
+here) stands as accurate background, it just no longer describes what
+`init` seeds | Regression test:
+`tests/unit/engine/security-config.test.ts`::"strictSecurityConfig vs
+defaultSecurityConfig", `tests/unit/cli/init.test.ts`::"seeds
+.livestage/policy.json with the real strict profile: shell off, no
+patterns granted" (strengthened from a vacuous `code.languages` check,
+which is `[]` in both profiles and never would have caught this).

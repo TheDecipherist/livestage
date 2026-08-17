@@ -4,15 +4,17 @@ title: Extension Routing (Hook)
 type: COMPONENT
 path: Hook / Extension Routing
 source_files: [src/hook/pretooluse.ts, src/engine/index.ts]
+test_files: [tests/unit/hook/pretooluse.test.ts, tests/e2e/hook-dispatch.test.ts, tests/e2e/bare-checkout.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [09-grammar-parser, 04-cr3-stage-only]
 tags: [hook, pretooluse, extension-match, fail-open, cache-substitution]
 known_issues:
-  - "SETTLED (was flagged in this doc's Known Issues as needing a decision): the hook substitution mechanism is PostToolUse, not PreToolUse. PreToolUse can only allow/deny/rewrite tool ARGUMENTS (updatedInput); it cannot substitute Read's returned content. PostToolUse can, via hookSpecificOutput.updatedToolOutput.content. The file is still named pretooluse.ts (matches the spec's file layout / this doc's source_files) but registers as a PostToolUse hook in Claude Code's settings.json; this is a filename/registered-event mismatch worth flagging to whoever wires init.ts's hook installation (feature 31)."
+  - "SETTLED (was flagged in this doc's Known Issues as needing a decision): the hook substitution mechanism is PostToolUse, not PreToolUse. PreToolUse can only allow/deny/rewrite tool ARGUMENTS (updatedInput); it cannot substitute Read's returned content. PostToolUse can, via hookSpecificOutput.updatedToolOutput.content. The file is still named pretooluse.ts (matches the spec's file layout / this doc's source_files) but registers as a PostToolUse hook in Claude Code's settings.json."
+  - "RESOLVED (2026-08-17): the flagged risk in the item above ('worth flagging to whoever wires init.ts's hook installation') materialized exactly as predicted, feature 31's init.ts registered this hook under settings.json's PreToolUse key despite the module itself emitting hookEventName: 'PostToolUse', so a live session never got the render, only the raw .stage source. Fixed in 31-init.md's Bug Fixes B2, which also added an invariant test (registered key vs. emitted hookEventName can't diverge silently again) and a real-dispatch e2e test (tests/e2e/hook-dispatch.test.ts) that spawns the built pretooluse.js with a realistic stdin payload rather than calling handlePostToolUse() directly."
   - "The donor hook.ts (content-sniffing @markdownai + .md, routing to a nonexistent 'mcp' target) is deleted, not patched. pretooluse.ts replaces it entirely."
   - "Real timeout required spawning the built CLI as a child process (spawnSync with a timeout kills via SIGTERM); an in-process call to execute() cannot be interrupted once a synchronous engine operation (e.g. a slow @query) is underway. This also gives 'calls the same code path as cli render' literally, at the cost of the boundary-lint test checking for a subprocess invocation of the built cli.js rather than a static import (eslint's no-restricted-imports can only forbid, not require, so this was always going to be a test either way, see feature 08)."
   - "Found and fixed two real bugs while building this: (1) the spawned CLI process never passed --cwd, so it resolved .livestage/policy.json against the hook's own launch directory instead of the target project, silently applying the wrong security grants. (2) src/cli/cli.ts's package.json version lookup used one level of relative-path traversal (../package.json) but needed two (../../package.json) from src/cli/ or dist/cli/ to reach the repo root; this crashed the CLI binary outright on every invocation (never caught before because prior verification only ever called library functions like runRender directly, never the actual cli.js entry point). Also renamed program.name('mai') -> program.name('livestage') while fixing this line (CR-1)."
@@ -129,6 +131,11 @@ full reasoning. The file is still named `pretooluse.ts` to match the spec's
 layout, but registers as a PostToolUse hook. The trace record's `degraded:
 true` flag (previously not wired) is now resolved, see the frontmatter
 `known_issues` above.
+
+RESOLVED (2026-08-17): the registration itself (owned by `src/cli/commands/init.ts`,
+feature 31) shipped under the wrong settings.json key despite the above
+being settled since wave 1; see 31-init.md's Bug Fixes B2 for the fix and
+frontmatter `known_issues` above for the trace.
 
 The trace record's `degraded: true` flag is not wired for a hook-side
 timeout: the spawned child process's own trace run is a separate

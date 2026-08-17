@@ -17,9 +17,9 @@ contains.
 
 ### Reading .stage files
 
-If the PreToolUse hook is installed (\`livestage init\`), reading a \`.stage\`
-file with the normal Read tool already returns the fully rendered markdown,
-directives resolved, nothing further to do. If the hook is not installed,
+If the render-substitution hook is installed (\`livestage init\`), reading a
+\`.stage\` file with the normal Read tool already returns the fully rendered
+markdown, directives resolved, nothing further to do. If the hook is not installed,
 run \`livestage render <file>\` via the Bash tool first; the raw file on disk
 contains unresolved directive syntax, not the content.
 
