@@ -2,7 +2,7 @@
 
 Live-document renderer and verifier for AI agents.
 
-**Version 0.0.1** | **1239 tests** | MIT
+**Version 1.0.0** | **1239 tests** | MIT
 
 This README is generated. Every fact in it (the directive reference below,
 the version and test count above, the three worked examples) is read live
