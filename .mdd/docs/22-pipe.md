@@ -4,9 +4,10 @@ title: Pipe
 type: COMPONENT
 path: Directives / Pipe
 source_files: [src/parser/directives/pipe.ts, src/parser/directives/render.ts, src/engine/pipe.ts, src/engine/shell.ts]
+test_files: [tests/unit/engine/pipe.test.ts, tests/unit/engine/pipe-shell-stage.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [19-composition-directives, 21-cache]
@@ -30,6 +31,15 @@ known_issues:
     seventh built-in with the same cross-platform, never-spawns-a-process
     property, undocumented until this pass. Now covered in primitives/
     Interface Overview below; the Business Rules prose still only lists six."
+  - "[gap] B1: runShell (shell.ts), dispatched from engine.ts's pipe
+    'shell' stage, receives stage.command after macro substitution
+    (macros.ts) with no shell-quoting; checkShellCommand's allowlist
+    matches a value containing shell metacharacters (;, &&, |, backticks)
+    as part of an allowed prefix match (root cause in
+    10-security-policy-core B1), and the command then runs through a
+    real shell (execSync), chaining. Same root cause and fix as
+    17-source-directives B1 and 18-compute-directives B1. Found
+    2026-08-03, scoped 2026-08-17."
 primitives:
   - name: "grep"
     kind: pipe-builtin

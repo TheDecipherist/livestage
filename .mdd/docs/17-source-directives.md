@@ -22,6 +22,15 @@ known_issues:
     primitives documentation anywhere in the corpus. Found while adding
     read_body/@read-body in the same family. Backfilling them needs its
     own scoped pass, not a side effect of this build."
+  - "[gap] B1: executeQuery (sources.ts) resolves {{ }} via
+    interpolatePathSoft into command= BEFORE checkShellCommand runs, so a
+    resolved value containing shell metacharacters (;, &&, |, backticks,
+    $()) passes the allowlist check as part of an allowed match (see
+    10-security-policy-core B1 for the matching-logic root cause) and is
+    then executed by execSync with a real shell, arbitrary command
+    chaining after an allowed prefix. Found 2026-08-03, scoped 2026-08-17.
+    See 18-compute-directives B1 (same pattern in executeTest/
+    executeCheck) and 22-pipe B1 (runShell)."
 primitives:
   - name: "@list"
     kind: directive

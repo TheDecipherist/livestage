@@ -13,7 +13,7 @@ depends_on: [19-composition-directives]
 tags: [security, rce, foreach, macros, interpolation, sandbox-escape]
 data_flow: .mdd/audits/flow-foreach-interpolation-rce-2026-08-03.md
 known_issues:
-  - "[gap] CRITICAL, pre-existing, NOT fixed by this build: @query/@test/
+  - "[gap] B1: CRITICAL, pre-existing, NOT fixed by this build: @query/@test/
     @check's command= and a pipe's shell stage command are still
     substituted by @foreach/@call (macros.ts's 'query'/'test'/'check'/
     'pipe' cases, unchanged by this fix), and checkShellCommand's
@@ -26,7 +26,15 @@ known_issues:
     pattern-matching design, not macros.ts's substitution mechanism), so
     it needs its own dedicated fix, not a bundled patch inside this one.
     Found during this build's Phase 7 follow-up security review
-    (2026-08-03)."
+    (2026-08-03). Confirmed 2026-08-17 to be broader than macro
+    substitution alone: executeQuery/executeTest/executeCheck/runShell
+    all resolve {{ }} via interpolatePathSoft into command= before the
+    allowlist check runs too, so ordinary interpolation of untrusted file
+    content reaches the same hole. Tracked jointly with
+    10-security-policy-core B1, 17-source-directives B1,
+    18-compute-directives B1, 19-composition-directives B1, and
+    22-pipe B1 (same root cause, six owning docs); see /bug
+    bug/shell-command-chaining for the fix."
   - "[gap] substituteNode has no case for 'assert' or 'interpolation' node
     types, so @assert inside @foreach/@call/@template crashes with
     'unhandled AST node type' rather than running. Not a security issue

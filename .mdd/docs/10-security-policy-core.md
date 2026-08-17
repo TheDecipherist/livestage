@@ -4,17 +4,39 @@ title: Security Policy Core
 type: COMPONENT
 path: Security / Policy Core
 source_files: [src/engine/security/config.ts, src/engine/security/rules.ts, src/engine/security/shell.ts, src/engine/security/filesystem.ts, src/engine/security/masking.ts, src/engine/security/audit.ts, src/engine/security/path-expand.ts, src/engine/security/modes.ts, src/cli/commands/security.ts, src/cli/cli-register-security.ts]
+test_files: [tests/unit/engine/security-config.test.ts, tests/unit/engine/security-filesystem.test.ts, tests/unit/engine/security-masking-shell.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/cli/cli-router.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [07-package-skeleton, 06-cr5-deny-by-default]
 tags: [policy, allowlist, immutable-rules, masking, strict-profile, per-invocation-reload]
 known_issues:
   - "The doc's stated source_files (policy.ts, surfaces.ts, immutable.ts, profiles.ts) and integration_contracts function name (enforcePolicy) do not match the real code: there is no single unified enforcePolicy gate. The real architecture has per-surface check functions (checkShellCommand for shell, checkDataPath/checkWritePath for filesystem, checkAbsolutePath/checkFilePath for path jails). Corrected source_files and integration_contracts below to match reality rather than the plan-time guess."
+  - "test_files was never backfilled when this doc was written (wave 1);
+    found empty during an unrelated bug fix's frontmatter validation
+    (2026-08-17). Corrected above from the real coverage:
+    security-config/-filesystem/-masking-shell.test.ts and
+    query-policy.test.ts exercise the per-surface check functions
+    directly, cli-router.test.ts covers the CLI security command."
   - "Found and fixed a real gap while verifying: config, and the cache directory, both defaulted to the user's home directory (~/.livestage/security.json, ~/.livestage/cache), not the project-local .livestage/ the spec calls for (Tech Stack: 'Config home: .livestage/ in the project root: policy.json, schemas/, cache/, trace/'). Fixed config.ts's loadSecurityConfig default path, security.ts's CLI-facing path (also renamed security.json -> policy.json to match the spec), cache.ts's CACHE_DIR, and threaded render.ts's --cwd option through to config resolution. Audit log and error log were left at ~/.livestage/ (not explicitly named in the project-local list, and an operational log surviving outside any one project is defensible)."
   - "The @code carve-out acceptance criterion (an engine-built runner invocation passing despite node -e being always-blocked) cannot be verified: @code does not exist yet, it is feature 29 (Code Runners, wave 4)."
+  - "[gap] B1: checkShellCommand's allow-pattern matching (matchShellPattern
+    in rules.ts) converts a wildcard allow pattern like 'git *' into the
+    fully-anchored regex /^git .*$/, and .* matches shell metacharacters
+    (;, &&, ||, |, backticks, $()) the same as any other character, so a
+    command string containing an injected chained command passes the
+    check as part of an allowed match. Every caller (executeQuery,
+    executeTest/executeCheck, runShell) then hands the same string to a
+    real shell (spawnSync/execSync with shell:true), which does interpret
+    those characters. The allowlist's pattern-matching design is the root
+    cause; interpolatePathSoft resolving {{ }} into command= before this
+    check runs (in each of those callers) and macros.ts's substitution
+    (see 19-composition-directives B1) are the two ways untrusted data
+    reaches it. Found 2026-08-03 during feature 49's Phase 7 review,
+    scoped 2026-08-17. See 17/18/19/22's B1 entries for the other owning
+    files, and 49-fix-foreach-interpolation-rce B1 for the original note."
 integration_contracts:
   - function: checkShellCommand
     when: always
