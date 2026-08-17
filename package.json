@@ -1,6 +1,6 @@
 {
   "name": "livestage",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Live-document renderer and verifier for AI agents.",
   "type": "module",
   "bin": {
