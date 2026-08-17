@@ -47,5 +47,10 @@ tests/conformance/
 # files field is just "dist") and not meant to be public repo content.
 /MDs/
 /waveplan.md
+# Same category: internal research notes on where LiveStage could improve
+# MDD's own tooling. Not shipped (package.json's files field is just
+# "dist", confirmed via npm pack --dry-run), and not meant to be public
+# repo content either, an internal working note, not a deliverable.
+/mdd-suggested-livestage-improvements.md
 .worktrees/
 .mdd/*.tmp
