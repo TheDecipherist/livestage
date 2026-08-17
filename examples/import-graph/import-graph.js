@@ -48,11 +48,18 @@ function walk(dir) {
 const FROM_CLAUSE = /(?:^|\n)\s*(?:import|export)(?:\s+type)?\s+(?:\{[\s\S]*?\}|\*\s+as\s+\w+|\w+)\s+from\s+['"]([^'"]+)['"]/g
 // Side-effect-only imports: import '...' (no `from`).
 const BARE_IMPORT = /(?:^|\n)\s*import\s+['"]([^'"]+)['"]/g
+// TypeScript's inline type-only form, `import('./x.js').SomeType`, used to
+// reference a type without a top-level import statement. Found live: a
+// first draft missed this entirely, understating one real edge
+// (engine/context.ts's dependency on engine/determinism.ts existed ONLY
+// this way, no top-level import captured it anywhere in that file).
+const INLINE_TYPE_IMPORT = /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g
 
 function extractImportSpecifiers(text) {
   const specs = []
   for (const m of text.matchAll(FROM_CLAUSE)) specs.push(m[1])
   for (const m of text.matchAll(BARE_IMPORT)) specs.push(m[1])
+  for (const m of text.matchAll(INLINE_TYPE_IMPORT)) specs.push(m[1])
   return specs
 }
 

@@ -223,6 +223,7 @@ graph TD
   engine_conditions --> engine_file_access
   engine_conditions --> engine_sources
   engine_context --> engine_assert_operators
+  engine_context --> engine_determinism
   engine_context --> engine_security_config
   engine_context --> engine_trace_config
   engine_context --> parser_index

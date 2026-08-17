@@ -114,6 +114,7 @@ Files in this directory:
 │   │   └── trace
 │   │       └── 2026-08-17.jsonl
 │   ├── import-graph.js
+│   ├── import-graph.md
 │   └── import-graph.stage
 ├── multi-step
 │   ├── .livestage

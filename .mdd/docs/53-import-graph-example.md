@@ -14,7 +14,19 @@ last_synced: 2026-08-17
 initiative: livestage
 depends_on: [29-code-runners, 34-graph]
 tags: [import-graph, mermaid, code-runners, dogfooding, examples]
-known_issues: []
+known_issues:
+  - "RESOLVED (2026-08-17): the user asked directly, \"is this our
+    actual complete codebase?\" rather than accept the claim. It was
+    not: the extraction regex matched `import {...} from '...'` and
+    bare `import '...'` but missed TypeScript's inline type-only form,
+    `import('./x.js').SomeType`, used 15 times in this codebase. Traced
+    every occurrence: 9 were redundant with a top-level import already
+    in the same file (no edge lost), but one was genuinely missing,
+    `engine/context.ts`'s dependency on `engine/determinism.ts` existed
+    ONLY via this form, no other import in that file captured it. Fixed
+    by adding a third regex (`INLINE_TYPE_IMPORT`) to
+    `import-graph.js`; node count unchanged (114, no new files), one
+    new edge appears. Regression test added, not just a silent fix."
 ---
 
 # Import Graph Example
@@ -100,6 +112,11 @@ syntax highlighting).
 - [x] A specific, real, stable edge (`engine/macros.ts` importing from
       `engine/engine-include.ts`) is present, not just "some nodes exist":
       proof the extraction is correct, not merely non-empty. Same file.
+- [x] TypeScript's inline type-only import form (`import('./x.js').Type`)
+      is captured, not just `import ... from`: a real gap found when the
+      user asked directly whether this was actually complete, see
+      known_issues. `engine/context.ts` importing `engine/determinism.ts`
+      (real, existed only via this form) is present. Same file.
 - [x] The example's policy grant is exactly `code.languages: ["javascript"]`,
       no shell, no HTTP. Same file.
 

@@ -19,9 +19,9 @@ See that file directly for the exact JSON.
 ## Result
 
 
-- Branch: feat/import-graph-example
-- Last commit: 89f6723 Merge branch 'bug/strict-profile-comment-clarity'
+- Branch: bug/import-graph-inline-type-imports
+- Last commit: 076f098 Merge branch 'feat/import-graph-example'
 - Uncommitted files:
 M ../../.mdd/.drift
- M ../../scripts/example-render-targets.mjs
-?? ../import-graph/
+ M ../import-graph/import-graph.js
+ M ../../tests/e2e/import-graph-example.test.ts

@@ -28,4 +28,4 @@ That is the whole grant: `code.languages` includes `javascript`, nothing else.
 
 - Status: 200
 - OK: true
-- Latency: 41ms
+- Latency: 38ms
