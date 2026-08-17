@@ -64,6 +64,7 @@ graph TD
   engine_schema_loader["engine/schema/loader"]
   engine_schema_validate["engine/schema/validate"]
   engine_security_audit["engine/security/audit"]
+  engine_security_claude_settings["engine/security/claude-settings"]
   engine_security_config["engine/security/config"]
   engine_security_filesystem["engine/security/filesystem"]
   engine_security_masking["engine/security/masking"]
@@ -71,6 +72,7 @@ graph TD
   engine_security_path_expand["engine/security/path-expand"]
   engine_security_rules["engine/security/rules"]
   engine_security_shell["engine/security/shell"]
+  engine_security_trust["engine/security/trust"]
   engine_shell["engine/shell"]
   engine_sources["engine/sources"]
   engine_sources_file_utils["engine/sources-file-utils"]
@@ -301,11 +303,13 @@ graph TD
   engine_index --> engine_context
   engine_index --> engine_engine
   engine_index --> engine_pipe
+  engine_index --> engine_security_claude_settings
   engine_index --> engine_security_config
   engine_index --> engine_security_filesystem
   engine_index --> engine_security_masking
   engine_index --> engine_security_rules
   engine_index --> engine_security_shell
+  engine_index --> engine_security_trust
   engine_index --> engine_stripper
   engine_index --> engine_trace_config
   engine_index --> engine_trace_emit
@@ -328,6 +332,9 @@ graph TD
   engine_read_ops --> parser_index
   engine_schema_validate --> engine_schema_loader
   engine_security_audit --> engine_security_rules
+  engine_security_claude_settings --> engine_security_config
+  engine_security_claude_settings --> engine_security_rules
+  engine_security_claude_settings --> engine_security_shell
   engine_security_filesystem --> engine_security_config
   engine_security_filesystem --> engine_security_rules
   engine_security_masking --> engine_security_config
@@ -341,6 +348,7 @@ graph TD
   engine_sources --> engine_directive_cache
   engine_sources --> engine_engine_include
   engine_sources --> engine_frontmatter_utils
+  engine_sources --> engine_security_claude_settings
   engine_sources --> engine_security_filesystem
   engine_sources --> engine_security_path_expand
   engine_sources --> engine_security_shell

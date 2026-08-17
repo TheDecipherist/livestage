@@ -1,10 +1,12 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { resolve, join, isAbsolute } from 'node:path'
+import { homedir } from 'node:os'
 import { execSync } from 'node:child_process'
 import type { ListNode, ReadNode, CountNode, DateNode, TreeNode, QueryNode } from 'livestage/parser'
 import type { EngineContext } from './context.js'
 import { checkDataPath } from './security/filesystem.js'
 import { checkShellCommand } from './security/shell.js'
+import { checkShellCommandWithSettings, readClaudeSettingsScopes, mergeScopePermissions } from './security/claude-settings.js'
 import { expandPattern } from './security/path-expand.js'
 import { interpolatePathSoft, interpolateShellSafe } from './engine-include.js'
 import { globToRegex, walkDir, listJson, listCsv, readEnvFile, hasGlobChars, resolveGlobTargets, whereMatches } from './sources-file-utils.js'
@@ -470,7 +472,19 @@ export function executeQuery(node: QueryNode, ctx: EngineContext): string[] {
   })
 
   if (ctx.security.shellConfig) {
-    const shellCheck = checkShellCommand(command, ctx.security.shellConfig)
+    // Inherits the user's Claude Code permissions when the project's own
+    // policy opts in (shell.inherit_claude_permissions: true, see
+    // ShellSecurityConfig's own comment for why this defaults off): deny/
+    // ask always apply; allow only narrows, never widens, what livestage's
+    // own policy already granted, and only when settings actually has a
+    // relevant Bash rule to narrow with. Settings are read fresh per
+    // @query call rather than cached across a render: each `livestage
+    // render` is already a cold, single-shot process (no daemon, per this
+    // project's core philosophy), and a handful of small JSON reads is not
+    // a meaningful cost next to the shell spawn this check gates.
+    const shellCheck = ctx.security.shellConfig.inherit_claude_permissions
+      ? checkShellCommandWithSettings(command, ctx.security.shellConfig, mergeScopePermissions(readClaudeSettingsScopes({ cwd: ctx.cwd, homeDir: homedir() })))
+      : checkShellCommand(command, ctx.security.shellConfig)
     if (!shellCheck.allowed) {
       const prefix = shellCheck.tier === 'always_block' ? 'SECURITY_ALERT' : 'WARN'
       const cmdPreview = command.length > 80 ? command.slice(0, 77) + '...' : command
