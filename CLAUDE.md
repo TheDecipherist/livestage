@@ -42,11 +42,23 @@ corpus.
   also calls.
 - `src/hook` - PreToolUse (extension match -> render -> substitute) and
   SessionStart (brief injection).
+- `src/parser/directives/` - one file per directive (`@list`, `@foreach`,
+  `@code`, etc.), 29 as of this writing; `src/engine/security/` - the
+  per-surface policy checks (`checkShellCommand`, `checkDataPath`,
+  `checkWritePath`, `checkAbsolutePath`), not one unified gate function.
 
 Config lives in `.livestage/` per project (`policy.json`, `schemas/`, `cache/`,
 `trace/`). Every execution surface (filesystem, shell, code) is deny-by-default,
 resolved through one allowlist layer, enforced after `{{ }}` interpolation so no
 argument can smuggle a command past policy.
+
+`examples/` is self-verifying documentation, not just sample files:
+`README.stage` and every `examples/**/*.stage` file ships a committed `.md`
+rendering next to it, generated (`npm run readme` / `examples:render`) and
+CI-enforced (`readme:check` / `examples:check`, `scripts/check-*.mjs`) never
+to drift. Some examples are deliberately unchecked (live git state, wall-clock
+timing, an environment-dependent directory) rather than byte-diffed, see
+`scripts/example-render-targets.mjs`'s `checked`/`normalize` fields.
 
 ## Tech stack
 
@@ -54,6 +66,38 @@ TypeScript strict mode, no `any` in new code. Node.js 22 LTS, ESM. npm, single
 package, no workspaces. Vitest for tests (one merged config, golden-file
 snapshots for the render surface, a fixture-based security matrix). esbuild
 single-file bundle to `dist/livestage.js`.
+
+## Commands
+
+- `npm run build` - compiles `src/` to `dist/` via `tsconfig.build.json`
+  (declarations + source maps). Required before anything that runs the CLI
+  from `dist/` (the `readme`, `examples:render`, `examples:check` scripts,
+  and most e2e tests all shell out to `dist/cli/cli.js`).
+- `npm run bundle` - esbuild single-file bundle to `dist/livestage.js`, the
+  `bin` entry point; separate from `build`, run when testing the bundled
+  distribution specifically (feature 41).
+- `npm run typecheck` - bare `tsc --noEmit` over the WHOLE project
+  (`src` + `tests`), stricter than `build`'s `src`-only check. `tests/`
+  passing this cleanly is a known, tracked gap (implicit-`any` in the
+  auto-generated `tests/conformance/rules.conformance.test.ts`), harmless
+  since that file is outside `build`'s scope, but don't mistake it for a
+  regression.
+- `npm run lint` - `eslint .`.
+- `npm test` - the full Vitest suite. `npm run test:unit` scopes to
+  `tests/unit` only.
+- Single file or test: `npx vitest run tests/unit/engine/<file>.test.ts`
+  (or any path under `tests/`); add `-t "<name>"` to filter by test name.
+- `npm run test:baseline` - fails if the suite's test count drops below the
+  committed floor (`scripts/check-test-baseline.mjs`); `test:baseline:update`
+  raises the floor after a deliberate, reviewed reduction.
+- `npm run readme` / `npm run readme:check` - `README.md` is generated from
+  `README.stage`, never hand-edited. `readme` regenerates it; `readme:check`
+  (CI-enforced) fails if the committed file drifts from a fresh render.
+- `npm run examples:render` / `npm run examples:check` - the same pattern,
+  generalized to every example under `examples/`: each `.stage` file ships a
+  committed `.md` rendering next to it (see Architecture overview).
+- CI (`.github/workflows/ci.yml`) runs, in order: `build`, `typecheck`,
+  `lint`, `test`, `test:baseline`, `readme:check`, `examples:check`.
 
 ## MDD docs
 
@@ -74,7 +118,8 @@ donor already has is a wave failure.
 - No daemon, no socket, no cross-invocation memory. The render trace is
   append-only and the engine never reads it back.
 - No em dashes anywhere in new source; use a comma or a single hyphen.
-- Never reference the donor codebase outside `MDs/livestage-spec.md`.
+- Never reference the donor codebase outside `.mdd/specs/livestage-spec.md`
+  (the imported snapshot; the donor's own path is not part of this repo).
 - A test must never mutate a git-tracked file as an uncontrolled side
   effect of running (found in feature 48: a test called an npm script that
   regenerated the real, tracked `README.md`, which silently defeated the
@@ -82,3 +127,16 @@ donor already has is a wave failure.
   test suite had already "fixed" the drift). Write to a scratch path
   (`.ai_temp/`, an OS tmpdir, or a `-o`/`--out` flag pointed elsewhere)
   instead, never to the file a later step is meant to verify.
+- A "proves the check isn't vacuous" test that deliberately, temporarily
+  overwrites a real tracked file (restored in `finally`, the established
+  pattern for `readme:check`/`examples:check`'s own non-vacuousness proofs)
+  is safe in isolation, but Vitest runs test FILES in parallel by default:
+  a second, unrelated test file reading that same tracked file can catch it
+  mid-mutation. Prefer rendering fresh over reading a committed file shared
+  with another test's mutation window; found and fixed live during the
+  `examples:check` rollout.
+- `.claude/rules/` carries this user's global rule set, most of which
+  targets an HTTP service (security headers, rate limiting, MongoDB,
+  React Router, nginx). LiveStage is a CLI/library with no server: the 6
+  recurring `tests/conformance/rules.conformance.test.ts` failures for
+  those rules are expected here, not a regression to chase.
