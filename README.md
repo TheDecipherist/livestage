@@ -2,7 +2,7 @@
 
 Live-document renderer and verifier for AI agents.
 
-**Version 1.0.1** | **1239 tests** | MIT
+**Version 1.0.1** | **1239+ tests** | MIT
 
 This README is generated. Every fact in it (the directive reference below,
 the version and test count above, the three worked examples) is read live
@@ -38,12 +38,15 @@ it makes four changes:
 - Both hooks are registered in the detected client's own settings file
   (`~/.claude/settings.json` for Claude Code, `~/.cursor/settings.json` for
   Cursor, auto-detected, or pass `--client`).
-- Seeds `<project>/.livestage/policy.json` with the strict, deny-by-default
-  profile, only if one does not already exist.
-
-Nothing is granted beyond that: every directive that touches the filesystem,
-shell, or `@code` still needs an explicit policy grant, same as any other
-project.
+- Seeds `<project>/.livestage/policy.json` with the shipped "strict" profile,
+  only if one does not already exist. "Strict" names the enforcement model
+  (every surface not explicitly granted is denied, hard destructive patterns
+  are immutable, no reach outside the project root), not "shell is off":
+  shell ships with a curated, read-only allowlist (`git`, `cat`, `grep`,
+  `find`, the common test runners, around 40 patterns), deliberately, since
+  without it `@query` is dead on arrival. `@code` and HTTP ship genuinely
+  empty; anything beyond the shipped allowlist, on any surface, needs an
+  explicit grant.
 
 Or use it standalone, no hook required:
 
@@ -472,7 +475,9 @@ without diffing the whole thing.
 ### @query
 
 Runs a shell command, but only if it matches the project's
-`.livestage/policy.json` allowlist; nothing runs by default.
+`.livestage/policy.json` allowlist. Out of the box that allowlist grants a
+curated set of read-only commands (`git *`, `cat *`, `grep *`, `find *`,
+and more); anything outside that set needs an explicit grant.
 
 ```stage
 @query "git status --short" /
@@ -959,7 +964,9 @@ Builds the relationship graph starting from `target` and renders it.
   pulling each doc's `## Interface Overview`, the one section in the doc
   corpus written for a reader with zero project context,
 - `package.json`'s name, version, and description, via `@read`,
-- the current test count, via `@read` on `scripts/test-baseline.json`,
+- the reviewed test-count floor (rendered as "N+", it only ever rises,
+  via `npm run test:baseline:update` after confirming the increase is
+  real coverage), via `@read` on `scripts/test-baseline.json`,
 - the three worked examples' actual source, via `@read`, so the shown
   code can never drift from what actually runs.
 

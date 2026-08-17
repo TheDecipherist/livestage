@@ -4,9 +4,10 @@ title: Init
 type: COMPONENT
 path: CLI / Init
 source_files: [src/cli/commands/init.ts]
+test_files: [tests/unit/cli/init.test.ts, tests/unit/cli/init-claude-md.test.ts, tests/unit/cli/init-session-start-hook.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-4
 depends_on: [10-security-policy-core, 11-extension-routing, 30-doctor]
@@ -144,3 +145,33 @@ is `--global-claude-md`, not `--claude-md`/`--no-claude-md` as this doc's
 API/Interface section names it; functionally equivalent (opt-in by flag,
 skip by omission), not renamed since the current name is already in the
 router and tests.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `ensureProjectPolicy`'s comment said it seeds "the strict
+profile," which two independent pre-launch reviews both read as "shell
+is off" or "conservative/minimal," then were surprised to find
+`defaultSecurityConfig()` ships `shell.enabled: true` with ~40
+read-only patterns (`git *`, `cat *`, `grep *`, `find *`, the common
+test runners) granted out of the box.
+Cause: not a code defect, a naming/communication one. "Strict" in this
+project's vocabulary names the ENFORCEMENT MODEL (every surface not
+explicitly granted is denied, immutable hard-blocks, `@code`/HTTP ship
+empty, no reach outside the project root), not "shell is off." This is
+documented, deliberate, and tested: `06-cr5-deny-by-default.md`'s own
+Implementation Notes and known_issues record the shell allowlist being
+widened mid-build specifically so `@query`/`@test`/`@check` would not
+be "dead on arrival." Adding a second, more restrictive profile (as one
+review's initial preference suggested) would have regressed that
+already-fixed, tested behavior; rejected in favor of clarifying the
+comment instead.
+Fix: `src/cli/commands/init.ts`'s `ensureProjectPolicy` comment
+(explains what "strict" means and why shell ships with a curated
+allowlist); `README.stage`'s `Install` section (same clarification,
+plus removed the false "nothing is granted beyond that" claim about
+shell) | Regression test: tests/e2e/readme-generation.test.ts::"does
+not claim the seeded default is shell-off or 'nothing runs by
+default'". No behavior change; `ensureProjectPolicy` still seeds
+exactly `defaultSecurityConfig()`, confirmed via a live `init` run
+diffed against the function's own output.

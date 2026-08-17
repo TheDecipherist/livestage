@@ -92,7 +92,9 @@ without diffing the whole thing.
 ### @query
 
 Runs a shell command, but only if it matches the project's
-`.livestage/policy.json` allowlist; nothing runs by default.
+`.livestage/policy.json` allowlist. Out of the box that allowlist grants a
+curated set of read-only commands (`git *`, `cat *`, `grep *`, `find *`,
+and more); anything outside that set needs an explicit grant.
 
 ```stage
 @query "git status --short" /
@@ -216,3 +218,24 @@ Fix: `src/engine/exec-ops.ts:130,153` (executeTest/executeCheck swapped
 from `interpolatePathSoft` to `interpolateShellSafe`, defined
 `src/engine/engine-include.ts:74,86`) | Regression test:
 tests/unit/engine/shell-command-chaining.test.ts
+
+### B2 (fixed 2026-08-17)
+Symptom: the `@query` section's own prose said "nothing runs by
+default," false against the real shipped `defaultSecurityConfig()`
+(config.ts): `shell.enabled` is `true` by default, with a 44-entry
+`allow_patterns` list (37 wildcard, including `git *`, `cat *`,
+`grep *`, `find *`) granting a curated set of read-only commands out of
+the box. `@code` (`code.languages: []`) and HTTP (`http.enabled:
+false`) genuinely are off by default; only the `@query` sentence was
+wrong. Found during a pre-launch review of the shipped docs.
+Cause: hand-written prose, never verified against the real default
+config. `README.stage`'s `read_section()` faithfully reproduced it into
+`README.md`; LiveStage computes structured facts, it does not
+fact-check hand-written prose sitting next to them, so a wrong claim
+shipped with the same confidence as a right one.
+Fix: `.mdd/docs/18-compute-directives.md`'s `### @query` section
+(corrected prose, names the actual default grant instead of claiming
+none exists); `README.md` regenerated | Regression test: none added;
+this is prose accuracy, not directive behavior, no existing test
+mechanism asserts doc prose against `defaultSecurityConfig()`'s real
+values. Worth a `[gap]` if this class of drift recurs.
