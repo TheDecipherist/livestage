@@ -28,10 +28,19 @@ if (!existsSync(cliEntry)) {
   process.exit(2)
 }
 
-const normalize = s => s.trim() + '\n'
-let failed = false
+const trimNewline = s => s.trim() + '\n'
 
-for (const { cwd, stage, md } of EXAMPLE_RENDER_TARGETS) {
+function applyNormalize(text, rules) {
+  let out = text
+  for (const { pattern, replacement } of rules ?? []) out = out.replace(pattern, replacement)
+  return out
+}
+
+let failed = false
+let checkedCount = 0
+let uncheckedCount = 0
+
+for (const { cwd, stage, md, checked = true, normalize } of EXAMPLE_RENDER_TARGETS) {
   const fullCwd = join(repoRoot, cwd)
   const mdPath = join(fullCwd, md)
   const label = `${cwd}/${md}`
@@ -39,6 +48,22 @@ for (const { cwd, stage, md } of EXAMPLE_RENDER_TARGETS) {
   if (!existsSync(mdPath)) {
     console.error(`check-example-renders: FAIL. ${label} does not exist. Run "npm run examples:render" first.`)
     failed = true
+    continue
+  }
+
+  const committed = readFileSync(mdPath, 'utf8')
+
+  if (!checked) {
+    // Existence + non-emptiness only: this example is deliberately,
+    // honestly non-deterministic (live git state, wall-clock timing, an
+    // environment-dependent directory tree), a strict byte-diff would
+    // either flake constantly or misrepresent what it demonstrates.
+    if (committed.trim().length === 0) {
+      console.error(`check-example-renders: FAIL. ${label} exists but is empty.`)
+      failed = true
+    } else {
+      uncheckedCount++
+    }
     continue
   }
 
@@ -52,12 +77,15 @@ for (const { cwd, stage, md } of EXAMPLE_RENDER_TARGETS) {
     continue
   }
 
-  const committed = readFileSync(mdPath, 'utf8')
-  if (normalize(committed) !== normalize(rendered)) {
+  const committedNorm = applyNormalize(trimNewline(committed), normalize)
+  const renderedNorm = applyNormalize(trimNewline(rendered), normalize)
+  if (committedNorm !== renderedNorm) {
     console.error(`check-example-renders: FAIL. ${label} is stale, it does not match what ${stage} currently renders. Run "npm run examples:render" to regenerate, then commit the result.`)
     failed = true
+  } else {
+    checkedCount++
   }
 }
 
 if (failed) process.exit(1)
-console.log(`check-example-renders: OK. ${EXAMPLE_RENDER_TARGETS.length} example(s) match their committed .md.`)
+console.log(`check-example-renders: OK. ${checkedCount} example(s) exact-matched, ${uncheckedCount} example(s) present (unchecked by design, see example-render-targets.mjs).`)

@@ -4,11 +4,12 @@ title: Examples Showcase
 type: COMPONENT
 path: Examples / Showcase
 source_files: [examples/showcase/index.stage, examples/showcase/report.stage,
-  examples/showcase/api-reference.stage, examples/showcase/cli-reference.json]
-test_files: [tests/e2e/examples-showcase.test.ts]
+  examples/showcase/api-reference.stage, examples/showcase/cli-reference.json,
+  examples/showcase/index.md, examples/showcase/report.md, examples/showcase/api-reference.md]
+test_files: [tests/e2e/examples-showcase.test.ts, tests/e2e/all-examples-rendered.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [20-render-formats, 24-fallback-contract, 02-cr1-standalone-identity]
@@ -105,3 +106,16 @@ to this migrated content).
 ## Known Issues
 
 None.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: none of the three showcase examples shipped a rendered .md
+output committed alongside their .stage source. Same gap as
+48-auto-readme-generation B1.
+Cause: see 48-auto-readme-generation B1.
+Fix: `index.stage`/`api-reference.stage` are exact-matched (pure
+fixture reads); `report.stage` is unchecked by design (`@tree ./`
+includes untracked, environment-dependent `.livestage/trace/` entries
+plus a `now_iso()` line) | Regression test:
+tests/e2e/all-examples-rendered.test.ts

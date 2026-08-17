@@ -5,14 +5,17 @@ type: COMPONENT
 path: Docs / README Generation
 source_files: [README.stage, README.md, examples/agent-briefs/codebase-health.stage,
   examples/agent-briefs/change-review.stage, examples/agent-briefs/onboarding-brief.stage,
-  examples/agent-briefs/.livestage/policy.json, package.json, .github/workflows/ci.yml]
+  examples/agent-briefs/.livestage/policy.json, package.json, .github/workflows/ci.yml,
+  examples/hello.stage, examples/hello.md, examples/agent-briefs/onboarding-brief.md,
+  examples/agent-briefs/codebase-health.md, examples/agent-briefs/change-review.md,
+  scripts/example-render-targets.mjs, scripts/render-examples.mjs, scripts/check-example-renders.mjs]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 depends_on: [09-grammar-parser, 13-cli-router, 17-source-directives, 20-render-formats, 36-frontmatter-query]
 tags: [readme, self-documenting, frontmatter-query, read-section, dogfooding, ci-drift-check]
-test_files: [tests/e2e/readme-generation.test.ts, tests/e2e/agent-briefs.test.ts]
+test_files: [tests/e2e/readme-generation.test.ts, tests/e2e/agent-briefs.test.ts, tests/e2e/all-examples-rendered.test.ts]
 data_flow: .mdd/audits/flow-auto-readme-generation-2026-08-02.md
 known_issues:
   - "RESOLVED (2026-08-02, found by independent review before merge, not by the Red/Green gate): the original coverage-guard test only checked whether a directive's name appeared ANYWHERE in the rendered output, which proved vacuous, deliberately breaking 29-code-runners.md's path field (so the discovery query would exclude it) still left the test green, because OTHER docs' cross-referencing prose (e.g. 27-assert-liveness.md saying \"ungranted @code language\") still mentioned the name. Replaced with a test that extracts the real query line from README.stage, runs it standalone, and asserts the exact doc-id set it returns against a known-correct list. Re-verified: the same sabotage now correctly fails the test."
@@ -22,15 +25,6 @@ known_issues:
   - "RESOLVED (2026-08-02, found by independent review): two tests in tests/e2e/agent-briefs.test.ts (codebase-health.stage, change-review.stage) originally asserted only on static template text (\"Branch:\", \"Diff stat\", etc.), which would pass unchanged even if the underlying @query calls were broken and returned nothing (verified via a break-test). Strengthened to assert against real values computed independently in the test (the actual current branch via a direct `git rev-parse`, the actual current HEAD's short hash). A third assertion (onboarding-brief.stage) checked for the bare string \"sample-project\", which also appears in the file's own static prose regardless of whether the live @read actually ran; strengthened to check the interpolated heading and the fixture's distinctive description field instead."
   - "KNOWN LIMITATION, not fixed (an honest tradeoff, not an oversight): codebase-health.stage's \"Uncommitted files: none detected\" branch cannot distinguish a genuinely clean working tree from a query that silently returned nothing (blocked by policy, or run in a non-git directory both degrade to an empty string with no exception `{{ }}` expressions can observe; @query does not expose its exit code / ran-successfully state to the sandbox the way @code's structured `_exit` result does). Softened the wording from \"none (clean)\" to \"none detected\" to avoid overclaiming certainty; a fuller fix (surfacing @query's success/failure to `{{ }}` expressions) is a framework-level change to feature 18 (Compute Directives), out of scope here."
   - "RESOLVED (2026-08-17, bug/shell-command-chaining, see 10-security-policy-core B1): the prefix-wildcard weakness flagged below as out of scope is fixed. The fix does not touch matchShellPattern's matching logic (defaultSecurityConfig()'s git */cat */find */grep * patterns still match exactly what they always matched); instead it shell-quotes the VALUE at every {{ }}-interpolation and @foreach/@call-substitution site that reaches a command= field (interpolateShellSafe, subStrShellSafe), before the allowlist check ever runs. A project relying on the framework's own default allowlist is protected the same as one with a custom policy, since the fix is at the splice point, not the pattern. Original note, for the record: `checkShellCommand`'s prefix-wildcard pattern matching (src/engine/security/rules.ts's `matchShellPattern`, turning a trailing `*` into an unanchored `.*`) was a genuine, PRE-EXISTING command-injection-capable weakness affecting more than this feature: `defaultSecurityConfig()` (src/engine/security/config.ts, used whenever no project `.livestage/policy.json` exists at all) itself ships `git *`, `cat *`, `find *`, `grep *`, and several other prefix-wildcard patterns as its curated default allowlist, so any project relying on the framework's own default (not just this feature's example) was exposed to the same class of injection the moment a @query command in that project interpolated `{{ }}`/`${}` into a `git *`-shaped command."
-  - "[gap] B1: none of the examples this feature covers (the three
-    agent-briefs) ship a rendered .md output committed alongside their
-    .stage source, unlike this feature's OWN top-level README.stage/
-    README.md pair, which has npm run readme + npm run readme:check +
-    scripts/check-readme.mjs enforcing the pair never drifts, wired into
-    CI. A reader browsing an example on GitHub has no way to see what it
-    actually produces without cloning, building, and running the CLI.
-    Found 2026-08-17 while addressing the same gap in feature 51
-    (Drift Examples)."
 ---
 
 # Auto README Generation
@@ -178,3 +172,25 @@ tree from a silently-blocked query). One finding is explicitly out of scope
 and reported, not fixed: a framework-level shell-pattern-matching weakness
 predating this feature and affecting the built-in default security profile
 too, not just this feature's own files.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: none of the examples this feature covers (the three
+agent-briefs) shipped a rendered .md output committed alongside their
+.stage source, unlike this feature's OWN top-level README.stage/
+README.md pair. A reader browsing an example on GitHub had no way to
+see what it actually produces without cloning, building, and running
+the CLI. Also added: a "More examples" section in README.stage linking
+every example directory in the project (drift, agent-briefs, database,
+http-health, connections, multi-step, showcase, plus the top-level
+hello.stage) to its rendered .md.
+Cause: the generate/check/CI pattern this feature built for the
+top-level README was never generalized to per-example output.
+Fix: `scripts/example-render-targets.mjs`, `render-examples.mjs`
+(`npm run examples:render`), `check-example-renders.mjs`
+(`npm run examples:check`, wired into CI). onboarding-brief.stage is
+exact-matched (static fixture); codebase-health.stage/change-review.stage
+are unchecked by design (live git state, genuinely different every
+run). README.stage's new "More examples" section | Regression test:
+tests/e2e/all-examples-rendered.test.ts

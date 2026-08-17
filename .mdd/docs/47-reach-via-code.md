@@ -6,11 +6,12 @@ path: Examples / Reach Via Code
 source_files: [examples/database/customers.stage, examples/database/query-enterprise.js,
   examples/database/customers.json, examples/database/.livestage/policy.json,
   examples/http-health/check.stage, examples/http-health/check-health.js,
-  examples/http-health/.livestage/policy.json]
-test_files: [tests/e2e/reach-via-code.test.ts]
+  examples/http-health/.livestage/policy.json,
+  examples/database/customers.md, examples/http-health/check.md]
+test_files: [tests/e2e/reach-via-code.test.ts, tests/e2e/all-examples-rendered.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [29-code-runners]
@@ -137,3 +138,15 @@ existing render formats (feature 20).
 
 The exact directory names for these two examples are inferred rather than
 fixed by the spec; confirm and update `source_files` during Wave 6 build.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: neither the database nor the HTTP example shipped a rendered
+.md output committed alongside its .stage source. Same gap as
+48-auto-readme-generation B1.
+Cause: see 48-auto-readme-generation B1.
+Fix: `customers.stage` is exact-matched (pure fixture read);
+`check.stage`'s `latency_ms` (genuine wall-clock timing) is normalized
+out of the comparison before diffing | Regression test:
+tests/e2e/all-examples-rendered.test.ts
