@@ -1,0 +1,31 @@
+# Parse Formats Demo
+
+Two small scripts, neither emitting JSON, proving `@code parse=` (class 3
+composition work, Part 2): a script's own natural output format binds
+directly, no JSON wrapper required just to satisfy `@code`.
+
+## CSV, parsed and rendered as a table
+
+`coverage.sh` prints ordinary CSV. `parse="csv"` binds it as an array of
+row objects, exactly like a JSON array would; `@render source=` renders
+it the same way regardless of where the array came from.
+
+@code language="bash" src="coverage.sh" label="cov" parse="csv" visible="false" /
+
+@render source="cov" type="table" /
+
+## A plain string, parsed as text, piped straight through
+
+`greeting.sh` prints a sentence, not data. `parse="text"` binds it
+verbatim, no parse attempted; `{{ greeting }}` interpolates the string
+directly.
+
+@code language="bash" src="greeting.sh" label="greeting" parse="text" visible="false" /
+
+{{ greeting }}
+
+The pipe form (no `label=`, so `parse=` has nothing to bind and is
+inert, `parse=` only ever affects labeled binding) is unaffected by any
+of this, exactly as it worked before this feature:
+
+@code language="bash" src="greeting.sh" | @render type="code" /

@@ -19,15 +19,42 @@ See that file directly for the exact JSON.
 ## Result
 
 
-- Branch: bench/class3-construction-tests
-- Last commit: 43778be Merge branch 'bug/measurement-harness-and-trust-hardening'
+- Branch: feat/structured-output-composition
+- Last commit: 1f9b727 Merge branch 'docs/scratch-file-policy'
 - Uncommitted files:
 M ../../.mdd/.drift
- M ../../eslint.config.js
- M ../../package-lock.json
- M ../../package.json
- M ../../src/engine/import-graph.ts
-?? ../../artifacts.md
-?? ../../benchmarks/import-graph-ground-truth.cjs
-?? ../../benchmarks/unused-exports/
-?? ../../results-check.md
+ M ../../benchmarks/unused-exports/.livestage/policy.json
+ M ../../benchmarks/unused-exports/unused-exports.js
+ M ../../benchmarks/unused-exports/unused-exports.stage
+ M ../../src/engine/code-runners.ts
+ M ../../src/engine/conditions.ts
+ M ../../src/engine/engine-interpolate.ts
+ M ../../src/engine/engine.ts
+ M ../../src/engine/frontmatter-utils.ts
+ M ../../src/engine/iter-ops.ts
+ M ../../src/renderer/formats/bar.ts
+ M ../../src/renderer/formats/code.ts
+ M ../../src/renderer/formats/inline.ts
+ M ../../src/renderer/formats/json.ts
+ M ../../src/renderer/formats/links.ts
+ M ../../src/renderer/formats/list.ts
+ M ../../src/renderer/formats/numbered.ts
+ M ../../src/renderer/formats/table.ts
+ M ../../src/renderer/formats/tree.ts
+ M ../../src/renderer/types.ts
+ M ../../tests/unit/engine/directive-cache.test.ts
+ M ../../tests/unit/renderer/renderer.test.ts
+?? ../../benchmarks/unused-exports/coverage.sh
+?? ../../benchmarks/unused-exports/greeting.sh
+?? ../../benchmarks/unused-exports/parse-formats-demo.stage
+?? ../../benchmarks/unused-exports/unused-exports-by-kind.stage
+?? ../../src/engine/dotted-access-check.ts
+?? ../../src/engine/parse-formats.ts
+?? ../../src/engine/render-data.ts
+?? ../../src/renderer/object-rows.ts
+?? ../../tests/fixtures/
+?? ../../tests/unit/engine/code-parse-formats.test.ts
+?? ../../tests/unit/engine/foreach-structured.test.ts
+?? ../../tests/unit/engine/parse-formats.test.ts
+?? ../../tests/unit/engine/render-data.test.ts
+?? ../../tests/unit/engine/render-standalone.test.ts

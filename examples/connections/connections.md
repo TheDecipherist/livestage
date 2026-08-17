@@ -7,7 +7,7 @@ every render because nothing in it is stored, only computed.
 
 ## Overview
 
-Rendered 2026-08-17T08:19:20.144Z. Corpus: 5 documents.
+Rendered 2026-08-17T14:38:11.051Z. Corpus: 5 documents.
 
 ## Path tree
 

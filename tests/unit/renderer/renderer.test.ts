@@ -160,6 +160,92 @@ describe('Renderer', () => {
     })
   })
 
+  // Class 3 composition work: every format now also accepts an array of
+  // objects (from @render source=), not just an array of strings.
+  describe('object-array data (RendererInput.data as Record<string, unknown>[])', () => {
+    const rows = [
+      { symbol: 'lex', file: 'lexer.ts', kind: 'function' },
+      { symbol: 'ASTNodeBase', file: 'types.ts', kind: 'type' },
+    ]
+
+    it('table derives headers from the first object\'s keys when columns= is not given', () => {
+      const out = render({ type: 'table', data: rows })
+      expect(out).toContain('| symbol')
+      expect(out).toContain('| file')
+      expect(out).toContain('| kind')
+      expect(out).toContain('| lex')
+      expect(out).toContain('| ASTNodeBase')
+    })
+
+    it('table honors columns= for both selection and order', () => {
+      const out = render({ type: 'table', data: rows, columns: ['kind', 'symbol'] })
+      const header = out.split('\n')[0]!
+      expect(header.indexOf('kind')).toBeLessThan(header.indexOf('symbol'))
+      expect(out).not.toContain('| file')
+    })
+
+    it('list renders one bullet per object using every field when columns= is absent', () => {
+      const out = render({ type: 'list', data: [{ name: 'a', n: 1 }] })
+      expect(out).toBe('- name: a, n: 1')
+    })
+
+    it('list uses a single named column\'s value directly, not a key: value pair', () => {
+      const out = render({ type: 'list', data: rows, columns: ['symbol'] })
+      expect(out).toBe('- lex\n- ASTNodeBase')
+    })
+
+    it('numbered renders one object per line, respecting columns=', () => {
+      const out = render({ type: 'numbered', data: rows, columns: ['symbol'] })
+      expect(out).toBe('1. lex\n2. ASTNodeBase')
+    })
+
+    it('bar derives label/value from columns= for object rows', () => {
+      const out = render({ type: 'bar', data: [{ name: 'auth_failure', count: 847 }, { name: 'timeout', count: 534 }], columns: ['name', 'count'] })
+      expect(out).toContain('auth_failure')
+      expect(out).toContain('847')
+      expect(out).toContain('█')
+    })
+
+    it('links derives label/href from a single named column', () => {
+      const out = render({ type: 'links', data: [{ path: './docs/intro.md' }], columns: ['path'] })
+      expect(out).toContain('[intro](./docs/intro.md)')
+    })
+
+    it('inline joins one value per object', () => {
+      const out = render({ type: 'inline', data: rows, columns: ['symbol'] })
+      expect(out).toBe('lex ASTNodeBase')
+    })
+
+    it('json renders the raw resolved value directly (an object, not an array of data rows)', () => {
+      const out = render({ type: 'json', data: [], raw: { count: 2, items: rows } })
+      expect(out).toContain('"count": 2')
+      expect(out).toContain('"lex"')
+    })
+
+    it('json renders a raw array the same way', () => {
+      const out = render({ type: 'json', data: [], raw: rows })
+      expect(out).toContain('"symbol": "lex"')
+    })
+
+    it('code renders a raw string verbatim (parse="text" @code output via source=)', () => {
+      const out = render({ type: 'code', data: [], raw: 'line one\nline two' })
+      expect(out).toBe('```\nline one\nline two\n```')
+    })
+
+    it('tree groups object rows by a slash-delimited breadcrumb column, same as tab-separated rows', () => {
+      const out = render({
+        type: 'tree',
+        data: [
+          { path: 'src/parser', status: 'active' },
+          { path: 'src/engine', status: 'active' },
+        ],
+      })
+      expect(out).toContain('src')
+      expect(out).toContain('parser')
+      expect(out).toContain('engine')
+    })
+  })
+
   describe('unknown type', () => {
     it('throws with informative message for unknown type', () => {
       expect(() => render({ type: 'unknown' as never, data: [] })).toThrow(/unknown render type/i)

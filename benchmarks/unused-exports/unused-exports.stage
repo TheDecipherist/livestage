@@ -15,9 +15,21 @@ surface as `examples/database/`'s driver script.
 
 ## Result
 
-@code language="javascript" src="unused-exports.js" label="dead" visible="false" /
+@code language="javascript" src="unused-exports.js" label="dead" visible="false" cache="persist" cache-key="../../src/**/*.ts" /
 
 **{{ dead.count }}** exported symbol(s) in `src/` are never imported
-anywhere else in this repo.
+anywhere else in this repo. The script emits structured data only, no
+pre-formatted markdown: `@render source=` binds the array directly.
 
-{{ dead.table }}
+@render source="dead.items" type="table" columns="symbol,file,kind,reExportedThroughBarrel" /
+
+## Re-exported through a barrel
+
+Every dead symbol whose barrel-reachability still matters (it's exposed
+by more than its own declaring file, so deleting it means checking the
+barrel too), via `@foreach`'s `where=` over the same bound array, no
+second script run, no second policy grant:
+
+@foreach item in {{ dead.items }} where="reExportedThroughBarrel == true"
+- {{ item.symbol }} in {{ item.file }}
+@foreach-end

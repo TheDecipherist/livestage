@@ -1,7 +1,10 @@
 {
   "code": {
-    "languages": ["javascript"],
+    "languages": ["javascript", "bash"],
     "timeout": 30000,
     "runners": {}
+  },
+  "filesystem": {
+    "allowed_data_paths": ["**/src"]
   }
 }

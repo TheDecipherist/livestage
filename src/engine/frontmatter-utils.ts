@@ -169,10 +169,14 @@ function findBalancedClose(s: string): number {
   return -1
 }
 
-export function parseFrontmatterRow(content: string): Record<string, unknown> | null {
-  const fm = extractFrontmatter(content)
-  if (!fm) return null
-  const lines = fm.body.split('\n')
+// The line-level parse loop, split out from parseFrontmatterRow so
+// parse-formats.ts's parse="yaml" (class 3 composition work) can run the
+// exact same flat top-level-key, scalar/inline-list/block-list subset
+// against a bare document with no `---` fence, rather than reimplementing
+// it. Same scope limits as the frontmatter reader this was extracted
+// from: top-level keys only, no nested objects, documented at this
+// module's own header comment.
+export function parseYamlLines(lines: string[]): Record<string, unknown> {
   const row: Record<string, unknown> = {}
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? ''
@@ -226,4 +230,10 @@ export function parseFrontmatterRow(content: string): Record<string, unknown> | 
     row[key] = ''
   }
   return row
+}
+
+export function parseFrontmatterRow(content: string): Record<string, unknown> | null {
+  const fm = extractFrontmatter(content)
+  if (!fm) return null
+  return parseYamlLines(fm.body.split('\n'))
 }
