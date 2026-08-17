@@ -111,6 +111,7 @@ file when the path ends in `.json`/`.csv`.
 | `where` | expression | Keep only rows/items matching the expression |
 | `column` | name (CSV only) | Return a single column instead of full rows |
 | `label` | name | Capture the result into a variable instead of (or as well as) printing it |
+| `join` | separator string (default `\n`) | For multi-line results, the separator used when the label is later read via `{{ }}` (a bare newline-joined label still feeds `@foreach` as a source; `join=", "` reads as prose instead) |
 
 ### @read
 
@@ -128,6 +129,7 @@ CSV file when `path=`/`column=` is given.
 | `where` | expression | Keep only rows/items matching the expression |
 | `column` | name (CSV only) | Return a single column instead of full rows |
 | `label` | name | Capture the result into a variable |
+| `join` | separator string (default `\n`) | Same as `@list`'s `join=`, for multi-line results |
 | `visible` / `silent` | `false` / `true` | Suppress the inline print, useful when only the captured `label=` value is needed |
 
 ### @read-frontmatter
@@ -455,3 +457,19 @@ Fix: `src/engine/sources.ts:374` (`executeCount` now reads `depth=` the
 same way `executeList`/`executeTree` do, defaulting to unlimited when
 unset, no behavior change for any existing call site with no `depth=`
 attribute) | Regression test: tests/unit/engine/count-depth.test.ts
+
+### B3 (fixed 2026-08-17)
+Symptom: `{{ label }}` for a multi-line source (`@list`/`@read`/`@tree`/
+`@query`) always joined with `\n`, no way to get a prose-friendly,
+comma-separated rendering without a shell/@code call. Found live while
+building `CLAUDE.stage`: a short file list interpolated mid-sentence
+rendered as a bare multi-line dump instead of reading as prose.
+Cause: `engine.ts`'s label-capture block (the `'list'`/`'read'`/`'tree'`/
+`'count'`/`'date'`/`'query'` case) hardcoded `lines.join('\n')` for every
+non-scalar-shaped source, no separator option.
+Fix: `src/engine/engine.ts` (the same block now reads `sourceArgs?.['join']`,
+defaulting to `'\n'` when unset). Deliberately still defaults to `'\n'`,
+not just for back-compat: `@foreach`'s source split (`iter-ops.ts`) is
+itself hardcoded to `'\n'`, so a label meant to feed `@foreach` still
+must stay newline-joined; `join=` is for a label used as prose only |
+Regression test: tests/unit/engine/source-label-multiline.test.ts
