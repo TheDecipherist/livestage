@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Wired via core.hooksPath (run .githooks/setup.sh once per checkout).
+#
+# What this can and cannot guarantee: pre-merge-commit does not fire on a
+# fast-forward merge (how most merges to main land here), .git/hooks is
+# not versioned (this directory + core.hooksPath is the workaround), and
+# --no-verify bypasses this like any git hook. This does not make
+# anything "literally always" true. CI (.github/workflows/ci.yml) is the
+# real gate; this exists to stop a stale commit being WRITTEN in the
+# first place, local ergonomics with a CI backstop, not a substitute
+# for it.
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+node "$ROOT/scripts/verify-generated.mjs"

@@ -1,0 +1,24 @@
+# Gate 2 - Hand-Edited Generated Files
+
+An agent edits `README.md`/`CLAUDE.md` (or any future generated `.md`)
+directly because running the generator is one more tool call. The file
+looks right and is no longer a render.
+
+Finds every `.md` file anywhere in the repo carrying the
+`livestage:generated` metadata block (Part 5.1) and asserts each one's
+committed content still matches a fresh render of its declared source,
+computed fresh by `check.cjs` every render. A new generated file joins this
+contract automatically the moment it adopts the metadata block, no gate
+update needed, unlike `readme:check`/`claude-md:check`/`examples:check`,
+which only know about the specific files someone remembered to name.
+
+@code language="javascript" src="check.cjs" label="gate" visible="false" /
+
+## Current state
+
+**{{ gate.generatedFileCount }}** file(s) carry the `livestage:generated`
+contract.
+
+{{ gate.table }}
+
+@assert operator="json-key" target="report.json" key="pass" equals="true" /

@@ -57,6 +57,7 @@ graph TD
   engine_cache["engine/cache"]
   engine_code_runners["engine/code-runners"]
   engine_conditions["engine/conditions"]
+  engine_content_hash["engine/content-hash"]
   engine_context["engine/context"]
   engine_determinism["engine/determinism"]
   engine_directive_cache["engine/directive-cache"]
@@ -70,6 +71,7 @@ graph TD
   engine_expand_context["engine/expand-context"]
   engine_file_access["engine/file-access"]
   engine_frontmatter_utils["engine/frontmatter-utils"]
+  engine_generated_metadata["engine/generated-metadata"]
   engine_graph["engine/graph"]
   engine_import_graph["engine/import-graph"]
   engine_index["engine/index"]
@@ -178,7 +180,10 @@ graph TD
   cli_commands_assert --> engine_index
   cli_commands_assert --> parser_index
   cli_commands_build --> cli_commands_render
+  cli_commands_build --> engine_content_hash
+  cli_commands_build --> engine_generated_metadata
   cli_commands_build --> engine_index
+  cli_commands_build --> engine_sources_file_utils
   cli_commands_cache --> engine_index
   cli_commands_doctor --> cli_commands_assert
   cli_commands_doctor --> cli_glob_expand
@@ -239,6 +244,7 @@ graph TD
   engine_cache --> parser_index
   engine_code_runners --> engine_args
   engine_code_runners --> engine_cache
+  engine_code_runners --> engine_content_hash
   engine_code_runners --> engine_context
   engine_code_runners --> engine_engine_interpolate
   engine_code_runners --> engine_parse_formats
@@ -322,6 +328,9 @@ graph TD
   engine_file_access --> engine_security_config
   engine_file_access --> engine_security_filesystem
   engine_file_access --> engine_sources
+  engine_generated_metadata --> engine_content_hash
+  engine_generated_metadata --> engine_frontmatter_utils
+  engine_generated_metadata --> engine_sources_file_utils
   engine_graph --> engine_assert_operators
   engine_graph --> engine_context
   engine_graph --> engine_frontmatter_utils
@@ -339,6 +348,7 @@ graph TD
   engine_index --> engine_conditions
   engine_index --> engine_context
   engine_index --> engine_engine
+  engine_index --> engine_generated_metadata
   engine_index --> engine_pipe
   engine_index --> engine_security_claude_settings
   engine_index --> engine_security_config

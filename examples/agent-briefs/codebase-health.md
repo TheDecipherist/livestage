@@ -19,42 +19,37 @@ See that file directly for the exact JSON.
 ## Result
 
 
-- Branch: feat/structured-output-composition
-- Last commit: 1f9b727 Merge branch 'docs/scratch-file-policy'
+- Branch: feat/drift-gates
+- Last commit: 66208de docs: regenerate README.md (no other changes)
 - Uncommitted files:
-M ../../.mdd/.drift
- M ../../benchmarks/unused-exports/.livestage/policy.json
- M ../../benchmarks/unused-exports/unused-exports.js
- M ../../benchmarks/unused-exports/unused-exports.stage
+M ../../.gitignore
+ M ../../.mdd/.drift
+ M ../../CLAUDE.md
+ M ../../CLAUDE.stage
+ M ../../README.md
+ M ../../eslint.config.js
+ M change-review.md
+ M codebase-health.md
+ M ../connections/connections.md
+ M ../http-health/check.md
+ M ../import-graph/import-graph.md
+ M ../showcase/report.md
+ M ../../package.json
+ M ../../scripts/check-claude-md.mjs
+ M ../../scripts/check-readme.mjs
+ M ../../src/cli/cli.ts
+ M ../../src/cli/commands/build.ts
  M ../../src/engine/code-runners.ts
- M ../../src/engine/conditions.ts
- M ../../src/engine/engine-interpolate.ts
- M ../../src/engine/engine.ts
- M ../../src/engine/frontmatter-utils.ts
- M ../../src/engine/iter-ops.ts
- M ../../src/renderer/formats/bar.ts
- M ../../src/renderer/formats/code.ts
- M ../../src/renderer/formats/inline.ts
- M ../../src/renderer/formats/json.ts
- M ../../src/renderer/formats/links.ts
- M ../../src/renderer/formats/list.ts
- M ../../src/renderer/formats/numbered.ts
- M ../../src/renderer/formats/table.ts
- M ../../src/renderer/formats/tree.ts
- M ../../src/renderer/types.ts
- M ../../tests/unit/engine/directive-cache.test.ts
- M ../../tests/unit/renderer/renderer.test.ts
-?? ../../benchmarks/unused-exports/coverage.sh
-?? ../../benchmarks/unused-exports/greeting.sh
-?? ../../benchmarks/unused-exports/parse-formats-demo.stage
-?? ../../benchmarks/unused-exports/unused-exports-by-kind.stage
-?? ../../src/engine/dotted-access-check.ts
-?? ../../src/engine/parse-formats.ts
-?? ../../src/engine/render-data.ts
-?? ../../src/renderer/object-rows.ts
-?? ../../tests/fixtures/
-?? ../../tests/unit/engine/code-parse-formats.test.ts
-?? ../../tests/unit/engine/foreach-structured.test.ts
-?? ../../tests/unit/engine/parse-formats.test.ts
-?? ../../tests/unit/engine/render-data.test.ts
-?? ../../tests/unit/engine/render-standalone.test.ts
+ M ../../src/engine/index.ts
+ M ../../src/hook/pretooluse.ts
+ M ../../tests/e2e/readme-generation.test.ts
+ M ../../tests/unit/hook/pretooluse.test.ts
+?? ../../.githooks/
+?? ../../gates/
+?? ../../scripts/verify-generated.mjs
+?? ../../src/engine/content-hash.ts
+?? ../../src/engine/generated-metadata.ts
+?? ../../tests/e2e/gates.test.ts
+?? ../../tests/e2e/githooks-wiring.test.ts
+?? ../../tests/unit/engine/generated-metadata.test.ts
+?? ../../tests/unit/hook/generated-markdown-read.test.ts

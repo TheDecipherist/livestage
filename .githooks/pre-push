@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Wired via core.hooksPath (run .githooks/setup.sh once per checkout).
+# Last local line before CI: the same three generated-file checks as
+# pre-commit, plus lint and typecheck, the full set CI itself runs
+# (.github/workflows/ci.yml) short of the actual test suite. Same
+# limits as pre-commit: bypassable with --no-verify, not a substitute
+# for CI, see pre-commit's own header comment for the full reasoning.
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+node "$ROOT/scripts/verify-generated.mjs"
+cd "$ROOT"
+npm run lint
+npm run typecheck

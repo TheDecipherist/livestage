@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { stripGeneratedMetadataBlock } from '../dist/engine/generated-metadata.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(here, '..')
@@ -55,7 +56,14 @@ if (lineCount < 200 || sectionCount < 8) {
   process.exit(3)
 }
 
-const committed = readFileSync(readmePath, 'utf8')
+// Part 5 (feat/drift-gates): npm run readme stamps a livestage:generated
+// metadata block (source, timestamp, version, content hash) that a bare
+// `render` (used above for the comparison) never produces, so it's
+// stripped from the committed side before comparing content. The block
+// itself carries a live timestamp on every regeneration by design (Part
+// 5.1), it is never expected to be byte-stable, that is not what this
+// check is for.
+const committed = stripGeneratedMetadataBlock(readFileSync(readmePath, 'utf8'))
 const normalize = s => s.trim() + '\n'
 if (normalize(committed) !== normalize(rendered)) {
   console.error('check-readme: FAIL. README.md is stale, it does not match what README.stage currently renders. Run "npm run readme" to regenerate, then commit the result.')

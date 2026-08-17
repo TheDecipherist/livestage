@@ -32,3 +32,8 @@ export {
 export type { PermissionRule, ClaudeSettingsPermissions, SettingsScope, SettingsScopeLabel } from './security/claude-settings.js'
 export { isTrusted, trustDirectory, untrustDirectory, listTrustedDirectories } from './security/trust.js'
 export type { TrustStore } from './security/trust.js'
+export {
+  parseGeneratedMetadata, extractGeneratedMetadataBlock, stripGeneratedMetadataBlock,
+  stampGeneratedMetadata, recomputeContentHash,
+} from './generated-metadata.js'
+export type { GeneratedMetadata } from './generated-metadata.js'

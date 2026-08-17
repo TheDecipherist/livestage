@@ -1,3 +1,12 @@
+<!-- livestage:generated
+livestage_source: CLAUDE.stage
+livestage_updated_at: 2026-08-17T15:37:20.982Z
+livestage_version: 1.0.2
+livestage_content_hash: e8491749a4de40675836c453b32f7b008322fd04d7a766c295a6f0b27726ee9e
+livestage_hash_inputs: src/**/*.ts,package.json,.mdd/waves/*.md,CLAUDE.stage
+livestage_degraded: false
+-->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code
@@ -101,9 +110,9 @@ shows up here on the next render instead of silently going stale:
 | test:unit | vitest run tests/unit |
 | test:baseline | node scripts/check-test-baseline.mjs |
 | test:baseline:update | node scripts/check-test-baseline.mjs --update |
-| readme | node dist/cli/cli.js build README.stage -o README.md |
+| readme | node dist/cli/cli.js build README.stage -o README.md --stamp-metadata --hash-inputs=".mdd/docs/*.md,package.json,scripts/test-baseline.json,examples/agent-briefs/*.stage,README.stage" |
 | readme:check | node scripts/check-readme.mjs |
-| claude-md | node dist/cli/cli.js build CLAUDE.stage -o CLAUDE.md |
+| claude-md | node dist/cli/cli.js build CLAUDE.stage -o CLAUDE.md --stamp-metadata --hash-inputs="src/**/*.ts,package.json,.mdd/waves/*.md,CLAUDE.stage" |
 | claude-md:check | node scripts/check-claude-md.mjs |
 | examples:render | node scripts/render-examples.mjs |
 | examples:check | node scripts/check-example-renders.mjs |
@@ -128,6 +137,18 @@ Notes that don't fit a one-line command table:
   `readme:check`, `claude-md:check`, `examples:check`), in that order.
   The write half (`readme`, `claude-md`, `examples:render`, `bundle`,
   `test:unit`, `test:baseline:update`) is for local regeneration only.
+- Local git hooks: run `bash .githooks/setup.sh` once per checkout (`.git/hooks`
+  isn't versioned, so this is a manual step, not automatic on clone). Wires
+  `core.hooksPath` to the committed `.githooks/`: `pre-commit` runs
+  `readme:check`/`claude-md:check`/`examples:check`
+  (`scripts/verify-generated.mjs`), `pre-push` runs those plus `lint` and
+  `typecheck`. Check-and-fail by default, printing the exact fix command;
+  `node scripts/verify-generated.mjs --fix` regenerates and stages instead,
+  an explicit opt-in rather than the hook's own default, so a generated file
+  never enters a commit without the author having looked at it. Bypassable
+  with `--no-verify` like any git hook, and does not fire on a fast-forward
+  merge (`pre-merge-commit` doesn't); CI is the real gate, this stops a
+  stale commit being written in the first place.
 
 ## MDD docs
 

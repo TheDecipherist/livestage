@@ -1,0 +1,13 @@
+{
+  "_comment": "Reviewed exception list: policy.json paths (relative to the repo root) allowed to grant a non-empty code.languages. Each entry here was a deliberate, reviewed decision when that example/benchmark was built, not a shortcut. Adding a new one is itself a reviewed change, the same as bumping pattern-count-ceiling.json.",
+  "code_languages_allowed": [
+    "benchmarks/unused-exports/.livestage/policy.json",
+    "examples/connections/.livestage/policy.json",
+    "examples/database/.livestage/policy.json",
+    "examples/http-health/.livestage/policy.json",
+    "gates/01-policy-widening/.livestage/policy.json",
+    "gates/02-hand-edited-generated/.livestage/policy.json",
+    "gates/03-tests-neutered/.livestage/policy.json",
+    "gates/04-type-lint-escapes/.livestage/policy.json"
+  ]
+}

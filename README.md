@@ -1,3 +1,12 @@
+<!-- livestage:generated
+livestage_source: README.stage
+livestage_updated_at: 2026-08-17T15:37:20.555Z
+livestage_version: 1.0.2
+livestage_content_hash: 53e17201482b11f4783dfce60dacfe493b6f95c729916318f6eae25b0d38dca7
+livestage_hash_inputs: .mdd/docs/*.md,package.json,scripts/test-baseline.json,examples/agent-briefs/*.stage,README.stage
+livestage_degraded: false
+-->
+
 # livestage
 
 Live-document renderer and verifier for AI agents.

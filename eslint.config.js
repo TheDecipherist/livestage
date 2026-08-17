@@ -14,8 +14,14 @@ export default tseslint.config(
     // each runs directly via `node` inside the repo tree (an independent
     // verification harness, not a @code body), where this repo's "type":
     // "module" would make plain .js ESM, so each deliberately opts into
-    // CommonJS via the .cjs extension instead, same require().
-    ignores: ['dist/**', 'node_modules/**', '.claude/**', 'examples/**/*.js', 'benchmarks/unused-exports/*.js', 'benchmarks/unused-exports/*.cjs', 'benchmarks/import-graph-ground-truth.cjs'],
+    // CommonJS via the .cjs extension instead, same require(). gates/*/
+    // check.cjs (feat/drift-gates) is BOTH shapes at once: a @code body
+    // (isolated tmpdir, no ancestor package.json, CommonJS regardless of
+    // extension) AND directly `node`-run by its own Part 4 adversarial
+    // tests (tests/e2e/gates.test.ts), which needs the .cjs extension
+    // specifically since that direct-run path DOES sit inside this
+    // repo's own "type": "module" tree.
+    ignores: ['dist/**', 'node_modules/**', '.claude/**', 'examples/**/*.js', 'benchmarks/unused-exports/*.js', 'benchmarks/unused-exports/*.cjs', 'benchmarks/import-graph-ground-truth.cjs', 'gates/*/check.cjs'],
   },
   ...tseslint.configs.recommended,
   {
