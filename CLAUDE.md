@@ -24,12 +24,11 @@ directive syntax exists only at rest, for authors; the agent consuming a render
 needs no knowledge of LiveStage at all.
 
 The deliverable is one npm package, livestage (npm livestage,
-livestage.dev), with internal modules under `src/` (parser, engine, renderer,
-cli, hook, each described below), one bin (dist/livestage.js), and a self-contained
-single-file bundle. There is no server. The integration surface is a PreToolUse
-hook that renders `.stage` reads inline, a SessionStart hook that injects
-designated briefs, and a CLI that behaves identically in an agent session and
-in CI.
+livestage.dev), with 5 internal modules under `src/`
+(described below), one bin (dist/livestage.js), and a self-contained single-file
+bundle. There is no server. The integration surface is a PreToolUse hook that
+renders `.stage` reads inline, a SessionStart hook that injects designated
+briefs, and a CLI that behaves identically in an agent session and in CI.
 
 ## Core philosophy
 

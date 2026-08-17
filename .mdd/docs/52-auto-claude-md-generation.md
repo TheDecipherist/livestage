@@ -12,19 +12,6 @@ last_synced: 2026-08-17
 initiative: livestage
 depends_on: [48-auto-readme-generation]
 tags: [claude-md, self-documenting, dogfooding, ci-drift-check, generated-file-replacement]
-known_issues:
-  - "[gap] @count has no depth= support (unlike @list/@tree, which both
-    read node.args['depth']): executeCount (sources.ts) hardcodes
-    walkDir's maxDepth to -1 (unlimited) for directory counts. Found
-    while building this feature: @count \"src\" type=\"dirs\" was meant
-    to report the 5 top-level module directories but returned 13 (every
-    nested directory at every depth counted too). Worked around here by
-    not needing a depth-limited count at all (the module list moved to
-    authored prose, cross-checked by the Architecture overview bullets
-    immediately below it, rather than a computed number). A real fix
-    would thread node.args['depth'] through to walkDir the same way
-    executeList/executeTree already do; small, contained, deferred as
-    out of scope for this build."
 ---
 
 # Auto CLAUDE.md Generation
@@ -67,11 +54,11 @@ What's computed live, and how:
   the exact `mode="entries"` support `listJson` already had (feature 17),
   first exercised for this purpose by `examples/drift/scripts-reference.stage`
   earlier in this same session.
-- The directive count (`src/parser/directives/*.ts`), renderer-format and
-  security-file lists (`src/renderer/formats/`, `src/engine/security/`, both
-  flat directories so the `@count`/`depth` gap above never applies to them),
-  and the wave/example counts (`.mdd/waves/`, `examples/**/*.stage`), via
-  `@count`/`@list` with `match=`.
+- The module count (`src/`, top-level only, `@count "src" type="dirs"
+  depth="0"`), the directive count (`src/parser/directives/*.ts`),
+  renderer-format and security-file lists (`src/renderer/formats/`,
+  `src/engine/security/`), and the wave/example counts (`.mdd/waves/`,
+  `examples/**/*.stage`), via `@count`/`@list` with `match=`/`depth=`.
 
 What's deliberately left as authored prose, never computed: the philosophy,
 the per-module descriptions (what `src/parser` is FOR, not just that the path
@@ -83,9 +70,9 @@ Overview" sections versus its live directive-reference discovery query.
 ## API/Interface
 
 N/A new directive; this composes `@read`, `@list`, `@count`, and `@render`
-exactly as documented in features 17, 18, and 20. No new engine code was
-required (the one gap found, `@count`'s missing `depth=`, was worked around
-in the document rather than the engine, see known_issues).
+exactly as documented in features 17, 18, and 20. One real engine gap was
+found (`@count`'s missing `depth=`) and fixed as its own follow-up bug,
+see 17-source-directives B2.
 
 ## Business Rules
 
@@ -130,6 +117,24 @@ in the document rather than the engine, see known_issues).
 generalization to a second file).
 
 ## Known Issues
+
+None.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `@count "src" type="dirs" depth="0"`, meant to report the 5
+top-level module directories, returned 13 (every nested directory at
+every depth counted too), so the module count could not be computed
+live and was left as authored prose in the first draft of this file.
+Cause: `executeCount` (sources.ts) hardcoded `walkDir`'s `maxDepth` to
+`-1` (unlimited), the only source-directive call site that never read
+`node.args['depth']` at all.
+Fix: see 17-source-directives B2 (the actual engine fix). `CLAUDE.stage`
+now uses `@count "src" type="dirs" depth="0"` for a genuinely live
+module count | Regression test:
+tests/e2e/claude-md-generation.test.ts::"the module count matches a
+live, top-level-only count of src/"
 
 See frontmatter `known_issues`: `@count`'s missing `depth=` support,
 worked around here, not fixed in the engine.
