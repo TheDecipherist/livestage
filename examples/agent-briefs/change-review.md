@@ -17,20 +17,28 @@ strings this file uses below in `allow_patterns`, no wildcard.
 
 ### Diff stat
 .mdd/.drift                              |  1 +
- examples/agent-briefs/codebase-health.md |  8 ++++----
- examples/import-graph/import-graph.js    |  7 +++++++
- tests/e2e/import-graph-example.test.ts   | 12 ++++++++++++
- 4 files changed, 24 insertions(+), 4 deletions(-)
+ eslint.config.js                         |  8 +++-
+ examples/agent-briefs/codebase-health.md | 14 ++++--
+ package-lock.json                        | 77 ++++++++++++++++++++++++++++++++
+ package.json                             |  1 +
+ src/engine/import-graph.ts               | 14 +++++-
+ 6 files changed, 108 insertions(+), 7 deletions(-)
 
 ### Recent commits
-076f098 Merge branch 'feat/import-graph-example'
-4c4dfe4 feat: add examples/import-graph/, a real src/ Mermaid dependency graph
-89f6723 Merge branch 'bug/strict-profile-comment-clarity'
-224aa0d docs: clarify what the shipped 'strict' security profile means
-b149d96 Merge branch 'chore/version-1.0.1'
+43778be Merge branch 'bug/measurement-harness-and-trust-hardening'
+880031c feat(import-graph): resolve tsconfig.json path aliases generically
+a640eff chore: bump version to 1.0.2, add CHANGELOG.md for the shell-chaining fix
+ec1008c security: wire workspace trust into loadSecurityConfig's default path
+f32ccf3 feat: measurement harness recovered into benchmarks/; coverage-map now reduces
 
 ### Working tree status
 M ../../.mdd/.drift
+ M ../../eslint.config.js
  M codebase-health.md
- M ../import-graph/import-graph.js
- M ../../tests/e2e/import-graph-example.test.ts
+ M ../../package-lock.json
+ M ../../package.json
+ M ../../src/engine/import-graph.ts
+?? ../../artifacts.md
+?? ../../benchmarks/import-graph-ground-truth.cjs
+?? ../../benchmarks/unused-exports/
+?? ../../results-check.md

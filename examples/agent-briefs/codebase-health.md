@@ -19,9 +19,15 @@ See that file directly for the exact JSON.
 ## Result
 
 
-- Branch: bug/import-graph-inline-type-imports
-- Last commit: 076f098 Merge branch 'feat/import-graph-example'
+- Branch: bench/class3-construction-tests
+- Last commit: 43778be Merge branch 'bug/measurement-harness-and-trust-hardening'
 - Uncommitted files:
 M ../../.mdd/.drift
- M ../import-graph/import-graph.js
- M ../../tests/e2e/import-graph-example.test.ts
+ M ../../eslint.config.js
+ M ../../package-lock.json
+ M ../../package.json
+ M ../../src/engine/import-graph.ts
+?? ../../artifacts.md
+?? ../../benchmarks/import-graph-ground-truth.cjs
+?? ../../benchmarks/unused-exports/
+?? ../../results-check.md

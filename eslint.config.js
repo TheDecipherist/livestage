@@ -8,7 +8,14 @@ export default tseslint.config(
     // resolves plain .js there as CommonJS regardless of this repo's own
     // "type": "module" (no ancestor package.json to say otherwise). require()
     // is the architecturally correct form for these files, not a style lapse.
-    ignores: ['dist/**', 'node_modules/**', '.claude/**', 'examples/**/*.js'],
+    // benchmarks/unused-exports/unused-exports.js is the same shape (a
+    // @code body). The two ground-truth .cjs scripts (unused-exports and
+    // import-graph) are a different reason for the same require() need:
+    // each runs directly via `node` inside the repo tree (an independent
+    // verification harness, not a @code body), where this repo's "type":
+    // "module" would make plain .js ESM, so each deliberately opts into
+    // CommonJS via the .cjs extension instead, same require().
+    ignores: ['dist/**', 'node_modules/**', '.claude/**', 'examples/**/*.js', 'benchmarks/unused-exports/*.js', 'benchmarks/unused-exports/*.cjs', 'benchmarks/import-graph-ground-truth.cjs'],
   },
   ...tseslint.configs.recommended,
   {
