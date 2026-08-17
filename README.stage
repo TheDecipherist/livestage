@@ -32,9 +32,11 @@ npx livestage init
 transactional (a partial failure rolls back everything it wrote). Concretely,
 it makes four changes:
 
-- Registers a **PreToolUse** hook, pointed at the installed package's own
+- Registers a **PostToolUse** hook, pointed at the installed package's own
   `dist/hook/pretooluse.js`, so reading a `.stage` file with the normal file
   tool already returns the rendered result, no separate render step.
+  (PreToolUse can only allow/deny/rewrite a tool's arguments; only
+  PostToolUse can substitute what a Read call actually returns.)
 - Installs a **SessionStart** hook script to `~/.livestage/hooks/sessionStart.mjs`.
   It renders `<project>/CLAUDE-LiveStage.stage` (if that file exists) and
   injects the result into the session, a live, self-updating brief instead of

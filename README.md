@@ -27,9 +27,11 @@ npx livestage init
 transactional (a partial failure rolls back everything it wrote). Concretely,
 it makes four changes:
 
-- Registers a **PreToolUse** hook, pointed at the installed package's own
+- Registers a **PostToolUse** hook, pointed at the installed package's own
   `dist/hook/pretooluse.js`, so reading a `.stage` file with the normal file
   tool already returns the rendered result, no separate render step.
+  (PreToolUse can only allow/deny/rewrite a tool's arguments; only
+  PostToolUse can substitute what a Read call actually returns.)
 - Installs a **SessionStart** hook script to `~/.livestage/hooks/sessionStart.mjs`.
   It renders `<project>/CLAUDE-LiveStage.stage` (if that file exists) and
   injects the result into the session, a live, self-updating brief instead of
@@ -451,8 +453,13 @@ These four directives run something and hand back the result: a shell
 command, a content hash, or your project's test/check scripts. `@query` is
 the general-purpose escape hatch for allowlisted shell commands; `@test`
 and `@check` are the same idea shaped specifically for pass/fail results
-you can branch on. Nothing here runs unless your project's security policy
-explicitly allows it.
+you can branch on. Every one of them is gated by your project's
+`.livestage/policy.json` allowlist, not by nothing running until you grant
+it: the shipped default already grants a curated set of read-only commands
+(`git *`, `cat *`, `grep *`, `find *`, the test runners, and more), so
+`@query`/`@test`/`@check` work out of the box; a fresh `livestage init`
+seeds the strict profile instead (shell off, no patterns granted) until you
+add your own.
 
 | Name | What it does |
 |---|---|

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { loadSecurityConfig } from '../../../src/engine/security/config.js'
+import { loadSecurityConfig, defaultSecurityConfig, strictSecurityConfig } from '../../../src/engine/security/config.js'
 import { checkShellCommand } from '../../../src/engine/security/shell.js'
 
 // CR-5 / feature 10: policy is loaded fresh per invocation, project-local
@@ -49,5 +49,28 @@ describe('security config: project-local, reloaded fresh', () => {
     const cfg = loadSecurityConfig(undefined, dir)
     expect(cfg.filesystem.allowed_source_paths).toEqual([])
     expect(cfg.filesystem.allowed_data_paths).toEqual([])
+  })
+})
+
+// strictSecurityConfig() is what `init` seeds into a fresh project (feature
+// 31's bug fix): distinct from defaultSecurityConfig(), which stays
+// permissive (shell enabled, ~40 wildcard allow_patterns) because it also
+// serves as the fallback for a project with no policy file at all.
+describe('strictSecurityConfig vs defaultSecurityConfig', () => {
+  it('ships shell off with no patterns granted, unlike the permissive default', () => {
+    const strict = strictSecurityConfig()
+    expect(strict.shell.enabled).toBe(false)
+    expect(strict.shell.allow_patterns).toEqual([])
+
+    const permissive = defaultSecurityConfig()
+    expect(permissive.shell.enabled).toBe(true)
+    expect(permissive.shell.allow_patterns.length).toBeGreaterThan(0)
+  })
+
+  it('agrees with the default profile everywhere else: @code and http stay off in both', () => {
+    const strict = strictSecurityConfig()
+    const permissive = defaultSecurityConfig()
+    expect(strict.code).toEqual(permissive.code)
+    expect(strict.http).toEqual(permissive.http)
   })
 })

@@ -185,6 +185,31 @@ export function defaultSecurityConfig(): SecurityJsonConfig {
   }
 }
 
+// The actual "strict" profile: CR-5 business rule 1 promises deny-by-default,
+// but defaultSecurityConfig() above ships shell ENABLED with a ~40-pattern
+// wildcard allowlist (git *, cat *, grep *, ...), because it also has to
+// serve as the fallback for a project with no policy file at all, where
+// @query/@test/@check need to work out of the box. `init` used to seed that
+// same permissive config verbatim while its own comment claimed it was
+// seeding "the strict profile" - a real gap between what shipped and what
+// was documented, since every fresh `livestage init` silently granted ~40
+// shell patterns nobody reviewed. strictSecurityConfig() is what "strict"
+// actually means: shell off, no patterns granted, everything else matching
+// defaultSecurityConfig()'s already-deny-by-default posture (@code and http
+// stay off in both profiles). `init` seeds THIS now; defaultSecurityConfig()
+// remains the fallback for a missing/unreadable policy file everywhere else.
+export function strictSecurityConfig(): SecurityJsonConfig {
+  const defaults = defaultSecurityConfig()
+  return {
+    ...defaults,
+    shell: {
+      ...defaults.shell,
+      enabled: false,
+      allow_patterns: [],
+    },
+  }
+}
+
 export function loadSecurityConfig(filePath?: string, cwd?: string): SecurityJsonConfig {
   const path = filePath ?? join(cwd ?? process.cwd(), '.livestage', 'policy.json')
   let raw: string

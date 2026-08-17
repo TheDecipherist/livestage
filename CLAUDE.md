@@ -28,7 +28,7 @@ needs no knowledge of LiveStage at all.
 The deliverable is one npm package, livestage (npm livestage,
 livestage.dev), with 5 internal modules under `src/`
 (described below), one bin (dist/livestage.js), and a self-contained single-file
-bundle. There is no server. The integration surface is a PreToolUse hook that
+bundle. There is no server. The integration surface is a PostToolUse hook that
 renders `.stage` reads inline, a SessionStart hook that injects designated
 briefs, and a CLI that behaves identically in an agent session and in CI.
 
@@ -55,8 +55,10 @@ corpus.
   src/renderer/formats/bar.ts, src/renderer/formats/code.ts, src/renderer/formats/inline.ts, src/renderer/formats/json.ts, src/renderer/formats/links.ts, src/renderer/formats/list.ts, src/renderer/formats/numbered.ts, src/renderer/formats/table.ts, src/renderer/formats/tree.ts.
 - `src/cli` - the verb router; `cli render` is the single code path the hook
   also calls.
-- `src/hook` - PreToolUse (extension match -> render -> substitute) and
-  SessionStart (brief injection).
+- `src/hook` - PostToolUse (extension match -> render -> substitute; the
+  module is named pretooluse.ts to match the spec's file layout, but
+  PreToolUse cannot substitute a Read call's returned content, only
+  PostToolUse can) and SessionStart (brief injection).
 - `src/parser/directives/` - one file per directive (`@list`, `@foreach`,
   `@code`, etc.), 29 as of this render. `src/engine/security/`
   - the per-surface policy checks, one file per surface, not one unified gate

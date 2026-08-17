@@ -14,9 +14,14 @@ mdd_require_jq_or_allow
 fp="$(mdd_field '.tool_input.file_path')"
 [ -n "$fp" ] || exit 0
 
-# Only MDD feature docs.
+# Only MDD feature docs (under $MDD_DOCS, e.g. .mdd/docs/), never a
+# project's own hand-written docs/ directory: the old glob (*/docs/*.md)
+# matched ANY docs/*.md anywhere in the repo, including this project's own
+# docs/user-guide.md, which has no MDD frontmatter and was never meant to,
+# blocking legitimate edits to it as if it were a malformed feature doc.
 case "$fp" in
-  */docs/*.md) ;;
+  "$MDD_DOCS"/*.md) ;;
+  *"/$MDD_DOCS"/*.md) ;;
   *) exit 0 ;;
 esac
 [ -f "$fp" ] || exit 0
