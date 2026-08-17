@@ -1,0 +1,1 @@
+@list "sample-project/package.json" path="scripts" mode="entries" | @render type="table" columns="script,command" /

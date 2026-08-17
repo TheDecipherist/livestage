@@ -1,0 +1,1 @@
+@query "grep -rnE 'TODO|FIXME|HACK' sample-project/src" /

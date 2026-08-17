@@ -1,0 +1,7 @@
+## Referenced in code
+
+@query "grep -rn process.env. sample-project/src" /
+
+## Documented in .env.example
+
+@query "cat sample-project/.env.example" /

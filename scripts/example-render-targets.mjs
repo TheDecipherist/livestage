@@ -28,10 +28,21 @@ const LATENCY_MS = { pattern: /Latency: \d+ms/g, replacement: 'Latency: <MS>ms' 
 
 export const EXAMPLE_RENDER_TARGETS = [
   // feature 51, drift examples: fully deterministic, static fixtures only.
+  // Each ships a terse companion (directives only, no teaching prose), so
+  // a token-cost measurement against raw shell output isn't accidentally
+  // comparing a teaching document to a data dump (see benchmarks/).
+  // test-coverage-map also ships the OLD side-by-side (reformat, not
+  // reduce) version for direct contrast with the headline (reduce)
+  // version, kept because the contrast itself has teaching value.
   { cwd: 'examples/drift/env-drift', stage: 'env-drift.stage', md: 'env-drift.md' },
+  { cwd: 'examples/drift/env-drift', stage: 'env-drift-terse.stage', md: 'env-drift-terse.md' },
   { cwd: 'examples/drift/scripts-reference', stage: 'scripts-reference.stage', md: 'scripts-reference.md' },
+  { cwd: 'examples/drift/scripts-reference', stage: 'scripts-reference-terse.stage', md: 'scripts-reference-terse.md' },
   { cwd: 'examples/drift/test-coverage-map', stage: 'test-coverage-map.stage', md: 'test-coverage-map.md' },
+  { cwd: 'examples/drift/test-coverage-map', stage: 'test-coverage-map-terse.stage', md: 'test-coverage-map-terse.md' },
+  { cwd: 'examples/drift/test-coverage-map', stage: 'test-coverage-map-side-by-side.stage', md: 'test-coverage-map-side-by-side.md' },
   { cwd: 'examples/drift/todo-debt', stage: 'todo-debt.stage', md: 'todo-debt.md' },
+  { cwd: 'examples/drift/todo-debt', stage: 'todo-debt-terse.stage', md: 'todo-debt-terse.md' },
 
   // feature 48, agent-briefs: onboarding-brief reads only static fixtures
   // (checked); codebase-health/change-review read the LIVE repo's git
