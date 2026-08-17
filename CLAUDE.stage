@@ -163,6 +163,13 @@ failure.
   React Router, nginx). LiveStage is a CLI/library with no server: the 6
   recurring `tests/conformance/rules.conformance.test.ts` failures for
   those rules are expected here, not a regression to chase.
+- Session analysis, benchmark reports, and other one-off writeups are
+  always saved as a markdown file under `./.ai_temp/`, never published as
+  a claude.ai artifact. Established after a benchmark report got
+  published as an artifact and also committed at the repo root by
+  mistake; both were wrong, the file belongs in the gitignored scratch
+  directory alongside the rest of a session's working output, not in git
+  history and not on a hosted page nobody asked for.
 
 ## How this file stays current
 
