@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import { setupTrustedHome } from '../helpers/trust.js'
 
 // Drift Examples (feature 51): four worked examples under examples/drift/,
 // each replacing a specific kind of hand-maintained doc/config that
@@ -11,8 +12,20 @@ import { join } from 'node:path'
 const repoRoot = join(import.meta.dirname, '..', '..')
 const cliEntry = join(repoRoot, 'dist', 'cli', 'cli.js')
 
+// env-drift and todo-debt carry real shell grants; the other two are
+// filesystem-only and need no trust at all, but trusting them too is
+// harmless and keeps this list simple.
+let trusted: ReturnType<typeof setupTrustedHome>
+beforeAll(() => {
+  trusted = setupTrustedHome(
+    join(repoRoot, 'examples', 'drift', 'env-drift'),
+    join(repoRoot, 'examples', 'drift', 'todo-debt'),
+  )
+})
+afterAll(() => trusted.cleanup())
+
 function render(cwd: string, file: string): string {
-  return execFileSync('node', [cliEntry, 'render', file], { cwd, encoding: 'utf8' })
+  return execFileSync('node', [cliEntry, 'render', file, '--home-dir', trusted.homeDir], { cwd, encoding: 'utf8' })
 }
 
 describe('env-drift: cross-references process.env usage in code against .env.example', () => {
@@ -37,15 +50,40 @@ describe('scripts-reference: renders package.json scripts as a live table', () =
   })
 })
 
-describe('test-coverage-map: lists source files and test files side by side', () => {
-  it('needs no policy grant at all (filesystem-only)', () => {
+describe('test-coverage-map: computes the set difference, not a side-by-side reformat', () => {
+  it('needs no policy grant at all (filesystem-only) and returns ONLY the gap, not full listings', () => {
     const cwd = join(repoRoot, 'examples', 'drift', 'test-coverage-map')
     const out = render(cwd, 'test-coverage-map.stage')
+    expect(out).toContain('1 file(s) with no matching test')
+    expect(out).toContain('sample-project/src/multiply.ts')
+    // The whole point of the rewrite (see this doc's own prose): add.ts
+    // and subtract.ts have coverage, so they never appear at all, unlike
+    // the old side-by-side version which listed every file regardless.
+    expect(out).not.toContain('sample-project/src/add.ts')
+    expect(out).not.toContain('sample-project/src/subtract.ts')
+  })
+
+  it('the side-by-side version, kept for contrast, still lists everything', () => {
+    const cwd = join(repoRoot, 'examples', 'drift', 'test-coverage-map')
+    const out = render(cwd, 'test-coverage-map-side-by-side.stage')
     expect(out).toContain('sample-project/src/add.ts')
     expect(out).toContain('sample-project/src/multiply.ts')
     expect(out).toContain('sample-project/tests/add.test.ts')
-    // multiply.ts has no matching test file -- confirmed absent
+    // multiply.ts has no matching test file -- confirmed absent from the
+    // tests/ listing, though present in the src/ listing (that IS the gap
+    // this version makes the reader find by eye, unlike the headline one).
     expect(out).not.toContain('multiply.test.ts')
+  })
+
+  it('the terse variant computes the identical answer with no teaching prose', () => {
+    const cwd = join(repoRoot, 'examples', 'drift', 'test-coverage-map')
+    const out = render(cwd, 'test-coverage-map-terse.stage')
+    expect(out).toContain('1 file(s) with no matching test')
+    expect(out).toContain('sample-project/src/multiply.ts')
+    expect(out).not.toContain('sample-project/src/add.ts')
+    // No headings, no "the old way"/"the new way" framing: just the answer.
+    expect(out).not.toMatch(/^#/m)
+    expect(out).not.toContain('The old way')
   })
 })
 

@@ -132,3 +132,91 @@ describe('@import-graph', () => {
     expect(() => parse('@import-graph /', { filePath: join(dir, 'q.stage') })).toThrow(/requires src=/)
   })
 })
+
+// tsconfig path-alias resolution: the generic answer to "a directive
+// pointed at an arbitrary src= can't know another project's tsconfig
+// paths", read live from a real tsconfig.json (compilerOptions.baseUrl/
+// paths) rather than hardcoded, same as this project's own three
+// livestage/* self-import aliases.
+describe('@import-graph: tsconfig path-alias resolution', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'ls-import-graph-tsconfig-'))
+    mkdirSync(join(dir, 'src', 'sub'), { recursive: true })
+  })
+
+  afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+
+  function render(src: string): string {
+    const filePath = join(dir, 'q.stage')
+    const ast = parse(src, { filePath })
+    return execute(ast, {
+      filePath,
+      ctx: { cwd: dir, security: { allowShell: false, allowHttp: false, allowDb: false, jailRoot: dir } },
+    }).output
+  }
+
+  it('auto-discovers tsconfig.json by walking up from src=, resolves an exact-match alias', () => {
+    writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
+      compilerOptions: { baseUrl: '.', paths: { 'myproj/utils': ['src/sub/utils.ts'] } },
+    }))
+    writeFileSync(join(dir, 'src', 'a.ts'), `import { u } from 'myproj/utils';\n`)
+    writeFileSync(join(dir, 'src', 'sub', 'utils.ts'), `export const u = 1;\n`)
+    const out = render('@import-graph src="src" /')
+    expect(out).toContain('a --> sub_utils')
+  })
+
+  it('resolves a wildcard alias pattern, substituting the captured remainder', () => {
+    writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
+      compilerOptions: { baseUrl: '.', paths: { 'myproj/*': ['src/sub/*'] } },
+    }))
+    writeFileSync(join(dir, 'src', 'a.ts'), `import { u } from 'myproj/utils';\n`)
+    writeFileSync(join(dir, 'src', 'sub', 'utils.ts'), `export const u = 1;\n`)
+    const out = render('@import-graph src="src" /')
+    expect(out).toContain('a --> sub_utils')
+  })
+
+  it('tsconfig= points explicitly at a config file with any name or location, not just auto-discovered', () => {
+    writeFileSync(join(dir, 'custom-paths.json'), JSON.stringify({
+      compilerOptions: { baseUrl: '.', paths: { 'myproj/utils': ['src/sub/utils.ts'] } },
+    }))
+    writeFileSync(join(dir, 'src', 'a.ts'), `import { u } from 'myproj/utils';\n`)
+    writeFileSync(join(dir, 'src', 'sub', 'utils.ts'), `export const u = 1;\n`)
+    const out = render('@import-graph src="src" tsconfig="custom-paths.json" /')
+    expect(out).toContain('a --> sub_utils')
+  })
+
+  it('a bare specifier that matches no alias and is not relative is left unresolved (external package)', () => {
+    writeFileSync(join(dir, 'tsconfig.json'), JSON.stringify({
+      compilerOptions: { baseUrl: '.', paths: { 'myproj/utils': ['src/sub/utils.ts'] } },
+    }))
+    writeFileSync(join(dir, 'src', 'a.ts'), `import { z } from 'some-npm-package';\nexport const a = z;\n`)
+    const out = render('@import-graph src="src" /')
+    expect(out).toContain('a["a"]')
+    expect(out).not.toMatch(/-->/)
+  })
+
+  it('no tsconfig.json anywhere in the walk-up: behaves exactly as before, bare specifiers unresolved', () => {
+    writeFileSync(join(dir, 'src', 'a.ts'), `import { z } from 'myproj/utils';\nexport const a = z;\n`)
+    const out = render('@import-graph src="src" /')
+    expect(out).toContain('a["a"]')
+    expect(out).not.toMatch(/-->/)
+  })
+
+  it('an unreadable/invalid tsconfig.json degrades quietly, no error, no alias resolution', () => {
+    writeFileSync(join(dir, 'tsconfig.json'), 'not valid json {{{')
+    writeFileSync(join(dir, 'src', 'a.ts'), `import { z } from 'myproj/utils';\nexport const a = z;\n`)
+    expect(() => render('@import-graph src="src" /')).not.toThrow()
+    const out = render('@import-graph src="src" /')
+    expect(out).not.toMatch(/-->/)
+  })
+
+  it('an explicit tsconfig= pointing outside the data jail is blocked, not silently ignored', () => {
+    writeFileSync(join(dir, 'src', 'a.ts'), `export const a = 1;\n`)
+    const out = render('@import-graph src="src" tsconfig="/etc/tsconfig.json" /')
+    // The src= walk itself is unaffected by the blocked tsconfig=; only
+    // alias resolution is unavailable.
+    expect(out).toContain('a["a"]')
+  })
+})

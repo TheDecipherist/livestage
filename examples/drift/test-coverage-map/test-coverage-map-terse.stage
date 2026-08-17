@@ -1,0 +1,7 @@
+@list "sample-project/src" match="*.ts" type="files" label="src_files" visible="false" /
+@list "sample-project/tests" match="*.test.ts" type="files" label="test_files" visible="false" /
+@set gap = {{ src_files.split('\n').filter(f => f && !test_files.includes(f.split('/').pop().replace(/\.ts$/, '.test.ts'))) }} /
+{{ gap.length }} file(s) with no matching test:
+@foreach f in {{ gap }}
+- {{ f }}
+@foreach-end

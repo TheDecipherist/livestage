@@ -66,10 +66,20 @@ describe('import-graph.stage graphs this project\'s real src/ tree via @import-g
     expect(out).toMatch(/engine_context\s*-->\s*engine_determinism/)
   })
 
-  it('needs only a filesystem allow-path to src/, no shell or @code grant at all', () => {
+  it('resolves this project\'s own livestage/* tsconfig path aliases, read live from tsconfig.json', () => {
+    // The gap disclosed when @import-graph first shipped: no project-
+    // specific alias resolution, unlike the @code script it replaced
+    // (which hardcoded these same three aliases). Closed by reading
+    // tsconfig.json's compilerOptions.paths generically instead.
+    const out = render()
+    expect(out).toMatch(/cli_cli\s*-->\s*parser_index/)
+    expect(out).toMatch(/cli_cli\s*-->\s*engine_index/)
+  })
+
+  it('needs a filesystem allow-path to src/ and to tsconfig.json, no shell or @code grant at all', () => {
     const raw = readFileSync(join(exampleDir, '.livestage', 'policy.json'), 'utf8')
     const policy = JSON.parse(raw) as { filesystem?: { allowed_data_paths?: string[] }; shell?: unknown; http?: unknown; code?: unknown }
-    expect(policy.filesystem?.allowed_data_paths).toEqual(['**/src'])
+    expect(policy.filesystem?.allowed_data_paths).toEqual(['**/src', '**/tsconfig.json'])
     expect(policy.shell).toBeUndefined()
     expect(policy.http).toBeUndefined()
     expect(policy.code).toBeUndefined()

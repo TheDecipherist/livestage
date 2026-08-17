@@ -10,6 +10,9 @@ export interface ValidateOptions {
   cwd?: string
   strict?: boolean
   verbose?: boolean
+  // Overrides the home directory used to resolve the workspace-trust
+  // store; see RenderOptions.homeDir in render.ts for the full rationale.
+  homeDir?: string
 }
 
 export interface ValidateResult {
@@ -51,7 +54,7 @@ export function runValidate(filePath: string, options: ValidateOptions = {}): Va
       const argsIssue = checkArgsWithoutFallback(ast.nodes)
       if (argsIssue) errors.push(`args: no fallback guard (${resolved}:${argsIssue.line}), ${argsIssue.message}`)
 
-      const codeConfig = loadSecurityConfig(undefined, options.cwd).code
+      const codeConfig = loadSecurityConfig(undefined, options.cwd, options.homeDir).code
       for (const issue of checkUngrantedCodeLanguages(ast.nodes, codeConfig)) {
         errors.push(`@code: ungranted language (${resolved}:${issue.line}), ${issue.message}`)
       }

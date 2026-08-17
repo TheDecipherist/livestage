@@ -1,6 +1,6 @@
 {
   "name": "livestage",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Live-document renderer and verifier for AI agents.",
   "type": "module",
   "bin": {
@@ -32,7 +32,9 @@
     "claude-md": "node dist/cli/cli.js build CLAUDE.stage -o CLAUDE.md",
     "claude-md:check": "node scripts/check-claude-md.mjs",
     "examples:render": "node scripts/render-examples.mjs",
-    "examples:check": "node scripts/check-example-renders.mjs"
+    "examples:check": "node scripts/check-example-renders.mjs",
+    "bench:class2": "node benchmarks/class2-coverage-map.mjs",
+    "bench:class3": "node benchmarks/class3-import-graph.mjs"
   },
   "keywords": [
     "livestage",
@@ -54,6 +56,7 @@
     "@types/node": "^22.10.0",
     "esbuild": "^0.24.0",
     "eslint": "^9.15.0",
+    "js-tiktoken": "^1.0.21",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.15.0",
     "vitest": "^2.1.0"

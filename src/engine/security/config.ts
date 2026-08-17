@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
+import { homedir } from 'node:os'
+import { isTrusted } from './trust.js'
 
 export interface ShellSecurityConfig {
   enabled: boolean
@@ -226,7 +228,27 @@ export function strictSecurityConfig(): SecurityJsonConfig {
   }
 }
 
-export function loadSecurityConfig(filePath?: string, cwd?: string): SecurityJsonConfig {
+// Strips the GRANTING fields (shell.enabled/allow_patterns, code.languages,
+// http.enabled) from a loaded policy, leaving every RESTRICTING field
+// untouched (deny_patterns, the immutable always-block/always-alert rules
+// elsewhere, filesystem block lists, etc). Mirrors Claude Code's own model,
+// the cited precedent: deny and ask apply immediately, from any scope,
+// because they only restrict; allow from an untrusted scope grants
+// nothing. Applied only to a REAL policy.json a project actually shipped,
+// never to defaultSecurityConfig()'s own fallback (an untrusted directory
+// with no policy file at all gets the tool's own shipped default, same as
+// always, not an extra gate on top of it, the threat this closes is a
+// malicious FILE arriving via git clone, not the tool's own baseline).
+function withoutUntrustedGrants(config: SecurityJsonConfig): SecurityJsonConfig {
+  return {
+    ...config,
+    shell: { ...config.shell, enabled: false, allow_patterns: [] },
+    code: { ...config.code, languages: [] },
+    http: { ...config.http, enabled: false },
+  }
+}
+
+export function loadSecurityConfig(filePath?: string, cwd?: string, homeDir?: string): SecurityJsonConfig {
   const path = filePath ?? join(cwd ?? process.cwd(), '.livestage', 'policy.json')
   let raw: string
   try { raw = readFileSync(path, 'utf8') } catch { return defaultSecurityConfig() }
@@ -238,7 +260,7 @@ export function loadSecurityConfig(filePath?: string, cwd?: string): SecurityJso
     }
     const loaded = parsed as Record<string, unknown>
     const defaults = defaultSecurityConfig()
-    return {
+    const merged: SecurityJsonConfig = {
       shell: { ...defaults.shell, ...(typeof loaded['shell'] === 'object' && loaded['shell'] !== null && !Array.isArray(loaded['shell']) ? loaded['shell'] as Partial<ShellSecurityConfig> : {}) },
       http: { ...defaults.http, ...(typeof loaded['http'] === 'object' && loaded['http'] !== null && !Array.isArray(loaded['http']) ? loaded['http'] as Partial<HttpSecurityConfig> : {}) },
       db: (typeof loaded['db'] === 'object' && loaded['db'] !== null && !Array.isArray(loaded['db']) ? loaded['db'] as DbSecurityConfig : {}),
@@ -246,6 +268,23 @@ export function loadSecurityConfig(filePath?: string, cwd?: string): SecurityJso
       event: { ...defaults.event, ...(typeof loaded['event'] === 'object' && loaded['event'] !== null && !Array.isArray(loaded['event']) ? loaded['event'] as Partial<EventSecurityConfig> : {}) },
       code: { ...defaults.code, ...(typeof loaded['code'] === 'object' && loaded['code'] !== null && !Array.isArray(loaded['code']) ? loaded['code'] as Partial<CodeSecurityConfig> : {}) },
     }
+    // Workspace trust: the directory this REAL policy.json governs must be
+    // explicitly trusted (`livestage trust`, recorded in
+    // ~/.livestage/trust.json, see trust.ts) before its own shell/code/http
+    // grants take effect. cwd is the natural trust unit when given (the
+    // project directory a caller is already operating against); falling
+    // back to the policy file's own grandparent directory (.livestage/
+    // policy.json -> project root) covers filePath-only callers (the
+    // `livestage security` command reads by exact path, no cwd).
+    // homeDir defaults to the REAL os.homedir() (the actual user's real
+    // trust store) so every existing call site is covered with no changes
+    // required; only test code needs to override it, to avoid polluting a
+    // developer's real trust store while exercising this path.
+    const trustUnit = cwd ?? dirname(dirname(path))
+    if (!isTrusted(trustUnit, homeDir ?? homedir())) {
+      return withoutUntrustedGrants(merged)
+    }
+    return merged
   } catch (err) {
     process.stderr.write(`[livestage] security config parse error (${path}): ${String(err)}\n`)
     return defaultSecurityConfig()

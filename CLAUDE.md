@@ -71,7 +71,7 @@ argument can smuggle a command past policy.
 
 `examples/` is self-verifying documentation, not just sample files:
 `README.stage`, `CLAUDE.stage`, and every `examples/**/*.stage` file
-(20 of them at this render) ships a committed `.md`
+(25 of them at this render) ships a committed `.md`
 rendering next to it, generated (`npm run readme` / `npm run claude-md` /
 `examples:render`) and CI-enforced (`readme:check` / `claude-md:check` /
 `examples:check`, `scripts/check-*.mjs`) never to drift. Some examples are
@@ -107,6 +107,8 @@ shows up here on the next render instead of silently going stale:
 | claude-md:check | node scripts/check-claude-md.mjs |
 | examples:render | node scripts/render-examples.mjs |
 | examples:check | node scripts/check-example-renders.mjs |
+| bench:class2 | node benchmarks/class2-coverage-map.mjs |
+| bench:class3 | node benchmarks/class3-import-graph.mjs |
 
 Notes that don't fit a one-line command table:
 - `build` compiles `src/` to `dist/` via `tsconfig.build.json` (declarations +

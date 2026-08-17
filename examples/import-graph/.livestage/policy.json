@@ -1,5 +1,5 @@
 {
   "filesystem": {
-    "allowed_data_paths": ["**/src"]
+    "allowed_data_paths": ["**/src", "**/tsconfig.json"]
   }
 }

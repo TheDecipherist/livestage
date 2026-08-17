@@ -23,9 +23,14 @@ const cliEntry = join(repoRoot, 'dist', 'cli', 'cli.js')
 
 const ALL_EXAMPLE_MD_FILES = [
   'examples/drift/env-drift/env-drift.md',
+  'examples/drift/env-drift/env-drift-terse.md',
   'examples/drift/scripts-reference/scripts-reference.md',
+  'examples/drift/scripts-reference/scripts-reference-terse.md',
   'examples/drift/test-coverage-map/test-coverage-map.md',
+  'examples/drift/test-coverage-map/test-coverage-map-terse.md',
+  'examples/drift/test-coverage-map/test-coverage-map-side-by-side.md',
   'examples/drift/todo-debt/todo-debt.md',
+  'examples/drift/todo-debt/todo-debt-terse.md',
   'examples/agent-briefs/onboarding-brief.md',
   'examples/agent-briefs/codebase-health.md',
   'examples/agent-briefs/change-review.md',

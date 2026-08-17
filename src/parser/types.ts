@@ -286,6 +286,14 @@ export interface CodeNode extends ASTNodeBase {
 export interface ImportGraphNode extends ASTNodeBase {
   type: 'import-graph'
   src: string  // directory to walk, resolved through the data-path jail like @list/@tree
+  // Optional: an explicit path to a tsconfig.json (or any tsconfig-shaped
+  // JSON with compilerOptions.baseUrl/paths) to resolve non-relative
+  // specifiers against, e.g. this project's own "livestage/parser" ->
+  // "src/parser/index.ts" mapping. When unset, auto-discovers by walking
+  // up from src= looking for a tsconfig.json (quietly; a project with no
+  // tsconfig, or one the security jail declines to grant, just gets no
+  // alias resolution, not an error).
+  tsconfig: string | null
 }
 
 export interface AssertNode extends ASTNodeBase {

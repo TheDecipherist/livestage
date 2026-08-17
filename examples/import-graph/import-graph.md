@@ -4,15 +4,24 @@
 it has no notion of TypeScript `import` statements, so it cannot graph real
 source code directly. `@import-graph` does: it walks a real source tree,
 parses `import`/`export ... from` statements (including TypeScript's inline
-type-only form), and resolves them to real files.
+type-only form), and resolves them to real files, including this project's
+own three `livestage/*` tsconfig path aliases, read live from `tsconfig.json`
+(`compilerOptions.baseUrl`/`paths`), not hardcoded.
 
 ## Policy grant this example needs
 
 `.livestage/policy.json` in this directory: `filesystem.allowed_data_paths`
-grants reach to this project's own `src/` tree, two directories up from
-here. No shell or `@code` grant of any kind, unlike the version of this
-example that used to run a script under policy: `@import-graph` is a
-filesystem-read directive, the same jail `@list`/`@tree` already use.
+grants reach to this project's own `src/` tree and its `tsconfig.json`,
+two directories up from here. No shell or `@code` grant of any kind,
+unlike the version of this example that used to run a script under
+policy: `@import-graph` is a filesystem-read directive, the same jail
+`@list`/`@tree` already use.
+
+`tsconfig.json` is auto-discovered by walking up from `src=` looking for
+one; the `tsconfig=` attribute below points at it explicitly instead,
+demonstrating that it can point anywhere (a monorepo package's own
+config, a nonstandard name or location), not just wherever auto-discovery
+happens to find one.
 
 ## Result
 
@@ -156,22 +165,49 @@ graph TD
   cli_cli --> cli_commands_validate
   cli_cli --> cli_commands_watch
   cli_cli --> cli_glob_expand
+  cli_cli --> engine_index
+  cli_cli --> parser_index
   cli_commands_assert --> cli_commands_render
   cli_commands_assert --> cli_commands_validate
   cli_commands_assert --> cli_glob_expand
   cli_commands_assert --> engine_args
+  cli_commands_assert --> engine_index
+  cli_commands_assert --> parser_index
   cli_commands_build --> cli_commands_render
+  cli_commands_build --> engine_index
+  cli_commands_cache --> engine_index
   cli_commands_doctor --> cli_commands_assert
   cli_commands_doctor --> cli_glob_expand
   cli_commands_doctor --> engine_assert_liveness
+  cli_commands_doctor --> engine_index
   cli_commands_doctor --> engine_schema_loader
+  cli_commands_doctor --> parser_index
+  cli_commands_engine_trace --> engine_index
   cli_commands_eval --> cli_env_loader
+  cli_commands_eval --> engine_index
   cli_commands_init --> cli_templates_claude_section
+  cli_commands_init --> engine_index
+  cli_commands_list_imports --> engine_index
+  cli_commands_list_imports --> parser_index
+  cli_commands_list_macros --> engine_index
+  cli_commands_list_macros --> parser_index
+  cli_commands_parse --> engine_index
+  cli_commands_parse --> parser_index
   cli_commands_render --> cli_env_loader
   cli_commands_render --> engine_args
+  cli_commands_render --> engine_index
+  cli_commands_renderer_preview --> renderer_index
+  cli_commands_render --> parser_index
+  cli_commands_security --> engine_index
   cli_commands_strip --> cli_env_loader
+  cli_commands_strip --> engine_index
+  cli_commands_strip --> parser_index
+  cli_commands_trust --> engine_index
   cli_commands_validate --> engine_assert_liveness
+  cli_commands_validate --> engine_index
+  cli_commands_validate --> parser_index
   cli_commands_watch --> cli_commands_render
+  cli_commands_watch --> engine_index
   cli_glob_expand --> engine_sources_file_utils
   cli_index --> cli_commands_build
   cli_index --> cli_commands_cache
@@ -185,20 +221,24 @@ graph TD
   cli_index --> cli_commands_validate
   cli_index --> cli_commands_watch
   engine_assert_liveness --> engine_security_config
+  engine_assert_liveness --> parser_index
   engine_assert_operators --> engine_context
   engine_assert_operators --> engine_engine_include
   engine_assert_operators --> engine_frontmatter_utils
   engine_assert_operators --> engine_sources
   engine_assert_operators --> engine_sources_file_utils
+  engine_assert_operators --> parser_index
   engine_assert_results --> engine_assert_operators
   engine_cache --> engine_security_config
   engine_cache --> engine_security_filesystem
   engine_cache --> engine_security_masking
+  engine_cache --> parser_index
   engine_code_runners --> engine_args
   engine_code_runners --> engine_cache
   engine_code_runners --> engine_context
   engine_code_runners --> engine_engine_interpolate
   engine_code_runners --> engine_sources
+  engine_code_runners --> parser_index
   engine_conditions --> engine_context
   engine_conditions --> engine_error_log
   engine_conditions --> engine_file_access
@@ -207,14 +247,17 @@ graph TD
   engine_context --> engine_determinism
   engine_context --> engine_security_config
   engine_context --> engine_trace_config
+  engine_context --> parser_index
   engine_directive_cache --> engine_cache
   engine_directive_cache --> engine_context
+  engine_directive_cache --> parser_index
   engine_engine_include --> engine_cache
   engine_engine_include --> engine_conditions
   engine_engine_include --> engine_context
   engine_engine_include --> engine_expand_context
   engine_engine_include --> engine_security_filesystem
   engine_engine_include --> engine_security_path_expand
+  engine_engine_include --> parser_index
   engine_engine_interpolate --> engine_conditions
   engine_engine_interpolate --> engine_context
   engine_engine_interpolate --> engine_error_log
@@ -222,11 +265,13 @@ graph TD
   engine_engine_interpolate --> engine_security_config
   engine_engine_interpolate --> engine_security_shell
   engine_engine_interpolate --> engine_sources
+  engine_engine_interpolate --> parser_index
   engine_engine_template --> engine_conditions
   engine_engine_template --> engine_context
   engine_engine_template --> engine_engine_include
   engine_engine_template --> engine_iter_ops
   engine_engine_template --> engine_security_filesystem
+  engine_engine_template --> parser_index
   engine_engine --> engine_assert_operators
   engine_engine --> engine_assert_results
   engine_engine --> engine_code_runners
@@ -252,9 +297,12 @@ graph TD
   engine_engine --> engine_trace_emit
   engine_engine --> engine_trace_span
   engine_engine --> engine_write_ops
+  engine_engine --> parser_index
+  engine_engine --> renderer_index
   engine_exec_ops --> engine_context
   engine_exec_ops --> engine_engine_include
   engine_exec_ops --> engine_security_shell
+  engine_exec_ops --> parser_index
   engine_expand_context --> engine_context
   engine_expand_context --> engine_security_path_expand
   engine_file_access --> engine_context
@@ -267,8 +315,12 @@ graph TD
   engine_graph --> engine_frontmatter_utils
   engine_graph --> engine_schema_loader
   engine_graph --> engine_schema_validate
+  engine_graph --> parser_index
   engine_import_graph --> engine_context
+  engine_import_graph --> engine_file_access
+  engine_import_graph --> engine_security_filesystem
   engine_import_graph --> engine_sources
+  engine_import_graph --> parser_index
   engine_index --> engine_assert_operators
   engine_index --> engine_assert_results
   engine_index --> engine_cache
@@ -290,7 +342,9 @@ graph TD
   engine_iter_ops --> engine_conditions
   engine_iter_ops --> engine_context
   engine_iter_ops --> engine_macros
+  engine_iter_ops --> parser_index
   engine_macros --> engine_engine_include
+  engine_macros --> parser_index
   engine_read_ops --> engine_context
   engine_read_ops --> engine_engine_include
   engine_read_ops --> engine_file_access
@@ -300,11 +354,13 @@ graph TD
   engine_read_ops --> engine_security_filesystem
   engine_read_ops --> engine_security_path_expand
   engine_read_ops --> engine_sources
+  engine_read_ops --> parser_index
   engine_schema_validate --> engine_schema_loader
   engine_security_audit --> engine_security_rules
   engine_security_claude_settings --> engine_security_config
   engine_security_claude_settings --> engine_security_rules
   engine_security_claude_settings --> engine_security_shell
+  engine_security_config --> engine_security_trust
   engine_security_filesystem --> engine_security_config
   engine_security_filesystem --> engine_security_rules
   engine_security_masking --> engine_security_config
@@ -323,6 +379,8 @@ graph TD
   engine_sources --> engine_security_path_expand
   engine_sources --> engine_security_shell
   engine_sources --> engine_sources_file_utils
+  engine_sources --> parser_index
+  engine_stripper --> parser_index
   engine_trace_emit --> engine_trace_config
   engine_trace_emit --> engine_trace_span
   engine_write_ops --> engine_context
@@ -334,6 +392,9 @@ graph TD
   engine_write_ops --> engine_schema_validate
   engine_write_ops --> engine_security_filesystem
   engine_write_ops --> engine_security_path_expand
+  engine_write_ops --> parser_index
+  hook_pretooluse --> engine_index
+  hook_pretooluse --> parser_index
   parser_args --> parser_types
   parser_directives_assert --> parser_types
   parser_directives_cache_attrs --> parser_types

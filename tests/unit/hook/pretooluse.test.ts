@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import {
   shouldHandle, handlePostToolUse, renderViaCli, RENDER_TIMEOUT_MS,
 } from '../../../src/hook/pretooluse.js'
+import { setupTrustedHome } from '../../helpers/trust.js'
 
 const SRC_ROOT = join(dirname(new URL(import.meta.url).pathname), '../../../src')
 
@@ -104,6 +105,7 @@ describe('renderViaCli timeout', () => {
 
   it('a render exceeding a short custom timeout is actually killed (SIGTERM), not just outlasted', () => {
     const dir = mkdtempSync(join(tmpdir(), 'hook-timeout-'))
+    const trusted = setupTrustedHome(dir) // the shell grant below needs trust to take effect
     try {
       mkdirSync(join(dir, '.livestage'), { recursive: true })
       writeFileSync(join(dir, '.livestage', 'policy.json'), JSON.stringify({
@@ -112,7 +114,7 @@ describe('renderViaCli timeout', () => {
       const file = join(dir, 'slow.stage')
       writeFileSync(file, '@query "sleep 2" /\n')
       const start = Date.now()
-      const result = renderViaCli(file, 300)
+      const result = renderViaCli(file, 300, trusted.homeDir)
       const elapsed = Date.now() - start
       expect(result.degraded).toBe(true)
       expect(result.output).toContain('degraded render (render exceeded timeout)')
@@ -120,6 +122,7 @@ describe('renderViaCli timeout', () => {
       expect(elapsed).toBeLessThan(1500)
     } finally {
       rmSync(dir, { recursive: true, force: true })
+      trusted.cleanup()
     }
   })
 
@@ -130,6 +133,7 @@ describe('renderViaCli timeout', () => {
   // attempt would exist anywhere without the hook emitting its own.
   it('a timed-out render still gets a degraded: true trace record, even though the child process never finished', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'hook-trace-degraded-'))
+    const trusted = setupTrustedHome(dir)
     try {
       mkdirSync(join(dir, '.livestage'), { recursive: true })
       writeFileSync(join(dir, '.livestage', 'policy.json'), JSON.stringify({
@@ -137,7 +141,7 @@ describe('renderViaCli timeout', () => {
       }))
       const file = join(dir, 'slow.stage')
       writeFileSync(file, '@query "sleep 2" /\n')
-      const result = renderViaCli(file, 300)
+      const result = renderViaCli(file, 300, trusted.homeDir)
       expect(result.degraded).toBe(true)
 
       // Trace emission is fire-and-forget async (appendFile, queued), no
@@ -160,6 +164,7 @@ describe('renderViaCli timeout', () => {
       expect(degradedRecord?.exit).not.toBe(0)
     } finally {
       rmSync(dir, { recursive: true, force: true })
+      trusted.cleanup()
     }
   })
 
