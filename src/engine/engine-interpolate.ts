@@ -71,6 +71,7 @@ function transformPipes(expr: string): string {
 import { checkShellCommand } from './security/shell.js'
 import type { ShellSecurityConfig } from './security/config.js'
 import { formatDate } from './sources.js'
+import { checkDottedAccessOnString } from './dotted-access-check.js'
 
 export function executeShellInline(command: string, ctx: EngineContext): string {
   if (!ctx.security.allowShell) {
@@ -116,6 +117,15 @@ function skillVarValue(name: string, ctx: EngineContext): string | undefined {
 
 export function evalExpr(expr: string, ctx: EngineContext): string {
   const trimmed = expr.trim()
+
+  // Outside the try/catch below on purpose: this is a document-authoring
+  // mistake (Part 2, rule 3), not an unresolvable-reference case, so it
+  // must not be swallowed by the ReferenceError-suppression branch or
+  // reworded into the generic "Unresolvable expression" warning. Throws
+  // straight out to the caller (resolveInterpolations -> walkNodeCore's
+  // markdown case -> walkNode/execute's own try/catch), which is exactly
+  // how every other "fail loudly" case in this feature surfaces.
+  checkDottedAccessOnString(trimmed, ctx)
 
   if (/^[A-Z_][A-Z0-9_]*$/.test(trimmed)) {
     const skillVal = skillVarValue(trimmed, ctx)

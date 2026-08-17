@@ -1,4 +1,5 @@
 import type { FormatModule, RendererInput } from '../types.js'
+import { toLines } from '../object-rows.js'
 
 function linkText(path: string): string {
   const last = path.split('/').at(-1) ?? path
@@ -8,7 +9,7 @@ function linkText(path: string): string {
 const links: FormatModule = {
   name: 'links',
   render(input: RendererInput): string {
-    return input.data.map(path => `- [${linkText(path)}](${path})`).join('\n')
+    return toLines(input.data, input.columns).map(path => `- [${linkText(path)}](${path})`).join('\n')
   },
 }
 

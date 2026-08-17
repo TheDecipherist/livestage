@@ -129,20 +129,15 @@ function main() {
 
   items.sort((a, b) => (a.file + a.symbol).localeCompare(b.file + b.symbol))
 
-  // @foreach (the .stage engine's own loop directive) binds its iteration
-  // variable via String(item), so an array of OBJECTS loses all structure
-  // the moment a .stage document tries to iterate it directly (confirmed
-  // live: src/engine/iter-ops.ts's splitItems does `parsed.map(v =>
-  // String(v))`). Pre-formatting the table here, in real JS, sidesteps
-  // that entirely: the .stage document just interpolates one string
-  // field. `items` stays in the JSON too, for anything that wants the
-  // structured form (this benchmark's own ground-truth comparison script,
-  // a future consumer).
-  const header = '| symbol | file | kind | re-exported through barrel |\n|---|---|---|---|'
-  const rows = items.map(it => `| ${it.symbol} | ${it.file} | ${it.kind} | ${it.reExportedThroughBarrel} |`).join('\n')
-  const table = items.length > 0 ? `${header}\n${rows}` : '_(none)_'
-
-  process.stdout.write(JSON.stringify({ count: items.length, items, table }))
+  // Structured data only, no pre-formatted markdown. @foreach used to bind
+  // its iteration variable via String(item), losing all structure the
+  // moment a .stage document tried to iterate an array of objects
+  // directly (src/engine/iter-ops.ts's splitItems did `parsed.map(v =>
+  // String(v))`); @render source= had no lookup-by-label mechanism at
+  // all. Both are now real (class 3 composition work): unused-exports.stage
+  // presents this exact array via `@render source="dead.items"
+  // type="table"`, with zero pre-formatting done here.
+  process.stdout.write(JSON.stringify({ count: items.length, items }))
 }
 
 main()

@@ -151,6 +151,79 @@ console.log(JSON.stringify({ n }))
     expect(readFileSync(counter, 'utf8')).toBe('1')
   })
 
+  // Part 5, class 3 composition work: @code's own cache= is keyed on the
+  // script's identity (language/src/body/args), never on the CONTENT of
+  // files the script reads from disk, so re-running an expensive analysis
+  // against a changed source tree silently returned the stale answer.
+  // cache-key= folds a content hash of the named glob into the key.
+  describe('@code cache-key= (content-hash cache invalidation)', () => {
+    function countingScript(counterPath: string): string {
+      const escaped = counterPath.replace(/\\/g, '\\\\')
+      return `@code language="javascript" cache="session" cache-key="watched/*.txt" label="r"
+const fs = require('fs')
+const n = Number(fs.readFileSync('${escaped}', 'utf8')) + 1
+fs.writeFileSync('${escaped}', String(n))
+const files = fs.readdirSync('watched').sort()
+console.log(JSON.stringify({ n, files }))
+@code-end
+{{ r.n }}`
+    }
+
+    it('an unchanged watched file set is a cache hit: the script does not re-run', () => {
+      mkdirSync(join(dir, 'watched'))
+      writeFileSync(join(dir, 'watched', 'a.txt'), 'hello')
+      const counter = join(dir, 'counter.txt')
+      writeFileSync(counter, '0')
+      const src = countingScript(counter)
+      const first = run(src)
+      const second = run(src)
+      expect(first.output).toContain('1')
+      expect(second.output).toContain('1')
+      expect(readFileSync(counter, 'utf8')).toBe('1')
+    })
+
+    it('changing a watched file\'s CONTENT (same file set, same script args) is a cache miss', () => {
+      mkdirSync(join(dir, 'watched'))
+      writeFileSync(join(dir, 'watched', 'a.txt'), 'hello')
+      const counter = join(dir, 'counter.txt')
+      writeFileSync(counter, '0')
+      const src = countingScript(counter)
+      const first = run(src)
+      expect(first.output).toContain('1')
+      writeFileSync(join(dir, 'watched', 'a.txt'), 'hello, but different now')
+      const second = run(src)
+      expect(second.output).toContain('2')
+    })
+
+    it('adding a new file under the glob is also a cache miss', () => {
+      mkdirSync(join(dir, 'watched'))
+      writeFileSync(join(dir, 'watched', 'a.txt'), 'hello')
+      const counter = join(dir, 'counter.txt')
+      writeFileSync(counter, '0')
+      const src = countingScript(counter)
+      run(src)
+      writeFileSync(join(dir, 'watched', 'b.txt'), 'new file')
+      const second = run(src)
+      expect(second.output).toContain('2')
+    })
+
+    it('cache="session" without cache-key= is unaffected: same behavior as before this feature', () => {
+      const counter = join(dir, 'no-key-counter.txt')
+      writeFileSync(counter, '0')
+      const src = `@code language="javascript" cache="session" label="r"
+const fs = require('fs')
+const n = Number(fs.readFileSync('${counter.replace(/\\/g, '\\\\')}', 'utf8')) + 1
+fs.writeFileSync('${counter.replace(/\\/g, '\\\\')}', String(n))
+console.log(JSON.stringify({ n }))
+@code-end
+{{ r.n }}`
+      const first = run(src)
+      const second = run(src)
+      expect(first.output).toContain('1')
+      expect(second.output).toContain('1')
+    })
+  })
+
   it('@include cache="session" serves stale rendered content after the included file changes', () => {
     writeFileSync(join(dir, 'partial.stage'), 'v1\n')
     const first = run('@include "partial.stage" cache="session" /')

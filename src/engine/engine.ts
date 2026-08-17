@@ -1,14 +1,15 @@
 import { resolve, dirname } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import type {
-  ASTNode, ParseResult, CallNode, ConditionalNode, SwitchNode, PipeNode,
+  ASTNode, ParseResult, CallNode, ConditionalNode, SwitchNode, PipeNode, RenderNode,
 } from 'livestage/parser'
 import { scanInterpolations } from 'livestage/parser'
 import { render } from 'livestage/renderer'
 import type { RenderType, RendererInput } from 'livestage/renderer'
 import { makeContext, resolveEnv, type EngineContext } from './context.js'
 import { substituteParams, unescapeBraces } from './macros.js'
-import { evalCondition, evalExpression } from './conditions.js'
+import { evalCondition, evalExpression, evalExpressionTyped } from './conditions.js'
+import { applySort, applyLimit } from './render-data.js'
 import { runBuiltin } from './pipe.js'
 import { runShell } from './shell.js'
 import { executeList, executeRead, executeCount, executeDate, executeTree, executeQuery } from './sources.js'
@@ -353,6 +354,7 @@ function walkNodeCore(node: ASTNode, ctx: EngineContext): string {
     case 'check': return executeCheck(node, ctx)
     case 'hash': return executeHash(node, ctx)
     case 'foreach': return executeForeach(node, ctx)
+    case 'render': return executeRenderStandalone(node, ctx)
     case 'set': return executeSet(node, ctx)
     case 'assert': {
       const result = evaluateAssert(node, ctx)
@@ -511,8 +513,10 @@ function executePipe(node: PipeNode, ctx: EngineContext): string {
         const visible = sourceArgs?.['visible']
         const silent = sourceArgs?.['silent']
         if (visible === 'false' || silent === 'true') return ''
-        const { type: t, columns: cols, ...rest } = stage.node.args
-        const input: RendererInput = { type: (t ?? 'list') as RenderType, data: lines }
+        const { type: t, columns: cols, sort: sortSpec, limit: limitSpec, ...rest } = stage.node.args
+        let sortedLines = applySort(lines, sortSpec)
+        sortedLines = applyLimit(sortedLines, limitSpec)
+        const input: RendererInput = { type: (t ?? 'list') as RenderType, data: sortedLines }
         if (cols) input.columns = cols.split(',').map((c: string) => c.trim())
         if (Object.keys(rest).length > 0) input.options = rest
         return render(input)
@@ -522,6 +526,66 @@ function executePipe(node: PipeNode, ctx: EngineContext): string {
     }
   }
   return render({ type: 'list', data: lines })
+}
+
+// @render used as its own directive rather than a pipe sink: `source=`
+// names a bound label (optionally dotted, e.g. "dead.items",
+// "dead.summary.byFile"), evaluated the same way any {{ }} expression
+// resolves a dotted path against ctx.data, so no separate lookup
+// mechanism was needed. Failure is loud and specific throughout (thrown
+// Error, the established convention for "this directive's usage is wrong"
+// elsewhere in this file, e.g. executePipe's unhandled-stage-type case
+// and @date's unsupported type=): a silent empty render here would be the
+// worst outcome, per the brief this shipped against.
+function executeRenderStandalone(node: RenderNode, ctx: EngineContext): string {
+  const source = node.args['source']
+  if (!source) {
+    throw new Error('@render: source= is required when @render is not the sink of a pipe (e.g. `@render source="label.field" type="table" /`)')
+  }
+  const value = evalExpressionTyped(source, ctx)
+  if (value === undefined) {
+    throw new Error(`@render: source="${source}" does not name a value that exists`)
+  }
+  const type = (node.args['type'] ?? 'list') as RenderType
+  const columns = node.args['columns'] ? node.args['columns'].split(',').map(c => c.trim()) : undefined
+  const { type: _t, source: _s, columns: _c, sort: _sort, limit: _limit, ...optRest } = node.args
+  const options = Object.keys(optRest).length > 0 ? optRest : undefined
+
+  // json/code/inline can present a single scalar or a plain object
+  // directly (there is no "row" concept to enforce there); every other
+  // format needs an actual array to iterate, table/list/numbered/links/
+  // bar all draw one row per array element.
+  if (type === 'json' || type === 'code' || type === 'inline') {
+    const input: RendererInput = { type, data: [], raw: value }
+    if (columns) input.columns = columns
+    if (options) input.options = options
+    return render(input)
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error(`@render: type="${type}" needs an array, but source="${source}" resolved to ${describeForError(value)}`)
+  }
+  let rows: unknown[] = value
+  rows = applySort(rows, node.args['sort'])
+  rows = applyLimit(rows, node.args['limit'])
+
+  const data = isObjectArray(rows)
+    ? rows
+    : rows.map(v => (v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v)))
+  const input: RendererInput = { type, data }
+  if (columns) input.columns = columns
+  if (options) input.options = options
+  return render(input)
+}
+
+function isObjectArray(rows: unknown[]): rows is Record<string, unknown>[] {
+  return rows.length > 0 && rows[0] !== null && typeof rows[0] === 'object' && !Array.isArray(rows[0])
+}
+
+function describeForError(value: unknown): string {
+  if (value === null) return 'null'
+  if (Array.isArray(value)) return 'an array' // unreachable here (Array.isArray already checked), kept for completeness
+  return `a ${typeof value}${typeof value === 'object' ? '' : ` (${JSON.stringify(value)})`}`
 }
 
 function executeSource(node: ASTNode, ctx: EngineContext): string[] {

@@ -60,6 +60,7 @@ graph TD
   engine_context["engine/context"]
   engine_determinism["engine/determinism"]
   engine_directive_cache["engine/directive-cache"]
+  engine_dotted_access_check["engine/dotted-access-check"]
   engine_engine["engine/engine"]
   engine_engine_include["engine/engine-include"]
   engine_engine_interpolate["engine/engine-interpolate"]
@@ -74,8 +75,10 @@ graph TD
   engine_index["engine/index"]
   engine_iter_ops["engine/iter-ops"]
   engine_macros["engine/macros"]
+  engine_parse_formats["engine/parse-formats"]
   engine_pipe["engine/pipe"]
   engine_read_ops["engine/read-ops"]
+  engine_render_data["engine/render-data"]
   engine_schema_loader["engine/schema/loader"]
   engine_schema_validate["engine/schema/validate"]
   engine_security_audit["engine/security/audit"]
@@ -144,6 +147,7 @@ graph TD
   renderer_formats_table["renderer/formats/table"]
   renderer_formats_tree["renderer/formats/tree"]
   renderer_index["renderer/index"]
+  renderer_object_rows["renderer/object-rows"]
   renderer_renderer["renderer/renderer"]
   renderer_types["renderer/types"]
   cli_cli_register_security --> cli_commands_security
@@ -237,9 +241,14 @@ graph TD
   engine_code_runners --> engine_cache
   engine_code_runners --> engine_context
   engine_code_runners --> engine_engine_interpolate
+  engine_code_runners --> engine_parse_formats
+  engine_code_runners --> engine_schema_loader
+  engine_code_runners --> engine_schema_validate
   engine_code_runners --> engine_sources
+  engine_code_runners --> engine_sources_file_utils
   engine_code_runners --> parser_index
   engine_conditions --> engine_context
+  engine_conditions --> engine_dotted_access_check
   engine_conditions --> engine_error_log
   engine_conditions --> engine_file_access
   engine_conditions --> engine_sources
@@ -251,6 +260,7 @@ graph TD
   engine_directive_cache --> engine_cache
   engine_directive_cache --> engine_context
   engine_directive_cache --> parser_index
+  engine_dotted_access_check --> engine_context
   engine_engine_include --> engine_cache
   engine_engine_include --> engine_conditions
   engine_engine_include --> engine_context
@@ -260,6 +270,7 @@ graph TD
   engine_engine_include --> parser_index
   engine_engine_interpolate --> engine_conditions
   engine_engine_interpolate --> engine_context
+  engine_engine_interpolate --> engine_dotted_access_check
   engine_engine_interpolate --> engine_error_log
   engine_engine_interpolate --> engine_file_access
   engine_engine_interpolate --> engine_security_config
@@ -289,6 +300,7 @@ graph TD
   engine_engine --> engine_macros
   engine_engine --> engine_pipe
   engine_engine --> engine_read_ops
+  engine_engine --> engine_render_data
   engine_engine --> engine_security_masking
   engine_engine --> engine_security_path_expand
   engine_engine --> engine_shell
@@ -342,9 +354,11 @@ graph TD
   engine_iter_ops --> engine_conditions
   engine_iter_ops --> engine_context
   engine_iter_ops --> engine_macros
+  engine_iter_ops --> engine_render_data
   engine_iter_ops --> parser_index
   engine_macros --> engine_engine_include
   engine_macros --> parser_index
+  engine_parse_formats --> engine_frontmatter_utils
   engine_read_ops --> engine_context
   engine_read_ops --> engine_engine_include
   engine_read_ops --> engine_file_access
@@ -355,6 +369,7 @@ graph TD
   engine_read_ops --> engine_security_path_expand
   engine_read_ops --> engine_sources
   engine_read_ops --> parser_index
+  engine_render_data --> engine_sources_file_utils
   engine_schema_validate --> engine_schema_loader
   engine_security_audit --> engine_security_rules
   engine_security_claude_settings --> engine_security_config
@@ -471,14 +486,22 @@ graph TD
   parser_registry --> parser_directives_tree
   parser_registry --> parser_directives_update_frontmatter
   parser_registry --> parser_types
+  renderer_formats_bar --> renderer_object_rows
   renderer_formats_bar --> renderer_types
+  renderer_formats_code --> renderer_object_rows
   renderer_formats_code --> renderer_types
+  renderer_formats_inline --> renderer_object_rows
   renderer_formats_inline --> renderer_types
   renderer_formats_json --> renderer_types
+  renderer_formats_links --> renderer_object_rows
   renderer_formats_links --> renderer_types
+  renderer_formats_list --> renderer_object_rows
   renderer_formats_list --> renderer_types
+  renderer_formats_numbered --> renderer_object_rows
   renderer_formats_numbered --> renderer_types
+  renderer_formats_table --> renderer_object_rows
   renderer_formats_table --> renderer_types
+  renderer_formats_tree --> renderer_object_rows
   renderer_formats_tree --> renderer_types
   renderer_index --> renderer_renderer
   renderer_index --> renderer_types

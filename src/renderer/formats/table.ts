@@ -1,4 +1,5 @@
 import type { FormatModule, RendererInput } from '../types.js'
+import { isObjectRows, objectHeaders, objectToRow } from '../object-rows.js'
 
 function parseRow(line: string): string[] {
   return line.split('\t').map(c => c.trim())
@@ -8,9 +9,20 @@ const table: FormatModule = {
   name: 'table',
   render(input: RendererInput): string {
     const { data, columns, options } = input
-    const hasExplicitColumns = columns !== undefined && columns.length > 0
-    const headers = hasExplicitColumns ? columns! : (data[0] ? parseRow(data[0]) : [])
-    const rows = hasExplicitColumns ? data.map(parseRow) : data.slice(1).map(parseRow)
+
+    let headers: string[]
+    let rows: string[][]
+    if (isObjectRows(data)) {
+      // Object rows derive their headers from the first object's own keys
+      // when columns= isn't given, no "first line is the header" special
+      // case needed, the shape is already known.
+      headers = objectHeaders(data, columns)
+      rows = data.map(o => objectToRow(o, headers))
+    } else {
+      const hasExplicitColumns = columns !== undefined && columns.length > 0
+      headers = hasExplicitColumns ? columns! : (data[0] ? parseRow(data[0]) : [])
+      rows = hasExplicitColumns ? data.map(parseRow) : data.slice(1).map(parseRow)
+    }
 
     const colCount = headers.length
     // Security (feature 20 B1, 2026-08-17): column-max-width padding is

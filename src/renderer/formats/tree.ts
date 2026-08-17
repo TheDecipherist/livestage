@@ -1,4 +1,5 @@
 import type { FormatModule, RendererInput } from '../types.js'
+import { isObjectRows, objectHeaders, objectToRow } from '../object-rows.js'
 
 function parseRow(line: string): string[] {
   return line.split('\t').map(c => c.trim())
@@ -44,16 +45,24 @@ const tree: FormatModule = {
     const { data, columns } = input
     if (data.length === 0) return '```\n```'
 
-    const hasExplicitColumns = columns !== undefined && columns.length > 0
-    const headers = hasExplicitColumns ? columns! : (data[0] ? parseRow(data[0]) : [])
-    const rows = hasExplicitColumns ? data.map(parseRow) : data.slice(1).map(parseRow)
+    let headers: string[]
+    let rows: string[][]
+    if (isObjectRows(data)) {
+      headers = objectHeaders(data, columns)
+      rows = data.map(o => objectToRow(o, headers))
+    } else {
+      const hasExplicitColumns = columns !== undefined && columns.length > 0
+      headers = hasExplicitColumns ? columns! : (data[0] ? parseRow(data[0]) : [])
+      rows = hasExplicitColumns ? data.map(parseRow) : data.slice(1).map(parseRow)
+    }
 
     // Plain single-column data (no tab-separated annotation columns) has no
     // breadcrumb to group by; keep the original passthrough behavior, a
     // fenced block of raw lines, e.g. @tree's own directory-drawing output
     // piped straight through @render type="tree".
     if (headers.length <= 1) {
-      return `\`\`\`\n${data.join('\n')}\n\`\`\``
+      const lines = isObjectRows(data) ? rows.map(r => r[0] ?? '') : data as string[]
+      return `\`\`\`\n${lines.join('\n')}\n\`\`\``
     }
 
     // F-FM-QUERY (feature 36): column one is a slash-delimited breadcrumb

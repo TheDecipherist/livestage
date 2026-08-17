@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import type { EngineContext } from './context.js'
 import { makeFileHelpers, resolveDataJail } from './file-access.js'
 import { logEngineError } from './error-log.js'
+import { checkDottedAccessOnString } from './dotted-access-check.js'
 
 /**
  * Read <cwd>/.mdd/settings.json (or <cwd>/.livestage/settings.json as a
@@ -302,6 +303,11 @@ function buildSandbox(ctx: EngineContext): Record<string, unknown> {
 }
 
 function runExpr(expr: string, ctx: EngineContext): unknown {
+  // Outside the try/catch on purpose, same reasoning as evalExpr's own
+  // call in engine-interpolate.ts: a document-authoring mistake (Part 2,
+  // rule 3), must not be swallowed by the ReferenceError suppression
+  // below or reworded into a generic "Unresolvable expression" warning.
+  checkDottedAccessOnString(expr.trim(), ctx)
   try {
     return runInNewContext(preprocessExpr(expr), buildSandbox(ctx), { timeout: 500 })
   } catch (err) {

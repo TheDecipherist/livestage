@@ -1,0 +1,22 @@
+# Unused Exports, Grouped by Kind
+
+The same bound data as `unused-exports.stage`, presented a different way,
+with no change to `unused-exports.js` at all: the script emits structured
+data once, the document decides how to show it. `sort=`/`columns=` on
+`@render` and `where=` on `@foreach` are the whole difference between the
+two documents.
+
+@code language="javascript" src="unused-exports.js" label="dead" visible="false" cache="persist" cache-key="../../src/**/*.ts" /
+
+## Every dead export, sorted by kind rather than by file
+
+@render source="dead.items" type="table" columns="kind,symbol,file" sort="kind" /
+
+## Just the unused types
+
+`where="kind == 'type'"` filters the same bound array before iterating,
+no second script run:
+
+@foreach item in {{ dead.items }} where="kind == 'type'"
+- {{ item.symbol }} ({{ item.file }})
+@foreach-end
