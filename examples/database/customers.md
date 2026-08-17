@@ -1,0 +1,34 @@
+# Database Example (Reach Via Code)
+
+There is no `@db` directive. External reach beyond the filesystem and the
+allowlisted shell is `@code` under policy, not a directive tier: the driver
+code (here, reading a small JSON file as a stand-in for a real database
+connection) lives entirely inside the `@code` script. The `.stage` doc only
+ever receives the script's output and renders it.
+
+Swap `customers.json` and the `node:fs` read in `query-enterprise.js` for a
+real driver (`pg`, `mysql2`, whatever) and nothing else in this document
+changes: same `@code` block, same `@render type="table"` on the other end.
+
+## Policy grant this example needs
+
+`.livestage/policy.json` in this directory:
+
+```json
+{
+  "code": {
+    "languages": ["javascript"],
+    "timeout": 10000,
+    "runners": {}
+  }
+}
+```
+
+That is the whole grant: `code.languages` includes `javascript`, nothing else.
+
+## Enterprise-plan customers, by MRR
+
+| name         | plan       | mrr  |
+|--------------|------------|------|
+| Acme Corp    | enterprise | 4200 |
+| Echo Systems | enterprise | 3100 |

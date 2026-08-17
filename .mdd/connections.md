@@ -2,7 +2,7 @@
 generated: 2026-08-17
 doc_count: 51
 connection_count: 88
-overlap_count: 32
+overlap_count: 35
 ---
 
 # MDD Connections
@@ -267,6 +267,9 @@ Files referenced by 2+ docs:
 
 - `eslint.config.js` - 07-package-skeleton, 08-boundary-lint
 - `package.json` - 07-package-skeleton, 41-bundle, 48-auto-readme-generation, 50-version-1.0.0-and-license
+- `scripts/check-example-renders.mjs` - 48-auto-readme-generation, 51-drift-examples
+- `scripts/example-render-targets.mjs` - 48-auto-readme-generation, 51-drift-examples
+- `scripts/render-examples.mjs` - 48-auto-readme-generation, 51-drift-examples
 - `src/cli/cli.ts` - 13-cli-router, 35-determinism, 40-pattern-example, 41-bundle
 - `src/cli/commands/assert.ts` - 28-ci-mode, 40-pattern-example
 - `src/cli/commands/render.ts` - 13-cli-router, 35-determinism, 40-pattern-example

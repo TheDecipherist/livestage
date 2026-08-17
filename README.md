@@ -164,6 +164,52 @@ project without a path escaping this example's own directory.
 {{ src_tree }}
 ```
 
+## More examples
+
+Every example below has a rendered `.md` sitting next to its `.stage`
+source, kept honest by `npm run examples:check` (mirrors this README's own
+`readme:check`, wired into CI). A few are marked "live" because they're
+deliberately non-deterministic (real git state, wall-clock timing, an
+environment-dependent directory tree); those still ship a rendered
+snapshot, just not one asserted byte-identical on every run.
+
+**[`examples/hello.stage`](examples/hello.stage)** ([rendered](examples/hello.md), live)
+The smallest possible one: today's date, this directory's tree.
+
+**`examples/drift/`** - four worked examples eliminating a specific kind
+of hand-maintained doc/config that silently diverges from the code that
+should govern it:
+- [`env-drift.stage`](examples/drift/env-drift/env-drift.stage) ([rendered](examples/drift/env-drift/env-drift.md)) - `.env.example` vs actual `process.env` usage.
+- [`scripts-reference.stage`](examples/drift/scripts-reference/scripts-reference.stage) ([rendered](examples/drift/scripts-reference/scripts-reference.md)) - `package.json`'s real `scripts`, live.
+- [`test-coverage-map.stage`](examples/drift/test-coverage-map/test-coverage-map.stage) ([rendered](examples/drift/test-coverage-map/test-coverage-map.md)) - which source files have no matching test.
+- [`todo-debt.stage`](examples/drift/todo-debt/todo-debt.stage) ([rendered](examples/drift/todo-debt/todo-debt.md)) - a live `TODO`/`FIXME`/`HACK` inventory.
+
+**`examples/agent-briefs/`** - the three scenarios above, in full:
+[`codebase-health.stage`](examples/agent-briefs/codebase-health.stage) ([rendered](examples/agent-briefs/codebase-health.md), live),
+[`change-review.stage`](examples/agent-briefs/change-review.stage) ([rendered](examples/agent-briefs/change-review.md), live),
+[`onboarding-brief.stage`](examples/agent-briefs/onboarding-brief.stage) ([rendered](examples/agent-briefs/onboarding-brief.md)).
+
+**`examples/database/`** and **`examples/http-health/`** - there is no
+`@db` or `@http` directive; external reach is `@code` under policy.
+[`customers.stage`](examples/database/customers.stage) ([rendered](examples/database/customers.md)) runs driver
+code in `@code`, renders a table. [`check.stage`](examples/http-health/check.stage) ([rendered](examples/http-health/check.md)) runs `fetch` in
+`@code`, renders structured status.
+
+**[`examples/connections/connections.stage`](examples/connections/connections.stage)** ([rendered](examples/connections/connections.md))
+A project connections index: path tree, dependency graph, source-file
+overlap, all computed, nothing hand-maintained.
+
+**`examples/multi-step/`** - files as steps, frontmatter as state,
+assertions as gates, no workflow engine. [`index.stage`](examples/multi-step/index.stage) ([rendered](examples/multi-step/index.md))
+is the overview; see its own [README](examples/multi-step/README.md) to
+run the actual pipeline (the step files themselves aren't pre-rendered
+here, running them changes real state on disk, which is the point).
+
+**`examples/showcase/`** - three documents rendering under the default
+policy, no extra grants: [`index.stage`](examples/showcase/index.stage) ([rendered](examples/showcase/index.md)),
+[`api-reference.stage`](examples/showcase/api-reference.stage) ([rendered](examples/showcase/api-reference.md)),
+[`report.stage`](examples/showcase/report.stage) ([rendered](examples/showcase/report.md), live).
+
 ## Directive reference
 
 Every directive LiveStage ships, pulled live from whichever docs declare

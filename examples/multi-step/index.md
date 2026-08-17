@@ -6,10 +6,9 @@ no daemon holding state between steps. Every step is just `livestage render`
 against a plain `.stage` file; the only shared state is `state.stage`'s
 frontmatter, read and written through the normal directive surface.
 
-@read-frontmatter path="state.stage" label="state" /
 
-Current state: step {{ state.step }}, run {{ state.run_id }}, updated
-{{ state.updated_at }}.
+Current state: step 0, run none, updated
+none.
 
 ## Running it
 

@@ -5,11 +5,11 @@ type: COMPONENT
 path: Examples / Connections
 source_files: [examples/connections/connections.stage, examples/connections/overlap.js,
   examples/connections/.livestage/policy.json, src/engine/graph.ts,
-  src/renderer/formats/tree.ts]
-test_files: [tests/e2e/connections-example.test.ts]
+  src/renderer/formats/tree.ts, examples/connections/connections.md]
+test_files: [tests/e2e/connections-example.test.ts, tests/e2e/all-examples-rendered.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [36-frontmatter-query, 34-graph, 20-render-formats]
@@ -127,3 +127,14 @@ graph), 20-render-formats (tree/table rendering).
 ## Known Issues
 
 None.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: connections.stage shipped no rendered .md output committed
+alongside its .stage source. Same gap as 48-auto-readme-generation B1.
+Cause: see 48-auto-readme-generation B1.
+Fix: exact-matched with the render timestamp (`now_iso()` line)
+normalized out of the comparison before diffing (both the committed
+.md and the fresh render show the real timestamp; only the check
+ignores it) | Regression test: tests/e2e/all-examples-rendered.test.ts
