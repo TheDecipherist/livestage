@@ -19,13 +19,16 @@ tags: [claude-md, self-documenting, dogfooding, ci-drift-check, generated-file-r
 ## Purpose
 
 `CLAUDE.md` is the one file every Claude Code session in this repository reads
-first, and until this feature it was hand-typed like any other doc: a stale
-fact would sit there until someone happened to grep for it. That happened for
-real, twice, in this exact file, found while auditing it for this feature: it
-claimed "29 directives, as of this writing" (a number with no mechanism
-keeping it true) and referenced a donor spec path, `MDs/livestage-spec.md`,
-that had already stopped existing in this repo (the real snapshot lives at
-`.mdd/specs/livestage-spec.md`). This feature applies feature 48's own
+first, and until this feature it was a static snapshot: written once, by
+Claude Code's own `/init` command, and never regenerated after, so a stale
+fact would sit there until someone happened to grep for it. Being written by
+an LLM the first time bought it nothing; a snapshot is a snapshot regardless
+of who typed it. That happened for real, twice, in this exact file, found
+while auditing it for this feature: it claimed "29 directives, as of this
+writing" (a number with no mechanism keeping it true) and referenced a donor
+spec path, `MDs/livestage-spec.md`, that had already stopped existing in this
+repo (the real snapshot lives at `.mdd/specs/livestage-spec.md`). This
+feature applies feature 48's own
 pattern (`README.stage` generates `README.md`, CI-enforced never to drift) to
 `CLAUDE.md` itself: `CLAUDE.stage` at the repo root reads the project's real
 state live and generates the committed `CLAUDE.md`, so the file that
