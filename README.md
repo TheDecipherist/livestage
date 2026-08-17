@@ -1,8 +1,8 @@
 <!-- livestage:generated
 livestage_source: README.stage
-livestage_updated_at: 2026-08-17T22:19:33.421Z
-livestage_version: 1.0.2
-livestage_content_hash: 68cd76923ff522e1b4ade196ff1131dd0cc5612ba48c20feac0a4f2dba06b782
+livestage_updated_at: 2026-08-17T22:20:49.893Z
+livestage_version: 1.1.0
+livestage_content_hash: d0b6c0c7239a3def9f9eb346ea5c110b5d29f39feacd0467c56332e44b09c207
 livestage_hash_inputs: .mdd/docs/*.md,package.json,scripts/test-baseline.json,examples/agent-briefs/*.stage,README.stage
 livestage_degraded: false
 -->
@@ -11,7 +11,7 @@ livestage_degraded: false
 
 Live-document renderer and verifier for AI agents.
 
-**Version 1.0.2** | **1239+ tests** | MIT
+**Version 1.1.0** | **1239+ tests** | MIT
 
 This README is generated. Every fact in it (the directive reference below,
 the version and test count above, the three worked examples) is read live

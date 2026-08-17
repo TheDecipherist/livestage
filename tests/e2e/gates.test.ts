@@ -75,7 +75,12 @@ describe('Gate 2 (hand-edited generated files) actually fails on a real hand-edi
   it('hand-editing README.md\'s committed content fails the gate, naming the file and the source', () => {
     const original = readFileSync(readmePath, 'utf8')
     try {
-      writeFileSync(readmePath, original.replace('Version 1.0.2', 'Version 9.9.9 hand-edited'))
+      // Appended, not a substring replace: a replace target embedding the
+      // current package version (e.g. "Version 1.0.2") goes stale on the
+      // next version bump, silently turns into a no-op, and leaves the
+      // "hand-edited" file byte-identical to the original, exactly the
+      // false-negative this test exists to rule out.
+      writeFileSync(readmePath, `${original}\n<!-- hand-edited, should never survive a real render -->\n`)
       const result = runGateCheck('02-hand-edited-generated')
       expect(result.pass).toBe(false)
       const readmeProblem = result.problems.find(p => p.startsWith('README.md'))

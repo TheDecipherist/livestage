@@ -1,8 +1,8 @@
 <!-- livestage:generated
 livestage_source: CLAUDE.stage
-livestage_updated_at: 2026-08-17T15:37:20.982Z
-livestage_version: 1.0.2
-livestage_content_hash: e8491749a4de40675836c453b32f7b008322fd04d7a766c295a6f0b27726ee9e
+livestage_updated_at: 2026-08-17T22:20:50.306Z
+livestage_version: 1.1.0
+livestage_content_hash: 96f635d76e3d266ce82426bd8168b4d2f255726adc2dabf7980c74e993bde811
 livestage_hash_inputs: src/**/*.ts,package.json,.mdd/waves/*.md,CLAUDE.stage
 livestage_degraded: false
 -->
