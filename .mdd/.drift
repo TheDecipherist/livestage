@@ -448,3 +448,5 @@
 04-cr3-stage-only
 04-cr3-stage-only
 10-security-policy-core
+09-grammar-parser
+53-import-graph-example

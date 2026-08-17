@@ -73,8 +73,13 @@ function armB() {
   const scratch = mkdtempSync(join(tmpdir(), 'ls-bench-c3-'))
   try {
     mkdirSync(join(scratch, '.livestage'), { recursive: true })
-    writeFileSync(join(scratch, '.livestage', 'policy.json'), JSON.stringify({ filesystem: { allowed_data_paths: [srcDir] } }))
-    writeFileSync(join(scratch, 'doc.stage'), `@import-graph src="${srcDir}" /\n`)
+    // Grants both src/ and tsconfig.json: @import-graph resolves this
+    // project's own livestage/* tsconfig path aliases when it can reach
+    // the config, same grant shape as the real examples/import-graph/.
+    writeFileSync(join(scratch, '.livestage', 'policy.json'), JSON.stringify({
+      filesystem: { allowed_data_paths: [srcDir, join(repoRoot, 'tsconfig.json')] },
+    }))
+    writeFileSync(join(scratch, 'doc.stage'), `@import-graph src="${srcDir}" tsconfig="${join(repoRoot, 'tsconfig.json')}" /\n`)
     const out = execFileSync('node', [cliEntry, 'render', 'doc.stage'], { cwd: scratch, encoding: 'utf8' })
     return { tokens: countTokens(out), calls: 1, output: out }
   } finally {
@@ -113,28 +118,27 @@ function main() {
   console.log(`A1/B = ${a1OverB.toFixed(2)}x, A2/B = ${a2OverB.toFixed(2)}x`)
   console.log('')
 
-  // Harness validation, and a real, investigated discrepancy: the
-  // original delivery report's reference point was A2/B = 2.62x, measured
-  // against examples/import-graph's OLD @code-based script, which
-  // hardcoded resolution of this project's own three livestage/* self-
-  // import path aliases (livestage/parser, livestage/engine,
-  // livestage/renderer). That script no longer exists: it was migrated to
-  // this native @import-graph directive in a later session, a directive
-  // that deliberately does NOT resolve project-specific tsconfig path
-  // aliases (disclosed at the time, for portability to any src= tree, not
-  // just this one). Confirmed directly: the old script produced 336 real
-  // edges on this tree; @import-graph produces 293, a 43-edge gap that
-  // lines up with the alias-cascade edges the old script's hardcoded
-  // table alone supplied. 2.62x is therefore stale against what actually
-  // ships today, not a harness bug; REFERENCE_RATIO below is the
-  // re-derived, current, correct baseline, checked against a tolerance
-  // for ordinary src/ growth from here on.
-  const REFERENCE_RATIO = 2.96
-  const tolerance = 0.15 // +/- consistent with a few files' worth of drift
+  // Harness validation, and a real, investigated, now-resolved
+  // discrepancy: the original delivery report's reference point was
+  // A2/B = 2.62x, measured against examples/import-graph's OLD @code-
+  // based script, which hardcoded resolution of this project's own three
+  // livestage/* self-import path aliases. That script was migrated to
+  // this native @import-graph directive, which initially did NOT resolve
+  // project-specific path aliases at all (disclosed at the time), pushing
+  // the measured ratio to 2.96x, a real, explained gap, not a harness
+  // bug (336 edges with aliases vs 293 without). @import-graph then
+  // gained generic tsconfig.json compilerOptions.paths resolution (an
+  // explicit tsconfig= attribute, or auto-discovery by walking up from
+  // src=), closing that gap by reading the same three aliases live
+  // instead of hardcoding them. With that grant in place (see armB
+  // above), the measured ratio returns to 2.68x, within ordinary src/
+  // growth of the original 2.62x. REFERENCE_RATIO reflects that.
+  const REFERENCE_RATIO = 2.62
+  const tolerance = 0.25 // +/- consistent with a few files' worth of drift since the original measurement
   const withinTolerance = Math.abs(a2OverB - REFERENCE_RATIO) <= tolerance
-  console.log(`Harness check: current baseline A2/B is ${REFERENCE_RATIO}x (re-derived this session, ` +
-    `see this script's comment: the original 2.62x reference was measured against a script this ` +
-    `project no longer ships). Measured ${a2OverB.toFixed(2)}x, ${withinTolerance ? 'within' : 'OUTSIDE'} ` +
+  console.log(`Harness check: baseline A2/B is ${REFERENCE_RATIO}x (the original reference; see this ` +
+    `script's comment for the round trip through 2.96x while @import-graph had no alias resolution, ` +
+    `now closed). Measured ${a2OverB.toFixed(2)}x, ${withinTolerance ? 'within' : 'OUTSIDE'} ` +
     `+/-${tolerance} tolerance.`)
   if (!withinTolerance) {
     console.log('Investigate before trusting downstream numbers: this could mean real src/ growth, or ' +

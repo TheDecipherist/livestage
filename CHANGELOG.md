@@ -58,11 +58,14 @@ Claude Code's own project-settings trust model.
 
 ### Added
 
-- **`@import-graph src="./some/dir"`**: a new directive that walks a
-  source tree and emits a Mermaid dependency graph of its internal module
-  imports, filesystem-read only (no shell or `@code` grant needed, unlike
-  the `@code`-under-policy pattern this replaces in
-  `examples/import-graph/`).
+- **`@import-graph src="./some/dir" [tsconfig="./tsconfig.json"]`**: a new
+  directive that walks a source tree and emits a Mermaid dependency graph
+  of its internal module imports, filesystem-read only (no shell or
+  `@code` grant needed, unlike the `@code`-under-policy pattern this
+  replaces in `examples/import-graph/`). Resolves `tsconfig.json`
+  `compilerOptions.paths` aliases generically (read live, not hardcoded);
+  `tsconfig=` points at a config file explicitly (any name or location),
+  or it auto-discovers one by walking up from `src=`.
 - **`livestage trust [dir]`**: a new CLI verb (with `--list`/`--remove`)
   for the workspace-trust store above.
 - **`livestage init --seed-from-permissions`**: derives suggested
