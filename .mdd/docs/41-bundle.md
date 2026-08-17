@@ -6,7 +6,7 @@ path: Build / Bundle
 source_files: [dist/livestage.js, package.json, src/hook/pretooluse.ts, src/cli/cli.ts, src/engine/engine-include.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-6
 depends_on: [07-package-skeleton, 13-cli-router]
@@ -120,3 +120,17 @@ entry point being bundled).
 See frontmatter `known_issues`. The esbuild invocation lives as a
 `package.json` script (`bundle`), not a separate config file; confirmed
 during Wave 6 build, no dedicated `esbuild.config.js` was needed.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: N/A to this doc's own concern (the esbuild single-file bundle).
+Recorded here per the fix's diff reconciliation: this doc owns
+`src/engine/engine-include.ts`, which changed as part of closing the
+shell-command-chaining bug (security/allowlist concern, see
+10-security-policy-core B1).
+Cause: N/A.
+Fix: additive only, two new exported functions (`shellQuote`,
+`interpolateShellSafe`); the esbuild bundle picks them up transparently,
+no bundle-config change needed. See 17-source-directives B1 for the
+actual fix | Regression test: tests/unit/engine/shell-command-chaining.test.ts

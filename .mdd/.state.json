@@ -1,1 +1,7 @@
-{ "phase": "idle", "gate": "none" }
+{
+  "phase": "idle",
+  "gate": "none",
+  "test_files": [
+    "tests/unit/engine/shell-command-chaining.test.ts"
+  ]
+}

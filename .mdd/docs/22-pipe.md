@@ -4,9 +4,10 @@ title: Pipe
 type: COMPONENT
 path: Directives / Pipe
 source_files: [src/parser/directives/pipe.ts, src/parser/directives/render.ts, src/engine/pipe.ts, src/engine/shell.ts]
+test_files: [tests/unit/engine/pipe.test.ts, tests/unit/engine/pipe-shell-stage.test.ts, tests/unit/engine/shell-command-chaining.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [19-composition-directives, 21-cache]
@@ -229,3 +230,18 @@ See the frontmatter `known_issues` above: the missing `src/engine/shell.ts`
 source file, the unimplemented Windows-stripping rule (now built), and the
 quoted-pattern tokenizer bug (fixed), including the quoted-flag-lookalike
 limitation (`grep "-i"`) that was documented as remaining, now also fixed.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `runShell` (shell.ts), dispatched from engine.ts's pipe `'shell'`
+stage, received `stage.command` after macro substitution (macros.ts)
+with no shell-quoting; a substituted value containing shell
+metacharacters chained a further command past an allowed allowlist
+prefix.
+Cause: shared root cause, see 10-security-policy-core B1.
+Fix: `runShell`/`shell.ts` itself is unchanged, it now simply receives an
+already-safe command string; the fix is in macros.ts's pipe `'shell'`
+stage substitution, see 19-composition-directives B1
+(`src/engine/macros.ts:244`) | Regression test:
+tests/unit/engine/shell-command-chaining.test.ts

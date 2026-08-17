@@ -4,15 +4,22 @@ title: Security Policy Core
 type: COMPONENT
 path: Security / Policy Core
 source_files: [src/engine/security/config.ts, src/engine/security/rules.ts, src/engine/security/shell.ts, src/engine/security/filesystem.ts, src/engine/security/masking.ts, src/engine/security/audit.ts, src/engine/security/path-expand.ts, src/engine/security/modes.ts, src/cli/commands/security.ts, src/cli/cli-register-security.ts]
+test_files: [tests/unit/engine/security-config.test.ts, tests/unit/engine/security-filesystem.test.ts, tests/unit/engine/security-masking-shell.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/cli/cli-router.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-1
 depends_on: [07-package-skeleton, 06-cr5-deny-by-default]
 tags: [policy, allowlist, immutable-rules, masking, strict-profile, per-invocation-reload]
 known_issues:
   - "The doc's stated source_files (policy.ts, surfaces.ts, immutable.ts, profiles.ts) and integration_contracts function name (enforcePolicy) do not match the real code: there is no single unified enforcePolicy gate. The real architecture has per-surface check functions (checkShellCommand for shell, checkDataPath/checkWritePath for filesystem, checkAbsolutePath/checkFilePath for path jails). Corrected source_files and integration_contracts below to match reality rather than the plan-time guess."
+  - "test_files was never backfilled when this doc was written (wave 1);
+    found empty during an unrelated bug fix's frontmatter validation
+    (2026-08-17). Corrected above from the real coverage:
+    security-config/-filesystem/-masking-shell.test.ts and
+    query-policy.test.ts exercise the per-surface check functions
+    directly, cli-router.test.ts covers the CLI security command."
   - "Found and fixed a real gap while verifying: config, and the cache directory, both defaulted to the user's home directory (~/.livestage/security.json, ~/.livestage/cache), not the project-local .livestage/ the spec calls for (Tech Stack: 'Config home: .livestage/ in the project root: policy.json, schemas/, cache/, trace/'). Fixed config.ts's loadSecurityConfig default path, security.ts's CLI-facing path (also renamed security.json -> policy.json to match the spec), cache.ts's CACHE_DIR, and threaded render.ts's --cwd option through to config resolution. Audit log and error log were left at ~/.livestage/ (not explicitly named in the project-local list, and an operational log surviving outside any one project is defensible)."
   - "The @code carve-out acceptance criterion (an engine-built runner invocation passing despite node -e being always-blocked) cannot be verified: @code does not exist yet, it is feature 29 (Code Runners, wave 4)."
 integration_contracts:
@@ -112,3 +119,28 @@ CR-5 true at runtime).
 ## Known Issues
 
 None.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `checkShellCommand`'s allowlist did not prevent command chaining
+after an allowed prefix (e.g. an allow pattern of `git *` also permitted
+`git log --oneline; touch pwned`).
+Cause: `matchShellPattern`'s wildcard-to-regex conversion (`rules.ts`)
+fully anchors the pattern (`^...$`) but `*` becomes `.*`, which matches
+shell metacharacters (`;`, `&&`, `||`, `|`, backticks, `$()`) the same as
+any other character; a command string containing an injected chained
+command therefore passed the check as part of an allowed match, and the
+caller then handed that same string to a real shell (spawnSync/execSync
+with shell:true), which does interpret those characters. Two ways
+untrusted data reached this: ordinary `{{ }}` interpolation resolving
+into command= before the check ran (executeQuery/executeTest/
+executeCheck), and `@foreach`/`@call` macro substitution (macros.ts).
+Fix: no change to `checkShellCommand`/`matchShellPattern` themselves,
+the allowlist still permits exactly the same commands it always did; the
+fix quotes the VALUE before it ever reaches the check. See
+17-source-directives B1 and 18-compute-directives B1
+(`interpolateShellSafe`, `src/engine/engine-include.ts:74,86`) and
+19-composition-directives B1 (`subStrShellSafe`,
+`src/engine/macros.ts:86`) | Regression test:
+tests/unit/engine/shell-command-chaining.test.ts

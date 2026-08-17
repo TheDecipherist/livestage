@@ -4,9 +4,10 @@ title: Compute Directives
 type: COMPONENT
 path: Directives / Compute
 source_files: [src/parser/directives/hash.ts, src/parser/directives/query.ts, src/parser/directives/test.ts, src/parser/directives/check.ts, src/engine/exec-ops.ts]
+test_files: [tests/unit/engine/hash.test.ts, tests/unit/engine/query-policy.test.ts, tests/unit/engine/test-check.test.ts, tests/unit/engine/shell-command-chaining.test.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [10-security-policy-core, 17-source-directives]
@@ -14,6 +15,11 @@ tags: [hash, query, test, check, shell-allowlist, structured-results]
 known_issues:
   - "source_files corrected: src/engine/shell.ts removed (it is feature 22's pipe-stage shell helper, runShell, dispatched from a @pipe stage, not from @query/@test/@check; feature 22's doc now lists it and got its own Windows-stripping fix, see there). @hash's engine implementation (executeHash) lives in feature 17's read-ops.ts, and @query's (executeQuery) lives in feature 17's sources.ts; exec-ops.ts here owns only @test/@check. See 17's known_issues for the same cross-reference from its side."
   - "Fixed a real, host-project-visible bug while verifying acceptance criterion 3: the shipped strict profile was missing plain npm/npm run allow patterns (only pnpm variants existed), so @test / with no explicit command= (auto-detected via npm run <script>, always npm regardless of package manager) was blocked by default on this project itself. Fixed in defaultSecurityConfig() (config.ts); documented retroactively in 06-cr5-deny-by-default.md's known_issues since that SPEC (wave 1, already closed) is where the shipped profile's shape is specified."
+  - "test_files was never backfilled (found empty 2026-08-17 during an
+    unrelated bug fix's frontmatter validation); corrected above to the
+    dedicated per-directive test files (others reference @hash/@query/
+    @test/@check incidentally while testing unrelated features, not as
+    primary coverage)."
 primitives:
   - name: "@hash"
     kind: directive
@@ -197,3 +203,16 @@ read-ops patterns for file-based hashing).
   never influenced by document content. Narrow and non-interpolated, but
   worth a second look when feature 42 (Contract Scans) builds the real
   security matrix.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `executeTest`/`executeCheck` (exec-ops.ts) resolved `{{ }}` into
+`command=` before `checkShellCommand` ran, the same shell-command-
+chaining vulnerability as 17-source-directives B1 (executeQuery) and
+22-pipe B1 (runShell).
+Cause: shared root cause, see 10-security-policy-core B1.
+Fix: `src/engine/exec-ops.ts:130,153` (executeTest/executeCheck swapped
+from `interpolatePathSoft` to `interpolateShellSafe`, defined
+`src/engine/engine-include.ts:74,86`) | Regression test:
+tests/unit/engine/shell-command-chaining.test.ts

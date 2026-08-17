@@ -9,7 +9,7 @@ source_files: [src/engine/sources.ts, src/engine/frontmatter-utils.ts,
   src/parser/directives/render.ts]
 status: complete
 phase: all
-last_synced: 2026-08-02
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-5
 depends_on: [17-source-directives, 32-schema-engine, 20-render-formats]
@@ -317,3 +317,18 @@ pass (the bracket-array/block-list parsing edge cases and the `where=`
 interpolation vulnerability) was fixed within the same build; see
 Implementation Notes for the full narrative and Business Rules 8-10 for
 the resulting behavior.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: N/A to this doc's own concern (frontmatter-shaped `where=`
+querying). Recorded here per the fix's diff reconciliation: this doc
+owns `src/engine/sources.ts`, which changed as part of closing the
+shell-command-chaining bug (security/allowlist concern, see
+10-security-policy-core B1).
+Cause: N/A.
+Fix: `executeQuery`'s command interpolation swapped from
+`interpolatePathSoft` to `interpolateShellSafe`; `where=`'s own
+evaluation path (`whereMatches`, `sources-file-utils.ts`) is untouched.
+See 17-source-directives B1 for the actual fix | Regression test:
+tests/unit/engine/shell-command-chaining.test.ts

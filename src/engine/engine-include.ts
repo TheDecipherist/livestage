@@ -58,6 +58,39 @@ export function interpolatePathSoft(path: string, ctx: EngineContext): string {
   })
 }
 
+/**
+ * Security (bug B1, 2026-08-17): quotes a value for safe splicing into a
+ * shell command string. checkShellCommand's allowlist only validates that
+ * the FULLY-RESOLVED command string matches an allow pattern; it never
+ * parses shell syntax, so a raw substituted value containing ;/&&/||/|/
+ * backticks/$() is interpreted by the real shell that ultimately runs the
+ * command (spawnSync/execSync with shell:true), chaining further commands
+ * after an allowed prefix. Wrapping the value in single quotes (escaping
+ * any embedded ' as '\'', the standard POSIX technique) makes it an inert
+ * literal argument regardless of what characters it contains, so the
+ * allowlist still permits exactly the same commands it always did, but
+ * nothing past the quote boundary can execute.
+ */
+export function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
+/**
+ * Shell-command variant of interpolatePathSoft: resolves {{ }} the same
+ * way, but shell-quotes the resolved value instead of splicing it in as
+ * plain text. Used ONLY for the command= field of @query/@test/@check and
+ * a pipe's shell stage, the fields that reach a real shell; every other
+ * interpolatePathSoft call site (paths, @update-frontmatter's value) is
+ * unaffected and keeps plain interpolation.
+ */
+export function interpolateShellSafe(command: string, ctx: EngineContext): string {
+  return command.replace(INTERP_RE, (_, expr: string) => {
+    const value = evalExpression(expr.trim(), ctx)
+    if (value === 'null' || value === '') return ''
+    return shellQuote(value)
+  })
+}
+
 export function versionIsNewer(required: string, installed: string): boolean {
   const [rMaj = 0, rMin = 0] = required.split('.').map(Number)
   const [iMaj = 0, iMin = 0] = installed.split('.').map(Number)

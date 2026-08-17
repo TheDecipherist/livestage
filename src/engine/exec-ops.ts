@@ -12,7 +12,7 @@ import { resolve } from 'node:path'
 import type { TestNode, CheckNode } from 'livestage/parser'
 import type { EngineContext } from './context.js'
 import { checkShellCommand } from './security/shell.js'
-import { interpolatePathSoft } from './engine-include.js'
+import { interpolateShellSafe } from './engine-include.js'
 
 // --- @test / @check ---------------------------------------------------
 
@@ -123,8 +123,11 @@ export function executeTest(node: TestNode, ctx: EngineContext): string {
   // Interpolate {{ }} in the command so e.g. `npx vitest run tests/unit/
   // {{ feature_slug }}.test.ts` resolves before the shell runs it. Without
   // this, vitest sees `{{` and `}}` as separate filter terms and matches
-  // nothing.
-  const command = interpolatePathSoft(rawCommand, ctx)
+  // nothing. interpolateShellSafe shell-quotes the resolved value (see B1:
+  // an unquoted splice let a resolved value chain further commands past
+  // an allowed allowlist prefix, since checkShellCommand validates the
+  // resolved string, not shell syntax).
+  const command = interpolateShellSafe(rawCommand, ctx)
   const r = runCommand(command, ctx, '@test', 'test')
   if (!r) return ''
   const label = node.args['label']
@@ -147,7 +150,7 @@ export function executeCheck(node: CheckNode, ctx: EngineContext): string {
     ctx.warnings.push('@check: no command= provided and no scripts.typecheck/check/lint/build in package.json')
     return ''
   }
-  const command = interpolatePathSoft(rawCommand, ctx)
+  const command = interpolateShellSafe(rawCommand, ctx)
   const r = runCommand(command, ctx, '@check', 'check')
   if (!r) return ''
   const label = node.args['label']

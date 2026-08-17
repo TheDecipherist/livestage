@@ -6,20 +6,23 @@ path: Directives / Composition
 source_files: [src/parser/directives/set.ts, src/parser/directives/if.ts, src/parser/directives/foreach.ts, src/parser/directives/switch.ts, src/parser/directives/define.ts, src/parser/directives/call.ts, src/parser/directives/include.ts, src/parser/directives/import.ts, src/parser/directives/template.ts, src/parser/directives/data.ts, src/engine/engine-interpolate.ts, src/engine/engine-include.ts, src/engine/engine-template.ts, src/engine/macros.ts]
 status: complete
 phase: all
-last_synced: 2026-08-01
+last_synced: 2026-08-17
 initiative: livestage
 wave: livestage-wave-2
 depends_on: [09-grammar-parser, 17-source-directives]
 tags: [interpolation, control-flow, macros, include, import, template, scoping]
+test_files: [tests/unit/engine/set.test.ts, tests/unit/engine/switch.test.ts, tests/unit/engine/foreach.test.ts, tests/unit/engine/data.test.ts, tests/unit/engine/template.test.ts, tests/unit/engine/template-foreach.test.ts, tests/unit/engine/template-security.test.ts, tests/unit/engine/include-dynamic-path.test.ts, tests/unit/engine/include-import-skill-dir.test.ts, tests/unit/parser/define-body.test.ts, tests/unit/engine/engine-execute-advanced.test.ts, tests/unit/engine/shell-command-chaining.test.ts]
 known_issues:
-  - "[gap] test_files unknown, tests undiscovered. This doc predates the
-    test_files completion gate; real coverage almost certainly exists
-    (tests/unit/engine/{set,switch,foreach,data,template,template-foreach,
-    template-security,include-dynamic-path,include-import-skill-dir}.test.ts
-    and others reference these source files) but a precise per-file mapping
-    was not run here, this doc was only touched to record the RCE gap below
-    during an unrelated build (read-body-directive). Needs its own
-    mdd-frontmatter-discovery pass."
+  - "[gap] test_files was listed as unknown; corrected above 2026-08-17
+    (found while an unrelated bug fix's frontmatter validation blocked on
+    the missing field) to the files each directive's own name and
+    behavior maps to directly, confirmed to exist on disk and exercise
+    the corresponding directive: define-body.test.ts (@define) and
+    engine-execute-advanced.test.ts (@call, more general execution
+    paths) added to the doc's own previously-suggested list. This is a
+    by-name/by-behavior match, not an exhaustive per-source-line audit;
+    a full mdd-frontmatter-discovery pass would still be the precise
+    answer if ever genuinely needed."
   - "RESOLVED (2026-08-03, feature 49, fix/foreach-interpolation-rce):
     the @foreach/@call/@template body-substitution RCE described here was
     fixed, and expanded in scope during the fix's own Phase 7 review to
@@ -316,3 +319,19 @@ AI-consumer directive syntax; kept. They had zero test coverage before this
 wave, added in `tests/unit/engine/sandbox-brief-builtins.test.ts` (4 tests).
 They are currently used by MDD's own build flow to seed feature docs from
 wave briefs, not by any `.stage` document feature.
+
+## Bug Fixes
+
+### B1 (fixed 2026-08-17)
+Symptom: `macros.ts`'s `substituteNode` spliced a `@foreach`/`@call`-bound
+value directly into the `'query'`/`'test'`/`'check'` node's command and
+the pipe `'shell'` stage's command, unescaped, with no shell-quoting;
+explicitly deferred out of feature 49's own fix for the same directive
+family (see the RESOLVED note above).
+Cause: shared root cause, see 10-security-policy-core B1.
+Fix: `src/engine/macros.ts:86` (new `subStrShellSafe`, shell-quotes
+instead of brace-escaping), applied at `:149` (`'query'` case), the
+`'test'`/`'check'` case, and `:244` (pipe `'shell'` stage case; the
+`'builtin'` case stays on plain `subStr`, grep/sort/etc. never spawn a
+process) | Regression test:
+tests/unit/engine/shell-command-chaining.test.ts
