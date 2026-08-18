@@ -46,13 +46,22 @@ try {
 // Cheap sanity floor against a silent under-render (a directive that
 // degrades to empty on a missing/renamed target, e.g. read_section() on a
 // renamed heading, produces exit 0 with quietly-dropped content, not an
-// error): the real README has ~450 lines and 11 directive-doc sections.
-// Both thresholds are set well below the real numbers, this is a coarse
+// error).
+//
+// This floor used to count "### " headings and require 8+. Those headings
+// were the inline directive reference, which now lives in
+// docs/directives.md and is guarded by scripts/check-directives.mjs. What
+// is left in the README that can still silently vanish is the live-read
+// content: the four ```stage fences (the minimal example plus the three
+// agent briefs, each read from its real source file) and the round-trip
+// table read from benchmarks/roundtrip.json. Those are what this guards.
+// All three thresholds sit well below the real numbers, this is a coarse
 // alarm for "most of the content silently vanished," not a precise check.
 const lineCount = rendered.split('\n').length
-const sectionCount = (rendered.match(/^### /gm) ?? []).length
-if (lineCount < 200 || sectionCount < 8) {
-  console.error(`check-readme: RENDER SUSPICIOUSLY SHORT (${lineCount} lines, ${sectionCount} "### " sections). This usually means a directive silently degraded to empty (a renamed heading, a moved file) rather than a real, complete render. Investigate before trusting the diff below.`)
+const stageFences = (rendered.match(/^```stage$/gm) ?? []).length
+const hasRoundTrip = /\|\s*scenario\s*\|/.test(rendered)
+if (lineCount < 250 || stageFences < 4 || !hasRoundTrip) {
+  console.error(`check-readme: RENDER SUSPICIOUSLY SHORT (${lineCount} lines, ${stageFences} stage fences, round-trip table ${hasRoundTrip ? 'present' : 'MISSING'}). This usually means a directive silently degraded to empty (a renamed heading, a moved file) rather than a real, complete render. Investigate before trusting the diff below.`)
   process.exit(3)
 }
 

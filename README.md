@@ -1,8 +1,8 @@
 <!-- livestage:generated
 livestage_source: README.stage
-livestage_updated_at: 2026-08-17T22:20:49.893Z
-livestage_version: 1.1.0
-livestage_content_hash: d0b6c0c7239a3def9f9eb346ea5c110b5d29f39feacd0467c56332e44b09c207
+livestage_updated_at: 2026-08-18T00:59:10.003Z
+livestage_version: 1.1.1
+livestage_content_hash: 9cb5403e828b080b1c349e69a4c26779c317ceaf1b33e5c94fcaf52aa7556cd4
 livestage_hash_inputs: .mdd/docs/*.md,package.json,scripts/test-baseline.json,examples/agent-briefs/*.stage,README.stage
 livestage_degraded: false
 -->
@@ -11,80 +11,16 @@ livestage_degraded: false
 
 Live-document renderer and verifier for AI agents.
 
-**Version 1.1.0** | **1239+ tests** | MIT
+**Version 1.1.1** | **1239+ tests** | **30 directives** | MIT
 
-This README is generated. Every fact in it (the directive reference below,
-the version and test count above, the three worked examples) is read live
-from the project itself by `README.stage`, never hand-typed. Run
-`npm run readme` to regenerate `README.md`; `npm run readme:check` fails
-if it would produce a different file than what is currently committed, and
-that check runs in CI. See "How this README stays current" at the bottom.
+Your agent spends tokens every session re-deriving things the repo already
+knows. Which branch, what changed, which files have no test, whether
+`.env.example` still matches the code. Same commands, same parsing, every
+time.
 
-## Install
+A `.stage` file answers that once, at read time, in one Read call.
 
-```
-npm install --save-dev livestage
-```
-
-Then wire it into an AI coding assistant's hooks:
-
-```
-npx livestage init
-```
-
-`init` is idempotent (safe to run again, a no-op if already installed) and
-transactional (a partial failure rolls back everything it wrote). Concretely,
-it makes four changes:
-
-- Registers a **PostToolUse** hook, pointed at the installed package's own
-  `dist/hook/pretooluse.js`, so reading a `.stage` file with the normal file
-  tool already returns the rendered result, no separate render step.
-  (PreToolUse can only allow/deny/rewrite a tool's arguments; only
-  PostToolUse can substitute what a Read call actually returns.) The same
-  hook also watches reads of any `.md` file stamped with the
-  `livestage:generated` contract, see "Keep a generated `.md` honest at
-  read time" below.
-- Installs a **SessionStart** hook script to `~/.livestage/hooks/sessionStart.mjs`.
-  It renders `<project>/CLAUDE-LiveStage.stage` (if that file exists) and
-  injects the result into the session, a live, self-updating brief instead of
-  a static `CLAUDE.md` section; it makes zero filesystem writes and never
-  blocks session start on failure.
-- Both hooks are registered in the detected client's own settings file
-  (`~/.claude/settings.json` for Claude Code, `~/.cursor/settings.json` for
-  Cursor, auto-detected, or pass `--client`).
-- Seeds `<project>/.livestage/policy.json` with the shipped "strict" profile,
-  only if one does not already exist. "Strict" names the enforcement model
-  (every surface not explicitly granted is denied, hard destructive patterns
-  are immutable, no reach outside the project root), not "shell is off":
-  shell ships with a curated, read-only allowlist (`git`, `cat`, `grep`,
-  `find`, the common test runners, around 40 patterns), deliberately, since
-  without it `@query` is dead on arrival. `@code` and HTTP ship genuinely
-  empty; anything beyond the shipped allowlist, on any surface, needs an
-  explicit grant.
-
-Or use it standalone, no hook required:
-
-```
-npx livestage render some-doc.stage
-```
-
-## What LiveStage is
-
-A `.stage` file mixes prose with executable directives instead of storing
-static data: file listings, frontmatter reads, git queries, hashes, test
-results, script output, assertions. When an agent reads the file, the
-engine resolves every directive at that moment and returns pure markdown,
-with zero directive syntax remaining. The directive syntax exists only at
-rest, for authors; the agent consuming a render needs no knowledge of
-LiveStage at all.
-
-The agent decides, LiveStage computes. The engine never judges, gates, or
-chooses; it resolves deterministic data and hands it back as markdown.
-Every directive declares a static fallback, so a `.stage` file read
-without the engine (or after a timeout) is still a usable, honest document
-that says it is degraded.
-
-## A minimal example
+**Source you write:**
 
 ```stage
 # Project status
@@ -95,27 +31,121 @@ that says it is degraded.
 Last commit: {{ last_commit }}. {{ file_count }} TypeScript files.
 ```
 
-Rendering that produces plain markdown, no directive syntax, no matter
-how many times you run it or how much the repo changes underneath it.
+**What the agent actually receives:**
 
-## Real-world scenarios: what this actually saves
+```markdown
+# Project status
 
-The pitch above is abstract. Here is what it looks like in practice,
-three real, runnable examples under `examples/agent-briefs/`, each
-replacing several separate shell commands (that an agent would otherwise
-run one at a time, then hold the combined picture in its own context)
-with a single render that returns a finished status result.
+Last commit: a1b2c3d fix parser edge case. 47 TypeScript files.
+```
 
-Each is read live from its real, runnable file below, a directive pipeline
-(`@read ... | @render type="code"`), not a hand-retyped snippet that could
-drift from what actually runs. Run any of them yourself with `livestage
-render <file>` from inside `examples/agent-briefs/`, where the shared
-policy grant applies.
+No directive syntax survives. The agent reading it needs to know nothing
+about LiveStage, and the numbers were true at the moment it read them.
 
-### Codebase health, one render instead of three commands
+## Drift? What's that?
+
+The reason those numbers are usually wrong is not laziness. It is that a
+document written once is a snapshot, and snapshots stop being true the
+moment the code moves.
+
+[`CLAUDE.md`](CLAUDE.md), the file every Claude Code session in this repo
+reads first, was written once by Claude Code's own `/init` command and
+never regenerated. It claimed a directive count "as of this writing", a
+number nothing kept honest, and pointed at a donor spec file that had
+already stopped existing here. Both sat there, wrong, until someone
+happened to grep for them. Being written by an LLM the first time bought
+it nothing. A snapshot is a snapshot regardless of who typed it.
+
+Now [`CLAUDE.stage`](CLAUDE.stage) generates it, and `npm run claude-md:check`
+fails CI if the committed file no longer matches. This README is the same:
+5 modules, 30 directives, 25
+worked examples, all computed at render time, none typed by hand.
+
+## Reach for this when
+
+- An agent runs the same commands at the start of every session.
+- A hand-maintained file describes something the code already knows:
+  an env example, a scripts reference, a coverage map, an API index.
+- A number in your docs has an "as of" date next to it.
+- You want a document that degrades honestly rather than silently.
+
+## Skip it when
+
+- The document is genuinely static prose. A design rationale does not
+  change because a file did.
+- The data changes within a single render, so the answer is stale before
+  the reader finishes.
+- One shell command already answers the question. Wrapping it buys
+  nothing and adds a dependency.
+- You need the agent to decide something. LiveStage computes and hands
+  back markdown. It never judges, gates or chooses.
+
+## Install
+
+```
+npm install --save-dev livestage
+```
+
+Then wire it into an AI coding assistant:
+
+```
+npx livestage init
+```
+
+`init` is idempotent and transactional: safe to run twice, and a partial
+failure rolls back everything it wrote. It registers a **PostToolUse** hook
+so reading a `.stage` file with the normal file tool already returns the
+rendered result, installs a **SessionStart** hook that injects a live brief
+instead of a static `CLAUDE.md` section, writes both into the detected
+client's settings (`~/.claude/settings.json`, or `~/.cursor/settings.json`,
+or pass `--client`), and seeds a policy file. See [Security](#security).
+
+PostToolUse rather than PreToolUse on purpose: PreToolUse can only allow,
+deny or rewrite a tool's arguments. Only PostToolUse can substitute what a
+Read call actually returns.
+
+Or standalone, no hook:
+
+```
+npx livestage render some-doc.stage
+```
+
+## What it costs an agent to not have this
+
+An agent getting repo state with shell emits a command, reads a result, and
+reasons about it, three times over. With a brief it emits one Read and reads
+one finished answer.
+
+| scenario                    | shell | one brief |
+|-----------------------------|-------|-----------|
+| repo state (3 git commands) | 91    | 25        |
+| coverage gap (2 listings)   | 54    | 20        |
+| env drift (2 commands)      | 61    | 19        |
+
+
+Method: cl100k_base, model-emitted tokens only, matched content on both sides. Model-emitted tokens are output-priced, roughly 5x
+input. There is no percentage claimed here on purpose: a real saving depends
+on a real agent run, and a modelled number published as a benchmark is the
+kind of claim that deserves to be torn apart.
+
+The second-order point matters more than the first. A regenerated command
+*varies*. `grep -r "process.env"` and `grep -rn 'process\.env'` and `rg` are
+three different commands, and one of them returns a different answer. A
+`.stage` command is fixed text, authored once, and it returns the same shape
+every time.
+
+## Three briefs, live from their real source
+
+Each of these replaces several separate commands with one render. They are
+read live from the runnable files under `examples/agent-briefs/`, not
+retyped, so what you see below cannot drift from what actually runs. Run any
+of them with `livestage render <file>` from inside that directory, where the
+shared policy grant applies.
+
+### Codebase health
 
 Old way: `git rev-parse --abbrev-ref HEAD`, then `git log -1`, then
-`git status --short`, three round trips, three outputs to mentally merge.
+`git status --short`. Three round trips, three outputs to merge mentally.
 
 ```stage
 # Codebase Health Brief
@@ -146,7 +176,7 @@ See that file directly for the exact JSON.
 @if-end
 ```
 
-### Change review, one render instead of three commands
+### Change review
 
 Old way: `git diff --stat`, `git log -5 --oneline`, `git status --short`.
 
@@ -172,13 +202,12 @@ strings this file uses below in `allow_patterns`, no wildcard.
 {{ status }}
 ```
 
-### Onboarding brief, one render instead of four commands, zero shell grant
+### Onboarding brief, with no shell grant at all
 
 Old way: `cat README.md`, `cat package.json`, `ls src`, `grep scripts
-package.json`. This one needs no `shell` policy grant at all, `@read` and
-`@tree` are filesystem-policy directives, not shell, proof that a whole
-class of "read this project" agent work never needs shell access in the
-first place.
+package.json`. This one needs no shell permission. `@read` and `@tree` are
+filesystem directives, which means a whole class of "read this project" work
+never needs shell access in the first place.
 
 ```stage
 # Onboarding Brief
@@ -202,35 +231,28 @@ project without a path escaping this example's own directory.
 {{ src_tree }}
 ```
 
-## Drift? What's that?
+## Security
 
-Every `.stage` file in this repo generates itself, including this README.
-[`CLAUDE.md`](CLAUDE.md), the one file every Claude Code session in this repo
-reads first, is no exception: [`CLAUDE.stage`](CLAUDE.stage) generates it,
-checked by `npm run claude-md:check` on every CI run, the exact
-`readme`/`readme:check` pattern above, applied to the file that actually
-onboards the agent.
+Every directive runs under a policy file at `.livestage/policy.json`.
+`init` seeds the shipped **strict** profile if one does not already exist.
 
-Before that existed, `CLAUDE.md` was written once, by Claude Code's own
-`/init` command, and never regenerated after: a one-time snapshot, not a
-live document. It drifted exactly like any static snapshot does. It
-claimed a directive count "as of this writing" (a number nothing kept
-honest) and pointed at a donor spec file that had already stopped existing
-in this repo. Both sat there, wrong, until someone happened to grep for
-them. Being written by an LLM the first time bought it nothing; a snapshot
-is a snapshot regardless of who typed it.
+"Strict" names the enforcement model, not a feature switch. Every surface
+not explicitly granted is denied, hard destructive patterns are immutable,
+and nothing reaches outside the project root.
 
-Now `CLAUDE.stage` computes 5 modules, 30 directives,
-25 worked examples, and every `npm run` script in this
-project, live, the same way every number in this sentence was computed at
-render time, not typed by hand.
+- **shell** ships with a curated read-only allowlist, around 40 patterns:
+  `git`, `cat`, `grep`, `find`, the common test runners. Deliberately, since
+  `@query` is dead on arrival without it.
+- **`@code` and HTTP ship genuinely empty.** Anything beyond the shipped
+  allowlist, on any surface, needs an explicit grant.
+
+The three briefs above share one grant in `examples/agent-briefs/.livestage/policy.json`,
+which lists the five git commands they run and nothing else.
 
 ## Keep a generated `.md` honest at read time
 
-`README.md` and `CLAUDE.md` above are this project's own; the same
-guarantee is available for any `.md` a `.stage` file in your project
-produces. Add `--stamp-metadata` to a `livestage build` call and the
-generator writes a small HTML comment block at the top of the output:
+Add `--stamp-metadata` to a `livestage build` call and the generator writes
+a small HTML comment at the top of the output:
 
 ```
 <!-- livestage:generated
@@ -244,816 +266,115 @@ livestage_degraded: false
 -->
 ```
 
-An HTML comment, not YAML frontmatter, on purpose: GitHub renders a leading
-`---` block ugly (or Jekyll-interprets it) at the top of a repo's own
-README; a comment renders as nothing and is equally machine-readable.
-`--hash-inputs` (optional, comma-separated globs, relative to the source
-file's own directory) names every file the render actually depends on;
-without it, the hash covers only the `.stage` source itself. Presence of
-the block, not filename, is what opts a file into the contract: a `.md`
-with no block is passed through untouched, hook installed or not.
+An HTML comment rather than YAML frontmatter on purpose. GitHub renders a
+leading `---` block badly at the top of a repo's own README, or Jekyll
+interprets it. A comment renders as nothing and is equally machine-readable.
+`--hash-inputs` names every file the render actually depends on; without it
+the hash covers only the `.stage` source. Presence of the block, not the
+filename, opts a file into the contract. A `.md` with no block is passed
+through untouched whether the hook is installed or not.
 
-The PostToolUse hook `init` installs watches reads of any stamped `.md`.
-It hashes the declared inputs first; unchanged means the committed file is
-served as-is, no render at all. Only a changed hash triggers work, and
-`livestage_regenerate_on_read`, a field only you set, decides what happens
-next:
+The PostToolUse hook watches reads of any stamped `.md`. It hashes the
+declared inputs first, and unchanged means the committed file is served
+as-is with no render at all. Only a changed hash triggers work, and
+`livestage_regenerate_on_read`, a field only you set, decides what happens:
 
-- **absent** (the default): committed content is served, with a notice
-  prepended naming what's stale and the exact regen command. Drift gets
-  surfaced; content does not change under the reader.
-- **`true`**: a fresh render is served instead, with a notice stating
-  plainly that what follows is a live render of the source, not the file's
-  committed bytes.
-- **`false`**: committed content is served, no notice, no comparison. An
-  explicit opt-out is honored as one.
+- **absent** (default): committed content is served, with a notice naming
+  what is stale and the exact regen command. Drift gets surfaced, content
+  does not change under the reader.
+- **`true`**: a fresh render is served, with a notice stating plainly that
+  what follows is a live render rather than the file's committed bytes.
+- **`false`**: committed content, no notice, no comparison. An explicit
+  opt-out is honored as one.
 
-If the render itself fails or times out, the committed file is served
-unchanged with a "could not verify, may be stale" notice. A read through
-this hook never fails and never serves a fresh render silently, at any
-setting: a stale file being wrong is recoverable, a stale file that looks
-current to the one reader who could have caught it is not.
+If the render fails or times out, the committed file is served unchanged
+with a "could not verify, may be stale" notice. A read through this hook
+never fails and never serves a fresh render silently. A stale file being
+wrong is recoverable. A stale file that looks current to the one reader who
+could have caught it is not.
 
-## More examples
+## Fallbacks
 
-Every example below has a rendered `.md` sitting next to its `.stage`
-source, kept honest by `npm run examples:check` (mirrors this README's own
-`readme:check`, wired into CI). A few are marked "live" because they're
-deliberately non-deterministic (real git state, wall-clock timing, an
-environment-dependent directory tree); those still ship a rendered
-snapshot, just not one asserted byte-identical on every run.
-
-**[`examples/hello.stage`](examples/hello.stage)** ([rendered](examples/hello.md), live)
-The smallest possible one: today's date, this directory's tree.
-
-**`examples/drift/`** - four worked examples eliminating a specific kind
-of hand-maintained doc/config that silently diverges from the code that
-should govern it:
-- [`env-drift.stage`](examples/drift/env-drift/env-drift.stage) ([rendered](examples/drift/env-drift/env-drift.md)) - `.env.example` vs actual `process.env` usage.
-- [`scripts-reference.stage`](examples/drift/scripts-reference/scripts-reference.stage) ([rendered](examples/drift/scripts-reference/scripts-reference.md)) - `package.json`'s real `scripts`, live.
-- [`test-coverage-map.stage`](examples/drift/test-coverage-map/test-coverage-map.stage) ([rendered](examples/drift/test-coverage-map/test-coverage-map.md)) - which source files have no matching test.
-- [`todo-debt.stage`](examples/drift/todo-debt/todo-debt.stage) ([rendered](examples/drift/todo-debt/todo-debt.md)) - a live `TODO`/`FIXME`/`HACK` inventory.
-
-**`examples/agent-briefs/`** - the three scenarios above, in full:
-[`codebase-health.stage`](examples/agent-briefs/codebase-health.stage) ([rendered](examples/agent-briefs/codebase-health.md), live),
-[`change-review.stage`](examples/agent-briefs/change-review.stage) ([rendered](examples/agent-briefs/change-review.md), live),
-[`onboarding-brief.stage`](examples/agent-briefs/onboarding-brief.stage) ([rendered](examples/agent-briefs/onboarding-brief.md)).
-
-**`examples/database/`** and **`examples/http-health/`** - there is no
-`@db` or `@http` directive; external reach is `@code` under policy.
-[`customers.stage`](examples/database/customers.stage) ([rendered](examples/database/customers.md)) runs driver
-code in `@code`, renders a table. [`check.stage`](examples/http-health/check.stage) ([rendered](examples/http-health/check.md)) runs `fetch` in
-`@code`, renders structured status.
-
-**[`examples/connections/connections.stage`](examples/connections/connections.stage)** ([rendered](examples/connections/connections.md))
-A project connections index: path tree, dependency graph, source-file
-overlap, all computed, nothing hand-maintained.
-
-**[`examples/import-graph/import-graph.stage`](examples/import-graph/import-graph.stage)** ([rendered](examples/import-graph/import-graph.md))
-`@graph` reads YAML frontmatter, it has no notion of real `import`
-statements; `@import-graph` does, walking a source tree (`src="./src"`)
-into a real Mermaid dependency graph, one node per source file, no
-shell/`@code` grant needed.
-
-**`examples/multi-step/`** - files as steps, frontmatter as state,
-assertions as gates, no workflow engine. [`index.stage`](examples/multi-step/index.stage) ([rendered](examples/multi-step/index.md))
-is the overview; see its own [README](examples/multi-step/README.md) to
-run the actual pipeline (the step files themselves aren't pre-rendered
-here, running them changes real state on disk, which is the point).
-
-**`examples/showcase/`** - three documents rendering under the default
-policy, no extra grants: [`index.stage`](examples/showcase/index.stage) ([rendered](examples/showcase/index.md)),
-[`api-reference.stage`](examples/showcase/api-reference.stage) ([rendered](examples/showcase/api-reference.md)),
-[`report.stage`](examples/showcase/report.stage) ([rendered](examples/showcase/report.md), live).
+Every directive declares a static fallback. A `.stage` file read without the
+engine, or after a timeout, is still a usable document, and it says plainly
+that it is degraded rather than presenting stale output as current.
 
 ## Directive reference
 
-Every directive LiveStage ships, pulled live from whichever docs declare
-`primitives` in their frontmatter, no path convention to keep in sync by
-hand. Document a new directive with a `primitives` entry and its Interface
-Overview appears here on the next `npm run readme`.
-
-
-### Source Directives
-
-These directives (plus one sandbox function for composing content inline)
-are how a `.stage` document reads the real world: the filesystem,
-structured JSON/CSV files, another document's frontmatter or body text,
-and the environment. Reach for one of these any time you'd otherwise write
-a paragraph by hand and hope it stays accurate, a file listing, a value
-pulled out of `package.json`, the current date, a config value from the
-environment. Every read is live: run the same document again later and it
-answers again, from whatever is true then.
-
-| Name | What it does |
-|---|---|
-| `@list` | Lists files in a directory, or rows from a JSON array or CSV file. |
-| `@read` | Reads a file's raw content, or one value/table out of a JSON or CSV file. |
-| `@read-frontmatter` | Reads one field out of a markdown file's YAML frontmatter. |
-| `@read-body` | Reads a markdown file's whole body, or one section of it, past the frontmatter. |
-| `@tree` | Renders a directory as an indented tree. |
-| `@count` | Counts files in a directory, or lines in a file. |
-| `@date` | The current date/time, or a file's last-modified time, in a format you choose. |
-| `@env` | An environment variable, with an optional fallback. |
-| `read_body` | The same read as `@read-body`, callable inline inside `{{ }}` or `@if` for composing into a larger expression. |
-
-### @list
-
-Lists the entries in a directory, or reads rows out of a JSON array or a CSV
-file when the path ends in `.json`/`.csv`.
-
-```stage
-@list "src" match="*.ts" type="files" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `match` | glob pattern | Only include entries whose name matches |
-| `type` | `files` \| `dirs` \| `both` (default `files`) | What kind of entries to include |
-| `depth` | integer | How many directory levels to recurse (unlimited if omitted) |
-| `path` | dot-path (JSON only) | Pull one nested value or array out of a JSON file instead of listing its top level |
-| `columns` | `col1,col2` (JSON/CSV) | Which fields to show, in order, for array/row data |
-| `where` | expression | Keep only rows/items matching the expression |
-| `column` | name (CSV only) | Return a single column instead of full rows |
-| `label` | name | Capture the result into a variable instead of (or as well as) printing it |
-| `join` | separator string (default `\n`) | For multi-line results, the separator used when the label is later read via `{{ }}` (a bare newline-joined label still feeds `@foreach` as a source; `join=", "` reads as prose instead) |
-
-### @read
-
-Reads a file's content as-is, or pulls one value or table out of a JSON or
-CSV file when `path=`/`column=` is given.
-
-```stage
-@read "package.json" path="name" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `path` | dot-path (JSON only) | Extract one nested value out of a JSON file |
-| `columns` | `col1,col2` (JSON/CSV) | Which fields to show, in order |
-| `where` | expression | Keep only rows/items matching the expression |
-| `column` | name (CSV only) | Return a single column instead of full rows |
-| `label` | name | Capture the result into a variable |
-| `join` | separator string (default `\n`) | Same as `@list`'s `join=`, for multi-line results |
-| `visible` / `silent` | `false` / `true` | Suppress the inline print, useful when only the captured `label=` value is needed |
-
-### @read-frontmatter
-
-Reads one named field out of a markdown file's YAML frontmatter block,
-useful for pulling a doc's `status`, `title`, or any other frontmatter value
-into a render without opening the file yourself.
-
-```stage
-@read-frontmatter "README.stage" field="title" label="doc_title" visible="false" /
-{{ doc_title }}
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `field` | frontmatter key | The single top-level field to read (arrays come back comma-joined) |
-| `label` | name | Capture the value into a variable |
-| `visible` / `silent` | `false` / `true` | Suppress the inline print, keep only the captured value |
-
-### @read-body
-
-Reads a markdown file's whole body, everything after its frontmatter
-block, blank lines preserved, as a standalone directive: prints inline,
-captures via `label=`, or feeds into a pipe. Give it `section=` to get
-just one part of the doc instead of the whole thing.
-
-```stage
-@read-body ".mdd/docs/17-source-directives.md" section="Business Rules" | @render type="code" lang="markdown" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) or `path` | file path | The markdown file to read |
-| `section` | heading text | Return just this one section instead of the whole body |
-| `label` | name | Capture the result into a variable |
-| `visible` / `silent` | `false` / `true` | Suppress the inline print, keep only the captured value |
-
-### @tree
-
-Renders a directory as an indented tree, the same shape as the Unix `tree`
-command.
-
-```stage
-@tree "src" depth="2" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `match` | glob pattern | Only include entries whose name matches |
-| `depth` | integer | How many levels to recurse (unlimited if omitted) |
-
-### @count
-
-Counts the files in a directory (optionally filtered by `match=`), or the
-lines in a file.
-
-```stage
-@count "src" match="*.ts" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `match` | glob pattern | Only count entries whose name matches |
-| `type` | `files` \| `dirs` \| `both` (default `files`) | What kind of entries to count |
-| `depth` | integer | How many directory levels to recurse (unlimited if omitted) |
-
-### @date
-
-The current date and time, or a file's last-modified time, in a format you
-choose.
-
-```stage
-@date format="YYYY-MM-DD" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `format` | `ISO`, `date`, or a token pattern (`YYYY-MM-DD HH:mm`, etc.) | How to format the result (default `ISO`) |
-| `type` | `current` (default) \| `modified` | Use now, or a file's last-modified time |
-| `file` | path | The file to read the modified time from, when `type="modified"` |
-
-### @env
-
-Reads an environment variable, with an optional fallback when it isn't set.
-
-```stage
-@env "NODE_ENV" fallback="development" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) | variable name | The environment variable to read |
-| `fallback` | any string | Value to use when the variable isn't set |
-
-### read_body
-
-A sandbox function, callable inside `{{ }}` or an `@if` condition, that
-returns a markdown file's whole body, everything after its frontmatter
-block, blank lines preserved. Give it a heading and it returns just that
-one section instead, the same result `read_section()` already returns.
-Reach for this when you're composing a doc's own content into a larger
-expression, the same way `README.stage` chains `.replace()` onto
-`read_section()`'s result today.
-
-```stage
-{{ read_body(".mdd/docs/17-source-directives.md") }}
-{{ read_body(".mdd/docs/17-source-directives.md", "Architecture") }}
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `path` | file path | The markdown file to read (first argument) |
-| `section` | heading text (optional) | Return just this one section instead of the whole body (second argument) |
-
-### Compute Directives
-
-These four directives run something and hand back the result: a shell
-command, a content hash, or your project's test/check scripts. `@query` is
-the general-purpose escape hatch for allowlisted shell commands; `@test`
-and `@check` are the same idea shaped specifically for pass/fail results
-you can branch on. Every one of them is gated by your project's
-`.livestage/policy.json` allowlist, not by nothing running until you grant
-it: the shipped default already grants a curated set of read-only commands
-(`git *`, `cat *`, `grep *`, `find *`, the test runners, and more), so
-`@query`/`@test`/`@check` work out of the box; a fresh `livestage init`
-seeds the strict profile instead (shell off, no patterns granted) until you
-add your own.
-
-| Name | What it does |
-|---|---|
-| `@hash` | A content hash of a file, for change detection. |
-| `@query` | Runs an allowlisted shell command and captures its output. |
-| `@test` | Runs the project's test suite and returns a structured pass/fail summary. |
-| `@check` | Runs a typecheck/lint/build script and returns a structured pass/fail summary. |
-
-### @hash
-
-Content-hashes a file, handy for detecting whether something changed
-without diffing the whole thing.
-
-```stage
-@hash "package.json" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) or `path` | file path | The file to hash |
-| `algo` | hash algorithm (default `sha256`) | Which algorithm to use |
-| `length` | integer | Truncate the hash to this many characters |
-| `exclude-line` | text to match | Strip a matching line (e.g. a timestamp) before hashing, so that line's changes don't change the hash |
-
-### @query
-
-Runs a shell command, but only if it matches the project's
-`.livestage/policy.json` allowlist. Out of the box that allowlist grants a
-curated set of read-only commands (`git *`, `cat *`, `grep *`, `find *`,
-and more); anything outside that set needs an explicit grant.
-
-```stage
-@query "git status --short" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) or `command` | shell command | The command to run |
-
-### @test
-
-Runs the project's test suite and hands back a structured result instead of
-raw text, so you can branch on pass/fail without parsing output. With no
-`command=`, it auto-detects the project's test script.
-
-```stage
-@test label="result" /
-Tests: {{ result_summary }}
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `command` | shell command | Override the auto-detected test command |
-| `label` | name | Capture the structured result (`_exit`, a summary) into a variable |
-
-### @check
-
-The same idea as `@test`, shaped for a typecheck, lint, or build step
-instead of the test suite.
-
-```stage
-@check label="result" /
-Check: {{ result_summary }}
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `command` | shell command | Override the auto-detected check command |
-| `label` | name | Capture the structured result (`_exit`, a summary) into a variable |
-
-### Composition Directives
-
-These ten directives are how a `.stage` document controls what renders and
-reuses logic instead of just listing data top to bottom: branching on a
-condition, looping over a list, defining a reusable snippet once and
-calling it from several places, or pulling in another `.stage` file. Reach
-for these once a document needs to do more than read one thing and print
-it.
-
-| Name | What it does |
-|---|---|
-| `@set` | Assigns a variable for later `{{ }}` use. |
-| `@if` | Branches on a condition, rendering its body only when true. |
-| `@foreach` | Loops over a list or a query's result. |
-| `@switch` | Branches on an expression across multiple cases. |
-| `@define` | Defines a reusable, parameterized block (a macro). |
-| `@call` | Invokes a macro defined with `@define`. |
-| `@include` | Renders another `.stage` file's content inline. |
-| `@import` | Pulls in another `.stage` file's macros/env fallbacks without rendering it. |
-| `@template` | Renders a reusable partial file against a bound data value. |
-| `@data` | Defines a small structured data value inline, for `@template` or `{{ }}` use. |
-
-### @set
-
-Assigns a variable, scoped to the current render only; nothing set here
-leaks into a later render of the same document.
-
-```stage
-@set count = @count "src" match="*.ts" /
-{{ count }} TypeScript files.
-```
-
-### @if
-
-Branches on a condition, rendering its body only when the condition is
-true. Closed with `@if-end`.
-
-```stage
-@set count = @count "src" match="*.ts" /
-@if count > 50
-This is a big module.
-@if-end
-```
-
-### @foreach
-
-Loops over a list, or a query's result rows, binding each item to a
-variable for the loop body. Closed with `@foreach-end`.
-
-```stage
-@foreach file in @list "src" match="*.ts" /
-- {{ file }}
-@foreach-end
-```
-
-### @switch
-
-Branches on an expression across multiple `@case` values, with an optional
-`@default` when nothing matches. Closed with `@switch-end`.
-
-```stage
-@switch status
-@case "active"
-Active.
-@case "complete"
-Done.
-@default
-Unknown.
-@switch-end
-```
-
-### @define
-
-Defines a reusable, parameterized block of markdown and directives (a
-macro), invoked later with `@call`. Closed with `@define-end`.
-
-```stage
-@define greet(name)
-Hello, {{ name }}!
-@define-end
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) | `name(param1, param2)` | The macro's name and parameter list |
-| `local` | flag | Scope the macro to this file only, not shared with files that `@include` it |
-
-### @call
-
-Invokes a macro previously defined with `@define`, passing arguments
-either positionally or as `key=value` pairs.
-
-```stage
-@call greet("world")
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) | `name(arg1, arg2)` or `name key=value` | The macro to invoke and its arguments |
-
-### @include
-
-Renders another `.stage` file's content inline, as if it were pasted at
-this point in the document. Paths are confined to the project, no
-absolute paths and no `..` traversal.
-
-```stage
-@include "partials/header.stage" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) or `path` | file path | The `.stage` file to render inline |
-| `if` | expression | Only include when the expression is true |
-| `local` | flag | Don't share this file's own macros back out |
-
-### @import
-
-Pulls in another `.stage` file's macro and environment-fallback
-definitions without rendering any of its content, useful for sharing
-`@define`d macros across files.
-
-```stage
-@import "partials/macros.stage" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) or `path` | file path | The `.stage` file to import definitions from |
-| `if` | expression | Only import when the expression is true |
-| `local` | flag | Don't re-export this file's own macros |
-
-### @template
-
-Renders a reusable partial file against a bound data value, useful for
-rendering the same layout once per item in a `@foreach`.
-
-```stage
-@foreach user in @list "data/users.json" /
-@template "partials/user-card.stage" data="{{ user }}" as="user" /
-@foreach-end
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) or `path` | file path | The partial `.stage` file to render |
-| `data` | expression | The value to bind into the partial |
-| `as` | identifier (default `data`) | The variable name the partial sees |
-| `if` | expression | Only render when the expression is true |
-
-### @data
-
-Defines a small structured data value inline, one `key = expression` (or
-`...expression` to spread another value's fields) per line, for use with
-`@template` or `{{ }}` interpolation elsewhere in the document.
-
-```stage
-@data user
-  name = "Ada"
-  role = "engineer"
-@data-end
-{{ user.name }}, {{ user.role }}
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) or `name` | identifier | The variable name this data is bound to |
-
-### Render Formats
-
-`@render` is how piped data becomes readable markdown instead of raw
-tab-separated lines: point it at a shape (a table, a tree, a bulleted
-list, a bar chart, and five more) and it formats whatever the pipe handed
-it. It's always the last stage of a pipeline, taking the output of a
-source directive like `@list` or `@query` and turning it into something a
-person would actually want to read.
-
-| Name | What it does |
-|---|---|
-| `@render` | Turns piped data into a markdown shape, table, tree, list, and six more. |
-
-### @render
-
-Always the last stage of a pipe: takes whatever a source directive produced
-(optionally filtered through `grep`/`sort`/`head`/`tail`/`uniq`/`wc`) and
-turns it into a specific markdown shape. `as="type"` on the source directive
-itself is shorthand for `| @render type="type"`.
-
-```stage
-@list "src" match="*.ts" | @render type="table" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `type` | `table` \| `tree` \| `list` \| `numbered` \| `bar` \| `code` \| `json` \| `inline` \| `links` | Which markdown shape to produce |
-| `columns` | `col1,col2` | Column headers, for `table` |
-| `lang` | language name | Fence language, for `code` |
-| `compact` | `true`, for `table` | Skip column-width padding: no alignment, one space per cell, for output read as raw text rather than through a markdown viewer |
-
-### Pipe
-
-These are the Unix-style filters you chain between a source directive and
-`@render` (or a scalar result), the same way you'd pipe commands on a
-command line. They never spawn a process, so they work identically on
-every platform, and each one takes plain lines of piped data and narrows,
-reorders, or summarizes them before the next stage sees the result.
-
-| Name | What it does |
-|---|---|
-| `grep` | Keeps only lines matching (or, with `-v`, not matching) a pattern. |
-| `sort` | Sorts lines alphabetically or numerically. |
-| `head` | Keeps only the first N lines. |
-| `tail` | Keeps only the last N lines. |
-| `uniq` | Drops consecutive duplicate lines. |
-| `wc` | Counts lines, words, or characters. |
-| `count-by` | Groups rows by a column and counts how many fall in each group. |
-
-### grep
-
-Keeps only the lines matching a pattern, or with `-v`, only the ones that
-don't.
-
-```stage
-@list "src" match="*.ts" | grep -v test | @render type="list" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) | text or pattern | What to match against each line |
-| `-i` | flag | Case-insensitive match |
-| `-v` | flag | Invert the match: keep non-matching lines instead |
-
-### sort
-
-Sorts the piped lines alphabetically by default, or numerically with `-n`;
-`-r` reverses either order.
-
-```stage
-@list "src" match="*.ts" | sort | @render type="list" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `-n` | flag | Sort numerically instead of alphabetically |
-| `-r` | flag | Reverse the sort order |
-
-### head
-
-Keeps only the first N lines (10 by default).
-
-```stage
-@query "git log --oneline" | head 5 | @render type="list" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) | integer (default 10) | How many lines to keep from the start |
-
-### tail
-
-Keeps only the last N lines (10 by default).
-
-```stage
-@query "git log --oneline" | tail 5 | @render type="list" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) | integer (default 10) | How many lines to keep from the end |
-
-### uniq
-
-Drops a line when it's identical to the one immediately before it, the
-same behavior as the Unix `uniq` command (sort first if you need
-duplicates removed regardless of position).
-
-```stage
-@query "git log --format='%ae'" | sort | uniq | @render type="list" /
-```
-
-### wc
-
-Counts lines by default; `-w` counts words instead, `-c` counts
-characters. A pipe that ends in `wc` (with no `@render`) inlines the bare
-number.
-
-```stage
-@list "src" match="*.ts" | wc -l
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `-l` | flag (default) | Count lines |
-| `-w` | flag | Count words |
-| `-c` | flag | Count characters |
-
-### count-by
-
-Groups rows by one column and counts how many rows fall into each group,
-sorted from most to least common, handy for a quick "how many of each"
-summary over tabular data.
-
-```stage
-@list "data/issues.csv" | count-by status | @render type="table" columns="status,count" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| (positional) | column name | Which column to group rows by |
-
-### Assert Operators
-
-`@assert` is a pass/fail check against real files: does this path exist,
-does it contain a pattern, does a JSON key have the value you expect. It's
-the building block `livestage validate` and `livestage assert` use to gate
-a document (or a whole project) in CI, so a broken assumption fails the
-build instead of silently shipping.
-
-| Name | What it does |
-|---|---|
-| `@assert` | Checks a file (or set of files) against a condition and reports pass or fail. |
-
-### @assert
-
-Runs one check against `target` (a file path or glob) using the chosen
-`operator`, and renders an inline pass/fail line.
-
-```stage
-@assert operator="file-exists" target="package.json" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `operator` | `file-exists` \| `contains` \| `some-contains` \| `contains-if-present` \| `absent` \| `json-key` | Which check to run |
-| `target` | glob | The file(s) to check |
-| `pattern` | text | Content to look for, for `contains`/`some-contains`/`contains-if-present`/`absent` |
-| `key` | dot/bracket path | The key to look up, for `json-key` |
-| `equals` | value | Require the key to equal this value, for `json-key` |
-| `label` | name | Capture the structured result (`operator`, `matches`, `passed`, `vacuous`) into a variable |
-
-Only `absent` and `contains-if-present` are allowed to pass when nothing
-matches (a missing target is exactly what they're checking for); every
-other operator fails on zero matches, so a check can never quietly pass
-because its target went missing by accident.
-
-### Code Runners
-
-`@code` is the escape hatch for anything with no dedicated directive: hit
-an HTTP API, query a database, run a small transformation, whatever a
-five-line script can do. It's off by default; your project's security
-policy has to explicitly grant the language before any script runs.
-
-| Name | What it does |
-|---|---|
-| `@code` | Runs a real script (JavaScript, Python, or another granted language) and captures its output. |
-
-### @code
-
-Runs a script, either inline as a block body or from a file via `src=`,
-and captures its result. If the script's stdout is valid JSON, it's bound
-as structured data under `label` instead of raw text.
-
-```stage
-@code language="javascript" label="health"
-const res = await fetch('http://localhost:3000/health')
-console.log(JSON.stringify({ ok: res.ok, status: res.status }))
-@code-end
-
-Status: {{ health.status }}, OK: {{ health.ok }}
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `language` | granted language (e.g. `javascript`, `python`, `bash`) | Which runner to use; inferred from `src=`'s extension when omitted |
-| `src` | file path | Run a script file instead of an inline body |
-| `label` | name | Capture the result (raw output, or parsed JSON) into a variable |
-| `timeout` | milliseconds | Override the default execution timeout |
-| `interpolate` | `true` \| `false` (default) | Expand `{{ }}` inside the script body before running it |
-
-### Update Frontmatter
-
-`@update-frontmatter` is the one directive allowed to write anything.
-Everything else in LiveStage only reads; this is how a document persists
-state between renders, like a multi-step pipeline recording progress in
-its own frontmatter. The write is validated against the target's declared
-schema before it happens, and lands atomically, so a crash mid-write never
-leaves a corrupted file.
-
-| Name | What it does |
-|---|---|
-| `@update-frontmatter` | Writes one field into a markdown file's YAML frontmatter. |
-
-### @update-frontmatter
-
-Updates a single frontmatter field on the target document, creating it if
-absent.
-
-```stage
-@update-frontmatter path="state.md" field="status" value="done" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `path` | file path | The markdown file to update |
-| `field` | frontmatter key | Which field to set (supports dot/bracket addressing into a list) |
-| `value` | any string | The value to write |
-
-### Graph
-
-`@graph` walks a relationship between markdown documents, like a
-`depends_on` chain across a set of feature docs, and renders it as a
-tree, a table, or a Mermaid diagram. It catches cycles and broken
-references (a doc pointing at an id that doesn't exist) automatically, so
-you don't have to eyeball a big dependency list to spot them.
-
-| Name | What it does |
-|---|---|
-| `@graph` | Walks a frontmatter relationship across a set of documents and renders it as a tree, table, or diagram. |
-
-### @graph
-
-Builds the relationship graph starting from `target` and renders it.
-
-```stage
-@graph target=".mdd/docs/*.md" relation="depends_on" format="tree" /
-```
-
-| Parameter | Values | Description |
-|---|---|---|
-| `target` | glob | Which documents to include in the graph |
-| `relation` | frontmatter field (default `depends_on`) | Which relationship field defines the edges |
-| `id-field` | frontmatter field (default `id`) | Which field identifies each node |
-| `format` | `tree` \| `table` \| `mermaid` (default `tree`) | How to render the graph |
-| `label` | name | Capture the structured result (`_nodes`, `_edges`, `_cycles`, `_broken`, `_broken_list`) into a variable |
-
+All 30 directives, with syntax and examples:
+**[docs/directives.md](docs/directives.md)**.
+
+That page is generated the same way this one is, pulled from whichever docs
+declare `primitives` in their frontmatter. Document a new directive with a
+`primitives` entry and it appears there on the next `npm run directives`.
+
+## More examples
+
+25 worked examples ship in this repo, each with a rendered
+`.md` beside its `.stage` source, kept honest by `npm run examples:check` in
+CI. A few are marked live because they are deliberately non-deterministic:
+real git state, wall-clock timing, an environment-dependent tree. Those ship
+a rendered snapshot too, just not one asserted byte-identical on every run.
+
+**[`examples/hello.stage`](examples/hello.stage)** ([rendered](examples/hello.md), live)
+The smallest one: today's date, this directory's tree.
+
+**`examples/drift/`** eliminates four kinds of hand-maintained file that
+silently diverge from the code that governs them:
+[`env-drift`](examples/drift/env-drift/env-drift.stage) ([rendered](examples/drift/env-drift/env-drift.md)), `.env.example` against actual `process.env` usage .
+[`scripts-reference`](examples/drift/scripts-reference/scripts-reference.stage) ([rendered](examples/drift/scripts-reference/scripts-reference.md)), `package.json`'s real scripts .
+[`test-coverage-map`](examples/drift/test-coverage-map/test-coverage-map.stage) ([rendered](examples/drift/test-coverage-map/test-coverage-map.md)), which source files have no matching test .
+[`todo-debt`](examples/drift/todo-debt/todo-debt.stage) ([rendered](examples/drift/todo-debt/todo-debt.md)), a live TODO/FIXME/HACK inventory.
+
+**`examples/agent-briefs/`** the three above in full:
+[`codebase-health`](examples/agent-briefs/codebase-health.stage) ([rendered](examples/agent-briefs/codebase-health.md), live),
+[`change-review`](examples/agent-briefs/change-review.stage) ([rendered](examples/agent-briefs/change-review.md), live),
+[`onboarding-brief`](examples/agent-briefs/onboarding-brief.stage) ([rendered](examples/agent-briefs/onboarding-brief.md)).
+
+**`examples/database/`** and **`examples/http-health/`** there is no `@db` or
+`@http` directive. External reach is `@code` under policy.
+[`customers`](examples/database/customers.stage) ([rendered](examples/database/customers.md)) runs driver code and renders a table.
+[`check`](examples/http-health/check.stage) ([rendered](examples/http-health/check.md)) runs `fetch` and renders structured status.
+
+**[`examples/import-graph/`](examples/import-graph/import-graph.stage)** ([rendered](examples/import-graph/import-graph.md))
+`@graph` reads YAML frontmatter and has no notion of real imports.
+`@import-graph` does, walking a source tree into a real Mermaid dependency
+graph, one node per file, no shell or `@code` grant needed.
+
+**[`examples/connections/`](examples/connections/connections.stage)** ([rendered](examples/connections/connections.md))
+A project index: path tree, dependency graph, source overlap, nothing
+hand-maintained.
+
+**`examples/multi-step/`** files as steps, frontmatter as state, assertions
+as gates, no workflow engine. [`index`](examples/multi-step/index.stage) ([rendered](examples/multi-step/index.md))
+is the overview; its own [README](examples/multi-step/README.md) runs the
+pipeline. The step files are not pre-rendered here because running them
+changes real state on disk, which is the point.
+
+**`examples/showcase/`** three documents rendering under the default policy
+with no extra grants: [`index`](examples/showcase/index.stage) ([rendered](examples/showcase/index.md)),
+[`api-reference`](examples/showcase/api-reference.stage) ([rendered](examples/showcase/api-reference.md)),
+[`report`](examples/showcase/report.stage) ([rendered](examples/showcase/report.md), live).
 
 ## How this README stays current
 
-`README.stage` (the source of this file, not `README.md` itself) reads:
+`README.stage`, the source of this file, reads `package.json` for the name,
+version and description; `scripts/test-baseline.json` for the reviewed test
+floor, rendered as "N+" because it only ever rises; the module, directive
+and example counts by counting the directories and files themselves; the
+round-trip table from `benchmarks/roundtrip.json`; and the three worked
+examples from their real source, so the shown code cannot drift from what
+runs.
 
-- the directive reference above, live, from every `.mdd/docs/*.md` doc
-  that declares `primitives` in its frontmatter, via a frontmatter query
-  (`where="primitives.length > 0"`) plus the `read_section()` builtin
-  pulling each doc's `## Interface Overview`, the one section in the doc
-  corpus written for a reader with zero project context,
-- `package.json`'s name, version, and description, via `@read`,
-- the reviewed test-count floor (rendered as "N+", it only ever rises,
-  via `npm run test:baseline:update` after confirming the increase is
-  real coverage), via `@read` on `scripts/test-baseline.json`,
-- the three worked examples' actual source, via `@read`, so the shown
-  code can never drift from what actually runs.
+`npm run readme` regenerates `README.md`. `npm run readme:check` renders
+into a throwaway and fails if the committed file differs. That check runs in
+CI on every push, so a stale README fails the build instead of quietly
+persisting.
 
-`npm run readme` regenerates `README.md` by calling the existing
-`livestage build` CLI verb. `npm run readme:check` regenerates into a
-throwaway comparison and fails if the committed `README.md` differs, and
-that check runs in CI on every push, so a stale README fails the build
-instead of quietly persisting.
-
-The one thing that still needs a human: writing `## Interface Overview`
-itself when a new directive lands, the same way `title` or any other
-judgment-call frontmatter field is authored by hand. Everything else,
-discovery, names, syntax, examples, counts, is automatic.
+The one thing that still needs a human is writing a new directive's
+`## Interface Overview` when it lands, the same way any judgment-call
+frontmatter field is authored by hand. Discovery, names, syntax, examples
+and counts are automatic.
 
 ---
 

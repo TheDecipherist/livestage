@@ -1,8 +1,8 @@
 <!-- livestage:generated
 livestage_source: CLAUDE.stage
-livestage_updated_at: 2026-08-17T22:20:50.306Z
-livestage_version: 1.1.0
-livestage_content_hash: 96f635d76e3d266ce82426bd8168b4d2f255726adc2dabf7980c74e993bde811
+livestage_updated_at: 2026-08-18T00:59:10.386Z
+livestage_version: 1.1.1
+livestage_content_hash: 68e5acafd179d080f7bfc6fc2250c0fedd61610e8610b2758464d7058f2e6cf6
 livestage_hash_inputs: src/**/*.ts,package.json,.mdd/waves/*.md,CLAUDE.stage
 livestage_degraded: false
 -->
@@ -118,6 +118,8 @@ shows up here on the next render instead of silently going stale:
 | examples:check | node scripts/check-example-renders.mjs |
 | bench:class2 | node benchmarks/class2-coverage-map.mjs |
 | bench:class3 | node benchmarks/class3-import-graph.mjs |
+| directives | node dist/cli/cli.js build directives.stage -o docs/directives.md --stamp-metadata --hash-inputs=".mdd/docs/*.md,package.json,directives.stage" |
+| directives:check | node scripts/check-directives.mjs |
 
 Notes that don't fit a one-line command table:
 - `build` compiles `src/` to `dist/` via `tsconfig.build.json` (declarations +

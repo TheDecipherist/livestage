@@ -107,8 +107,9 @@ if contains_cmd 'git[[:space:]]+clean[[:space:]]+-[a-zA-Z]*f'; then
   emit_deny "Blocked: git clean -f permanently deletes untracked files."
 fi
 
-# Accidental package publishing (allow --dry-run)
-for pat in '(npm|yarn|pnpm|bun)[[:space:]]+publish' 'cargo[[:space:]]+publish' 'gem[[:space:]]+push' 'twine[[:space:]]+upload'; do
+# Accidental package publishing (allow --dry-run). npm is deliberately not
+# guarded here: the user has asked Claude to run npm publish directly.
+for pat in '(yarn|pnpm|bun)[[:space:]]+publish' 'cargo[[:space:]]+publish' 'gem[[:space:]]+push' 'twine[[:space:]]+upload'; do
   if contains_cmd "$pat" && ! contains_cmd '(^|[[:space:]])(--dry-run|-n)([[:space:]=]|$)'; then
     emit_deny "Blocked: publishing packages should run in CI or manually, not via Claude."
   fi

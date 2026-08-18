@@ -2,85 +2,24 @@
 @read "package.json" path="version" label="pkg_version" visible="false" /
 @read "package.json" path="description" label="pkg_description" visible="false" /
 @read "scripts/test-baseline.json" path="baseline" label="test_count" visible="false" /
+@count "src/parser/directives" match="*.ts" label="directive_count" visible="false" /
+@count "src" type="dirs" depth="0" label="module_count" visible="false" /
+@count "examples" match="**/*.stage" label="example_count" visible="false" /
 
 # {{ pkg_name }}
 
 {{ pkg_description }}
 
-**Version {{ pkg_version }}** | **{{ test_count }}+ tests** | MIT
+**Version {{ pkg_version }}** | **{{ test_count }}+ tests** | **{{ directive_count }} directives** | MIT
 
-This README is generated. Every fact in it (the directive reference below,
-the version and test count above, the three worked examples) is read live
-from the project itself by `README.stage`, never hand-typed. Run
-`npm run readme` to regenerate `README.md`; `npm run readme:check` fails
-if it would produce a different file than what is currently committed, and
-that check runs in CI. See "How this README stays current" at the bottom.
+Your agent spends tokens every session re-deriving things the repo already
+knows. Which branch, what changed, which files have no test, whether
+`.env.example` still matches the code. Same commands, same parsing, every
+time.
 
-## Install
+A `.stage` file answers that once, at read time, in one Read call.
 
-```
-npm install --save-dev livestage
-```
-
-Then wire it into an AI coding assistant's hooks:
-
-```
-npx livestage init
-```
-
-`init` is idempotent (safe to run again, a no-op if already installed) and
-transactional (a partial failure rolls back everything it wrote). Concretely,
-it makes four changes:
-
-- Registers a **PostToolUse** hook, pointed at the installed package's own
-  `dist/hook/pretooluse.js`, so reading a `.stage` file with the normal file
-  tool already returns the rendered result, no separate render step.
-  (PreToolUse can only allow/deny/rewrite a tool's arguments; only
-  PostToolUse can substitute what a Read call actually returns.) The same
-  hook also watches reads of any `.md` file stamped with the
-  `livestage:generated` contract, see "Keep a generated `.md` honest at
-  read time" below.
-- Installs a **SessionStart** hook script to `~/.livestage/hooks/sessionStart.mjs`.
-  It renders `<project>/CLAUDE-LiveStage.stage` (if that file exists) and
-  injects the result into the session, a live, self-updating brief instead of
-  a static `CLAUDE.md` section; it makes zero filesystem writes and never
-  blocks session start on failure.
-- Both hooks are registered in the detected client's own settings file
-  (`~/.claude/settings.json` for Claude Code, `~/.cursor/settings.json` for
-  Cursor, auto-detected, or pass `--client`).
-- Seeds `<project>/.livestage/policy.json` with the shipped "strict" profile,
-  only if one does not already exist. "Strict" names the enforcement model
-  (every surface not explicitly granted is denied, hard destructive patterns
-  are immutable, no reach outside the project root), not "shell is off":
-  shell ships with a curated, read-only allowlist (`git`, `cat`, `grep`,
-  `find`, the common test runners, around 40 patterns), deliberately, since
-  without it `@query` is dead on arrival. `@code` and HTTP ship genuinely
-  empty; anything beyond the shipped allowlist, on any surface, needs an
-  explicit grant.
-
-Or use it standalone, no hook required:
-
-```
-npx livestage render some-doc.stage
-```
-
-## What LiveStage is
-
-A `.stage` file mixes prose with executable directives instead of storing
-static data: file listings, frontmatter reads, git queries, hashes, test
-results, script output, assertions. When an agent reads the file, the
-engine resolves every directive at that moment and returns pure markdown,
-with zero directive syntax remaining. The directive syntax exists only at
-rest, for authors; the agent consuming a render needs no knowledge of
-LiveStage at all.
-
-The agent decides, LiveStage computes. The engine never judges, gates, or
-chooses; it resolves deterministic data and hands it back as markdown.
-Every directive declares a static fallback, so a `.stage` file read
-without the engine (or after a timeout) is still a usable, honest document
-that says it is degraded.
-
-## A minimal example
+**Source you write:**
 
 ```stage
 # Project status
@@ -91,78 +30,158 @@ that says it is degraded.
 Last commit: {{ last_commit }}. {{ file_count }} TypeScript files.
 ```
 
-Rendering that produces plain markdown, no directive syntax, no matter
-how many times you run it or how much the repo changes underneath it.
+**What the agent actually receives:**
 
-## Real-world scenarios: what this actually saves
+```markdown
+# Project status
 
-The pitch above is abstract. Here is what it looks like in practice,
-three real, runnable examples under `examples/agent-briefs/`, each
-replacing several separate shell commands (that an agent would otherwise
-run one at a time, then hold the combined picture in its own context)
-with a single render that returns a finished status result.
+Last commit: a1b2c3d fix parser edge case. 47 TypeScript files.
+```
 
-Each is read live from its real, runnable file below, a directive pipeline
-(`@read ... | @render type="code"`), not a hand-retyped snippet that could
-drift from what actually runs. Run any of them yourself with `livestage
-render <file>` from inside `examples/agent-briefs/`, where the shared
-policy grant applies.
+No directive syntax survives. The agent reading it needs to know nothing
+about LiveStage, and the numbers were true at the moment it read them.
 
-### Codebase health, one render instead of three commands
+## Drift? What's that?
+
+The reason those numbers are usually wrong is not laziness. It is that a
+document written once is a snapshot, and snapshots stop being true the
+moment the code moves.
+
+[`CLAUDE.md`](CLAUDE.md), the file every Claude Code session in this repo
+reads first, was written once by Claude Code's own `/init` command and
+never regenerated. It claimed a directive count "as of this writing", a
+number nothing kept honest, and pointed at a donor spec file that had
+already stopped existing here. Both sat there, wrong, until someone
+happened to grep for them. Being written by an LLM the first time bought
+it nothing. A snapshot is a snapshot regardless of who typed it.
+
+Now [`CLAUDE.stage`](CLAUDE.stage) generates it, and `npm run claude-md:check`
+fails CI if the committed file no longer matches. This README is the same:
+{{ module_count }} modules, {{ directive_count }} directives, {{ example_count }}
+worked examples, all computed at render time, none typed by hand.
+
+## Reach for this when
+
+- An agent runs the same commands at the start of every session.
+- A hand-maintained file describes something the code already knows:
+  an env example, a scripts reference, a coverage map, an API index.
+- A number in your docs has an "as of" date next to it.
+- You want a document that degrades honestly rather than silently.
+
+## Skip it when
+
+- The document is genuinely static prose. A design rationale does not
+  change because a file did.
+- The data changes within a single render, so the answer is stale before
+  the reader finishes.
+- One shell command already answers the question. Wrapping it buys
+  nothing and adds a dependency.
+- You need the agent to decide something. LiveStage computes and hands
+  back markdown. It never judges, gates or chooses.
+
+## Install
+
+```
+npm install --save-dev livestage
+```
+
+Then wire it into an AI coding assistant:
+
+```
+npx livestage init
+```
+
+`init` is idempotent and transactional: safe to run twice, and a partial
+failure rolls back everything it wrote. It registers a **PostToolUse** hook
+so reading a `.stage` file with the normal file tool already returns the
+rendered result, installs a **SessionStart** hook that injects a live brief
+instead of a static `CLAUDE.md` section, writes both into the detected
+client's settings (`~/.claude/settings.json`, or `~/.cursor/settings.json`,
+or pass `--client`), and seeds a policy file. See [Security](#security).
+
+PostToolUse rather than PreToolUse on purpose: PreToolUse can only allow,
+deny or rewrite a tool's arguments. Only PostToolUse can substitute what a
+Read call actually returns.
+
+Or standalone, no hook:
+
+```
+npx livestage render some-doc.stage
+```
+
+## What it costs an agent to not have this
+
+An agent getting repo state with shell emits a command, reads a result, and
+reasons about it, three times over. With a brief it emits one Read and reads
+one finished answer.
+
+@read "benchmarks/roundtrip.json" path="scenarios" | @render type="table" columns="scenario,shell,one brief" /
+
+@read "benchmarks/roundtrip.json" path="method" label="rt_method" visible="false" /
+
+Method: {{ rt_method }}. Model-emitted tokens are output-priced, roughly 5x
+input. There is no percentage claimed here on purpose: a real saving depends
+on a real agent run, and a modelled number published as a benchmark is the
+kind of claim that deserves to be torn apart.
+
+The second-order point matters more than the first. A regenerated command
+*varies*. `grep -r "process.env"` and `grep -rn 'process\.env'` and `rg` are
+three different commands, and one of them returns a different answer. A
+`.stage` command is fixed text, authored once, and it returns the same shape
+every time.
+
+## Three briefs, live from their real source
+
+Each of these replaces several separate commands with one render. They are
+read live from the runnable files under `examples/agent-briefs/`, not
+retyped, so what you see below cannot drift from what actually runs. Run any
+of them with `livestage render <file>` from inside that directory, where the
+shared policy grant applies.
+
+### Codebase health
 
 Old way: `git rev-parse --abbrev-ref HEAD`, then `git log -1`, then
-`git status --short`, three round trips, three outputs to mentally merge.
+`git status --short`. Three round trips, three outputs to merge mentally.
 
 @read "examples/agent-briefs/codebase-health.stage" | @render type="code" lang="stage" /
 
-### Change review, one render instead of three commands
+### Change review
 
 Old way: `git diff --stat`, `git log -5 --oneline`, `git status --short`.
 
 @read "examples/agent-briefs/change-review.stage" | @render type="code" lang="stage" /
 
-### Onboarding brief, one render instead of four commands, zero shell grant
+### Onboarding brief, with no shell grant at all
 
 Old way: `cat README.md`, `cat package.json`, `ls src`, `grep scripts
-package.json`. This one needs no `shell` policy grant at all, `@read` and
-`@tree` are filesystem-policy directives, not shell, proof that a whole
-class of "read this project" agent work never needs shell access in the
-first place.
+package.json`. This one needs no shell permission. `@read` and `@tree` are
+filesystem directives, which means a whole class of "read this project" work
+never needs shell access in the first place.
 
 @read "examples/agent-briefs/onboarding-brief.stage" | @render type="code" lang="stage" /
 
-## Drift? What's that?
+## Security
 
-Every `.stage` file in this repo generates itself, including this README.
-[`CLAUDE.md`](CLAUDE.md), the one file every Claude Code session in this repo
-reads first, is no exception: [`CLAUDE.stage`](CLAUDE.stage) generates it,
-checked by `npm run claude-md:check` on every CI run, the exact
-`readme`/`readme:check` pattern above, applied to the file that actually
-onboards the agent.
+Every directive runs under a policy file at `.livestage/policy.json`.
+`init` seeds the shipped **strict** profile if one does not already exist.
 
-Before that existed, `CLAUDE.md` was written once, by Claude Code's own
-`/init` command, and never regenerated after: a one-time snapshot, not a
-live document. It drifted exactly like any static snapshot does. It
-claimed a directive count "as of this writing" (a number nothing kept
-honest) and pointed at a donor spec file that had already stopped existing
-in this repo. Both sat there, wrong, until someone happened to grep for
-them. Being written by an LLM the first time bought it nothing; a snapshot
-is a snapshot regardless of who typed it.
-@count "src/parser/directives" match="*.ts" label="cmd_directive_count" visible="false" /
-@count "src" type="dirs" depth="0" label="cmd_module_count" visible="false" /
-@count "examples" match="**/*.stage" label="cmd_example_count" visible="false" /
+"Strict" names the enforcement model, not a feature switch. Every surface
+not explicitly granted is denied, hard destructive patterns are immutable,
+and nothing reaches outside the project root.
 
-Now `CLAUDE.stage` computes {{ cmd_module_count }} modules, {{ cmd_directive_count }} directives,
-{{ cmd_example_count }} worked examples, and every `npm run` script in this
-project, live, the same way every number in this sentence was computed at
-render time, not typed by hand.
+- **shell** ships with a curated read-only allowlist, around 40 patterns:
+  `git`, `cat`, `grep`, `find`, the common test runners. Deliberately, since
+  `@query` is dead on arrival without it.
+- **`@code` and HTTP ship genuinely empty.** Anything beyond the shipped
+  allowlist, on any surface, needs an explicit grant.
+
+The three briefs above share one grant in `examples/agent-briefs/.livestage/policy.json`,
+which lists the five git commands they run and nothing else.
 
 ## Keep a generated `.md` honest at read time
 
-`README.md` and `CLAUDE.md` above are this project's own; the same
-guarantee is available for any `.md` a `.stage` file in your project
-produces. Add `--stamp-metadata` to a `livestage build` call and the
-generator writes a small HTML comment block at the top of the output:
+Add `--stamp-metadata` to a `livestage build` call and the generator writes
+a small HTML comment at the top of the output:
 
 ```
 <!-- livestage:generated
@@ -176,131 +195,115 @@ livestage_degraded: false
 -->
 ```
 
-An HTML comment, not YAML frontmatter, on purpose: GitHub renders a leading
-`---` block ugly (or Jekyll-interprets it) at the top of a repo's own
-README; a comment renders as nothing and is equally machine-readable.
-`--hash-inputs` (optional, comma-separated globs, relative to the source
-file's own directory) names every file the render actually depends on;
-without it, the hash covers only the `.stage` source itself. Presence of
-the block, not filename, is what opts a file into the contract: a `.md`
-with no block is passed through untouched, hook installed or not.
+An HTML comment rather than YAML frontmatter on purpose. GitHub renders a
+leading `---` block badly at the top of a repo's own README, or Jekyll
+interprets it. A comment renders as nothing and is equally machine-readable.
+`--hash-inputs` names every file the render actually depends on; without it
+the hash covers only the `.stage` source. Presence of the block, not the
+filename, opts a file into the contract. A `.md` with no block is passed
+through untouched whether the hook is installed or not.
 
-The PostToolUse hook `init` installs watches reads of any stamped `.md`.
-It hashes the declared inputs first; unchanged means the committed file is
-served as-is, no render at all. Only a changed hash triggers work, and
-`livestage_regenerate_on_read`, a field only you set, decides what happens
-next:
+The PostToolUse hook watches reads of any stamped `.md`. It hashes the
+declared inputs first, and unchanged means the committed file is served
+as-is with no render at all. Only a changed hash triggers work, and
+`livestage_regenerate_on_read`, a field only you set, decides what happens:
 
-- **absent** (the default): committed content is served, with a notice
-  prepended naming what's stale and the exact regen command. Drift gets
-  surfaced; content does not change under the reader.
-- **`true`**: a fresh render is served instead, with a notice stating
-  plainly that what follows is a live render of the source, not the file's
-  committed bytes.
-- **`false`**: committed content is served, no notice, no comparison. An
-  explicit opt-out is honored as one.
+- **absent** (default): committed content is served, with a notice naming
+  what is stale and the exact regen command. Drift gets surfaced, content
+  does not change under the reader.
+- **`true`**: a fresh render is served, with a notice stating plainly that
+  what follows is a live render rather than the file's committed bytes.
+- **`false`**: committed content, no notice, no comparison. An explicit
+  opt-out is honored as one.
 
-If the render itself fails or times out, the committed file is served
-unchanged with a "could not verify, may be stale" notice. A read through
-this hook never fails and never serves a fresh render silently, at any
-setting: a stale file being wrong is recoverable, a stale file that looks
-current to the one reader who could have caught it is not.
+If the render fails or times out, the committed file is served unchanged
+with a "could not verify, may be stale" notice. A read through this hook
+never fails and never serves a fresh render silently. A stale file being
+wrong is recoverable. A stale file that looks current to the one reader who
+could have caught it is not.
 
-## More examples
+## Fallbacks
 
-Every example below has a rendered `.md` sitting next to its `.stage`
-source, kept honest by `npm run examples:check` (mirrors this README's own
-`readme:check`, wired into CI). A few are marked "live" because they're
-deliberately non-deterministic (real git state, wall-clock timing, an
-environment-dependent directory tree); those still ship a rendered
-snapshot, just not one asserted byte-identical on every run.
-
-**[`examples/hello.stage`](examples/hello.stage)** ([rendered](examples/hello.md), live)
-The smallest possible one: today's date, this directory's tree.
-
-**`examples/drift/`** - four worked examples eliminating a specific kind
-of hand-maintained doc/config that silently diverges from the code that
-should govern it:
-- [`env-drift.stage`](examples/drift/env-drift/env-drift.stage) ([rendered](examples/drift/env-drift/env-drift.md)) - `.env.example` vs actual `process.env` usage.
-- [`scripts-reference.stage`](examples/drift/scripts-reference/scripts-reference.stage) ([rendered](examples/drift/scripts-reference/scripts-reference.md)) - `package.json`'s real `scripts`, live.
-- [`test-coverage-map.stage`](examples/drift/test-coverage-map/test-coverage-map.stage) ([rendered](examples/drift/test-coverage-map/test-coverage-map.md)) - which source files have no matching test.
-- [`todo-debt.stage`](examples/drift/todo-debt/todo-debt.stage) ([rendered](examples/drift/todo-debt/todo-debt.md)) - a live `TODO`/`FIXME`/`HACK` inventory.
-
-**`examples/agent-briefs/`** - the three scenarios above, in full:
-[`codebase-health.stage`](examples/agent-briefs/codebase-health.stage) ([rendered](examples/agent-briefs/codebase-health.md), live),
-[`change-review.stage`](examples/agent-briefs/change-review.stage) ([rendered](examples/agent-briefs/change-review.md), live),
-[`onboarding-brief.stage`](examples/agent-briefs/onboarding-brief.stage) ([rendered](examples/agent-briefs/onboarding-brief.md)).
-
-**`examples/database/`** and **`examples/http-health/`** - there is no
-`@db` or `@http` directive; external reach is `@code` under policy.
-[`customers.stage`](examples/database/customers.stage) ([rendered](examples/database/customers.md)) runs driver
-code in `@code`, renders a table. [`check.stage`](examples/http-health/check.stage) ([rendered](examples/http-health/check.md)) runs `fetch` in
-`@code`, renders structured status.
-
-**[`examples/connections/connections.stage`](examples/connections/connections.stage)** ([rendered](examples/connections/connections.md))
-A project connections index: path tree, dependency graph, source-file
-overlap, all computed, nothing hand-maintained.
-
-**[`examples/import-graph/import-graph.stage`](examples/import-graph/import-graph.stage)** ([rendered](examples/import-graph/import-graph.md))
-`@graph` reads YAML frontmatter, it has no notion of real `import`
-statements; `@import-graph` does, walking a source tree (`src="./src"`)
-into a real Mermaid dependency graph, one node per source file, no
-shell/`@code` grant needed.
-
-**`examples/multi-step/`** - files as steps, frontmatter as state,
-assertions as gates, no workflow engine. [`index.stage`](examples/multi-step/index.stage) ([rendered](examples/multi-step/index.md))
-is the overview; see its own [README](examples/multi-step/README.md) to
-run the actual pipeline (the step files themselves aren't pre-rendered
-here, running them changes real state on disk, which is the point).
-
-**`examples/showcase/`** - three documents rendering under the default
-policy, no extra grants: [`index.stage`](examples/showcase/index.stage) ([rendered](examples/showcase/index.md)),
-[`api-reference.stage`](examples/showcase/api-reference.stage) ([rendered](examples/showcase/api-reference.md)),
-[`report.stage`](examples/showcase/report.stage) ([rendered](examples/showcase/report.md), live).
+Every directive declares a static fallback. A `.stage` file read without the
+engine, or after a timeout, is still a usable document, and it says plainly
+that it is degraded rather than presenting stale output as current.
 
 ## Directive reference
 
-Every directive LiveStage ships, pulled live from whichever docs declare
-`primitives` in their frontmatter, no path convention to keep in sync by
-hand. Document a new directive with a `primitives` entry and its Interface
-Overview appears here on the next `npm run readme`.
+All {{ directive_count }} directives, with syntax and examples:
+**[docs/directives.md](docs/directives.md)**.
 
-@foreach docid in @list ".mdd/docs/*.md" where="primitives.length > 0" fields="id"
-@if docid != "id"
-@read-frontmatter path=".mdd/docs/{{ docid }}.md" field="title" label="doc_title" visible="false" /
-### {{ doc_title }}
+That page is generated the same way this one is, pulled from whichever docs
+declare `primitives` in their frontmatter. Document a new directive with a
+`primitives` entry and it appears there on the next `npm run directives`.
 
-{{ read_section(".mdd/docs/" + docid + ".md", "Interface Overview").replace(/^##\s+Interface Overview\s*\n+/, "") }}
+## More examples
 
-@if-end
-@foreach-end
+{{ example_count }} worked examples ship in this repo, each with a rendered
+`.md` beside its `.stage` source, kept honest by `npm run examples:check` in
+CI. A few are marked live because they are deliberately non-deterministic:
+real git state, wall-clock timing, an environment-dependent tree. Those ship
+a rendered snapshot too, just not one asserted byte-identical on every run.
+
+**[`examples/hello.stage`](examples/hello.stage)** ([rendered](examples/hello.md), live)
+The smallest one: today's date, this directory's tree.
+
+**`examples/drift/`** eliminates four kinds of hand-maintained file that
+silently diverge from the code that governs them:
+[`env-drift`](examples/drift/env-drift/env-drift.stage) ([rendered](examples/drift/env-drift/env-drift.md)), `.env.example` against actual `process.env` usage .
+[`scripts-reference`](examples/drift/scripts-reference/scripts-reference.stage) ([rendered](examples/drift/scripts-reference/scripts-reference.md)), `package.json`'s real scripts .
+[`test-coverage-map`](examples/drift/test-coverage-map/test-coverage-map.stage) ([rendered](examples/drift/test-coverage-map/test-coverage-map.md)), which source files have no matching test .
+[`todo-debt`](examples/drift/todo-debt/todo-debt.stage) ([rendered](examples/drift/todo-debt/todo-debt.md)), a live TODO/FIXME/HACK inventory.
+
+**`examples/agent-briefs/`** the three above in full:
+[`codebase-health`](examples/agent-briefs/codebase-health.stage) ([rendered](examples/agent-briefs/codebase-health.md), live),
+[`change-review`](examples/agent-briefs/change-review.stage) ([rendered](examples/agent-briefs/change-review.md), live),
+[`onboarding-brief`](examples/agent-briefs/onboarding-brief.stage) ([rendered](examples/agent-briefs/onboarding-brief.md)).
+
+**`examples/database/`** and **`examples/http-health/`** there is no `@db` or
+`@http` directive. External reach is `@code` under policy.
+[`customers`](examples/database/customers.stage) ([rendered](examples/database/customers.md)) runs driver code and renders a table.
+[`check`](examples/http-health/check.stage) ([rendered](examples/http-health/check.md)) runs `fetch` and renders structured status.
+
+**[`examples/import-graph/`](examples/import-graph/import-graph.stage)** ([rendered](examples/import-graph/import-graph.md))
+`@graph` reads YAML frontmatter and has no notion of real imports.
+`@import-graph` does, walking a source tree into a real Mermaid dependency
+graph, one node per file, no shell or `@code` grant needed.
+
+**[`examples/connections/`](examples/connections/connections.stage)** ([rendered](examples/connections/connections.md))
+A project index: path tree, dependency graph, source overlap, nothing
+hand-maintained.
+
+**`examples/multi-step/`** files as steps, frontmatter as state, assertions
+as gates, no workflow engine. [`index`](examples/multi-step/index.stage) ([rendered](examples/multi-step/index.md))
+is the overview; its own [README](examples/multi-step/README.md) runs the
+pipeline. The step files are not pre-rendered here because running them
+changes real state on disk, which is the point.
+
+**`examples/showcase/`** three documents rendering under the default policy
+with no extra grants: [`index`](examples/showcase/index.stage) ([rendered](examples/showcase/index.md)),
+[`api-reference`](examples/showcase/api-reference.stage) ([rendered](examples/showcase/api-reference.md)),
+[`report`](examples/showcase/report.stage) ([rendered](examples/showcase/report.md), live).
 
 ## How this README stays current
 
-`README.stage` (the source of this file, not `README.md` itself) reads:
+`README.stage`, the source of this file, reads `package.json` for the name,
+version and description; `scripts/test-baseline.json` for the reviewed test
+floor, rendered as "N+" because it only ever rises; the module, directive
+and example counts by counting the directories and files themselves; the
+round-trip table from `benchmarks/roundtrip.json`; and the three worked
+examples from their real source, so the shown code cannot drift from what
+runs.
 
-- the directive reference above, live, from every `.mdd/docs/*.md` doc
-  that declares `primitives` in its frontmatter, via a frontmatter query
-  (`where="primitives.length > 0"`) plus the `read_section()` builtin
-  pulling each doc's `## Interface Overview`, the one section in the doc
-  corpus written for a reader with zero project context,
-- `package.json`'s name, version, and description, via `@read`,
-- the reviewed test-count floor (rendered as "N+", it only ever rises,
-  via `npm run test:baseline:update` after confirming the increase is
-  real coverage), via `@read` on `scripts/test-baseline.json`,
-- the three worked examples' actual source, via `@read`, so the shown
-  code can never drift from what actually runs.
+`npm run readme` regenerates `README.md`. `npm run readme:check` renders
+into a throwaway and fails if the committed file differs. That check runs in
+CI on every push, so a stale README fails the build instead of quietly
+persisting.
 
-`npm run readme` regenerates `README.md` by calling the existing
-`livestage build` CLI verb. `npm run readme:check` regenerates into a
-throwaway comparison and fails if the committed `README.md` differs, and
-that check runs in CI on every push, so a stale README fails the build
-instead of quietly persisting.
-
-The one thing that still needs a human: writing `## Interface Overview`
-itself when a new directive lands, the same way `title` or any other
-judgment-call frontmatter field is authored by hand. Everything else,
-discovery, names, syntax, examples, counts, is automatic.
+The one thing that still needs a human is writing a new directive's
+`## Interface Overview` when it lands, the same way any judgment-call
+frontmatter field is authored by hand. Discovery, names, syntax, examples
+and counts are automatic.
 
 ---
 

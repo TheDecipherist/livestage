@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/); this file starts
 at 1.0.2, the first version documented this way.
 
+## 1.1.1
+
+### Changed
+
+- **README.md rewritten**: leads with what an agent's re-derived-every-session
+  token cost actually looks like (a measured round-trip table in
+  `benchmarks/roundtrip.json`), states plainly when to reach for LiveStage
+  and when not to, and moves the full directive reference out to its own
+  page.
+- **New: `docs/directives.md`**, generated from `directives.stage` the same
+  way `README.md` and `CLAUDE.md` generate themselves
+  (`npm run directives` / `npm run directives:check`, wired into CI). The
+  directive reference used to live inline in the README; it now has room
+  to be exhaustive without crowding out the README's own pitch.
+- No runtime (`dist/`) changes in this release, README and repository
+  tooling only.
+
 ## 1.1.0
 
 ### Added

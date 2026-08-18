@@ -20,5 +20,6 @@ jobs:
       - run: npm test
       - run: npm run test:baseline
       - run: npm run readme:check
+      - run: npm run directives:check
       - run: npm run claude-md:check
       - run: npm run examples:check
