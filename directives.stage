@@ -1,0 +1,26 @@
+@read "package.json" path="name" label="pkg_name" visible="false" /
+@read "package.json" path="version" label="pkg_version" visible="false" /
+@count "src/parser/directives" match="*.ts" label="directive_count" visible="false" /
+
+# Directive reference
+
+Every directive {{ pkg_name }} {{ pkg_version }} ships. {{ directive_count }} of them.
+
+This page is generated. Each entry below is pulled live from whichever doc
+in `.mdd/docs/` declares `primitives` in its frontmatter, using that doc's
+`## Interface Overview`, the one section written for a reader with zero
+project context. There is no path convention to keep in sync by hand:
+document a new directive with a `primitives` entry and it appears here on
+the next `npm run directives`.
+
+Back to the [README](../README.md).
+
+@foreach docid in @list ".mdd/docs/*.md" where="primitives.length > 0" fields="id"
+@if docid != "id"
+@read-frontmatter path=".mdd/docs/{{ docid }}.md" field="title" label="doc_title" visible="false" /
+## {{ doc_title }}
+
+{{ read_section(".mdd/docs/" + docid + ".md", "Interface Overview").replace(/^##\s+Interface Overview\s*\n+/, "") }}
+
+@if-end
+@foreach-end

@@ -1,0 +1,9 @@
+{
+  "method": "cl100k_base, model-emitted tokens only, matched content on both sides",
+  "measured_on": "this repo",
+  "scenarios": [
+    { "scenario": "repo state (3 git commands)", "shell": "91", "one brief": "25" },
+    { "scenario": "coverage gap (2 listings)", "shell": "54", "one brief": "20" },
+    { "scenario": "env drift (2 commands)", "shell": "61", "one brief": "19" }
+  ]
+}

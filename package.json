@@ -1,6 +1,6 @@
 {
   "name": "livestage",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Live-document renderer and verifier for AI agents.",
   "type": "module",
   "bin": {
@@ -34,7 +34,9 @@
     "examples:render": "node scripts/render-examples.mjs",
     "examples:check": "node scripts/check-example-renders.mjs",
     "bench:class2": "node benchmarks/class2-coverage-map.mjs",
-    "bench:class3": "node benchmarks/class3-import-graph.mjs"
+    "bench:class3": "node benchmarks/class3-import-graph.mjs",
+    "directives": "node dist/cli/cli.js build directives.stage -o docs/directives.md --stamp-metadata --hash-inputs=\".mdd/docs/*.md,package.json,directives.stage\"",
+    "directives:check": "node scripts/check-directives.mjs"
   },
   "keywords": [
     "livestage",
